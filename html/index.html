@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BStar UI</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app" class="hidden">
+    <!-- Card Viewer -->
+    <div id="viewerWrap" class="viewer-wrap hidden">
+      <img id="cardImage" class="card-image" src="" alt="Card Image" />
+      <button id="closeBtn">Close</button>
+    </div>
+
+    <!-- Deck Box -->
+    <div id="deckboxWrap" class="deckbox-wrap hidden">
+      <div class="deckbox-header">
+        <h2>BStar Deck Box</h2>
+        <button id="deckboxCloseBtn">Close</button>
+      </div>
+
+      <div class="deckbox-columns">
+        <div class="deckbox-panel">
+          <div class="deckbox-panel-header">
+            <h3>Collection</h3>
+            <span class="deckbox-subtext">Drag into Deck Box</span>
+          </div>
+          <div id="playerCards" class="deckbox-grid"></div>
+        </div>
+
+        <div class="deckbox-panel">
+          <div class="deckbox-panel-header">
+            <h3>Deck Box</h3>
+            <span class="deckbox-subtext">Drag back to withdraw</span>
+          </div>
+          <div id="deckBoxCards" class="deckbox-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="deckHubWrap" class="deckhub-wrap hidden">
+      <div class="deckhub-topbar">
+        <div class="deckhub-title">Deck Box</div>
+        <button id="deckHubCloseBtn">Close</button>
+      </div>
+
+      <div class="deckhub-main">
+        <div id="deckHubList" class="deckhub-list"></div>
+      </div>
+
+      <div class="deckhub-bottombar">
+        <button id="deckHubNewBtn">New Deck</button>
+        <button id="deckHubEditBtn">Edit</button>
+        <button id="deckHubDeleteBtn">Delete</button>
+        <button id="deckHubCardsBtn">Add/Remove Cards</button>
+      </div>
+    </div>
+
+    <div id="uiModalWrap" class="ui-modal-wrap hidden">
+      <div class="ui-modal">
+        <h3 id="uiModalTitle">Modal</h3>
+        <p id="uiModalText"></p>
+        <input id="uiModalInput" class="ui-modal-input hidden" type="text" maxlength="50" />
+        <div class="ui-modal-actions">
+          <button id="uiModalCancelBtn">Cancel</button>
+          <button id="uiModalConfirmBtn">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deck Builder -->
+    <div id="deckBuilderWrap" class="deckbuilder-wrap hidden">
+      <div class="deckbuilder-topbar">
+        <div class="deckbuilder-title-group">
+          <h2>Deck Builder</h2>
+        </div>
+
+        <div class="deckbuilder-actions">
+          <button id="newDeckBtn">New Deck</button>
+          <button id="saveDeckBtn">Save Deck</button>
+          <button id="deleteDeckBtn">Delete Deck</button>
+          <button id="closeDeckBuilderBtn">Close</button>
+        </div>
+      </div>
+
+      <div class="deckbuilder-layout">
+        <!-- LEFT: Preview -->
+        <div class="deckbuilder-preview">
+          <div class="preview-top">
+            <div class="preview-image-wrap">
+              <img id="builderPreviewImage" class="builder-preview-image" src="" alt="" />
+            </div>
+
+            <div class="preview-info">
+              <h3 id="builderPreviewName">Card Preview</h3>
+              <div id="builderPreviewMeta" class="builder-preview-meta"></div>
+            </div>
+          </div>
+
+          <div class="card-effect">
+            <div id="effectTitle" class="effect-title"></div>
+            <div class="effect-divider"></div>
+            <div id="builderPreviewEffect" class="effect-text"></div>
+          </div>
+        </div>
+
+        <!-- MIDDLE: Current Deck -->
+        <div class="deckbuilder-panel">
+          <div class="deckbuilder-deck-header">
+            <h3 id="currentDeckName">No Deck Selected</h3>
+            <div id="currentDeckCount">0 cards</div>
+          </div>
+
+          <div id="savedDeckList" class="saved-deck-list"></div>
+          <hr />
+          <div id="builderDeckCards" class="builder-deck-grid"></div>
+        </div>
+
+                <!-- RIGHT: Owned Cards -->
+        <div class="deckbuilder-panel">
+          <div class="deckbuilder-owned-header">
+            <h3>Owned Cards</h3>
+            <input id="deckSearchInput" type="text" placeholder="Search cards..." />
+          </div>
+
+          <div class="builder-filters">
+            <select id="filterType">
+              <option value="all">All Types</option>
+              <option value="FIGHTER">Fighter</option>
+              <option value="ITEM">Item</option>
+              <option value="EVENT">Event</option>
+              <option value="LOCATION">Location</option>
+              <option value="VEHICLE">Vehicle</option>
+            </select>
+
+            <select id="filterRarity">
+              <option value="all">All Rarities</option>
+              <option value="COMMON">Common</option>
+              <option value="RARE">Rare</option>
+              <option value="SUPER">Super Rare</option>
+              <option value="ULTRA">Ultra Rare</option>
+              <option value="SECRET">Secret Rare</option>
+              <option value="MYTHIC">Mythic</option>
+            </select>
+
+            <div class="filter-range">
+              <input id="minAtk" placeholder="ATK min">
+              <input id="maxAtk" placeholder="ATK max">
+            </div>
+
+            <div class="filter-range">
+              <input id="minDef" placeholder="DEF min">
+              <input id="maxDef" placeholder="DEF max">
+            </div>
+
+            <div class="filter-range">
+              <input id="minSpd" placeholder="SPD min">
+              <input id="maxSpd" placeholder="SPD max">
+            </div>
+
+            <div class="filter-range">
+              <input id="minLevel" placeholder="Lvl min">
+              <input id="maxLevel" placeholder="Lvl max">
+            </div>
+
+            <button id="clearFiltersBtn" type="button">Clear</button>
+          </div>
+
+          <div id="builderPoolCards" class="card-grid"></div>
+        </div>
+      </div>
+    </div>
+          <!-- Duel Table View -->
+    <div id="tableDuelWrap" class="table-duel-wrap hidden">
+      <div class="table-debug-actions">
+        <button id="tableNextPhaseBtn">Next Phase</button>
+        <button id="tableEndTurnBtn">End Turn</button>
+        <button id="tableCloseBtn">Close</button>
+      </div>
+
+      <div id="tableBoard" class="table-board">
+        <div id="tableOpponentLPWrap" class="table-lp-wrap opponent">
+          <div class="table-lp-label">OPPONENT LP</div>
+          <div id="tableOpponentLP" class="table-life-points">1000</div>
+        </div>
+
+        <div id="tableSelfLPWrap" class="table-lp-wrap self">
+          <div class="table-lp-label">YOUR LP</div>
+          <div id="tableSelfLP" class="table-life-points">1000</div>
+        </div>
+
+        <div id="tablePhaseBadge" class="table-phase-badge">MAIN PHASE</div>
+
+        <div id="tableOpponentZones" class="table-fighter-row opponent"></div>
+        <div id="tableSelfZones" class="table-fighter-row self"></div>
+      </div>
+
+      <div id="tablePreviewPanel" class="table-preview-panel empty">
+        <div class="table-panel-title">CARD VIEW</div>
+        <div class="table-preview-body">
+          <img id="tablePreviewImage" class="table-preview-image" src="" alt="">
+          <div class="table-preview-info">
+            <div id="tablePreviewName" class="table-preview-name">Select a card</div>
+            <div id="tablePreviewMeta" class="table-preview-meta">Field cards and hand cards appear here.</div>
+            <div id="tablePreviewStats" class="table-preview-stats"></div>
+            <div id="tablePreviewEffect" class="table-preview-effect"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tableGravePanel" class="table-grave-panel">
+        <button id="tableSelfGraveBtn" class="table-grave-button" type="button">GY 0</button>
+        <button id="tableOpponentGraveBtn" class="table-grave-button" type="button">OPP GY 0</button>
+        <div id="tableGraveList" class="table-grave-list hidden"></div>
+      </div>
+
+      <div id="tableHandRow" class="table-hand-row"></div>
+    </div>
+
+        <!-- Duel UI -->
+    <div id="duelWrap" class="duel-wrap hidden">
+      <div class="duel-topbar">
+        <div class="duel-top-left">
+          <div id="duelTurnText" class="duel-turn-text">Turn 1</div>
+          <div id="duelPhaseText" class="duel-phase-text">DRAW PHASE</div>
+        </div>
+
+        <div class="duel-top-actions">
+          <button id="duelAdvancePhaseBtn">Next Phase</button>
+          <button id="duelEndTurnBtn">End Turn</button>
+          <button id="duelSpawnOppBtn">Spawn Opp</button>
+          <button id="duelSpawnMeBtn">Spawn Me</button>
+          <button id="duelCloseBtn">Close</button>
+        </div>
+      </div>
+
+      <div id="duelOpponentLPWrap" class="duel-lp-wrap opponent">
+        <div class="duel-lp-label">OPPONENT LP</div>
+        <div id="duelOpponentLP" class="duel-life-points">2000</div>
+      </div>
+
+      <div id="duelSelfLPWrap" class="duel-lp-wrap self">
+        <div class="duel-lp-label">YOUR LP</div>
+        <div id="duelSelfLP" class="duel-life-points">2000</div>
+      </div>
+
+      <div class="duel-board">
+        <!-- Opponent -->
+        <div class="duel-side duel-opponent-side">
+          <div class="duel-player-header">
+            <div>Opponent</div>
+            <div id="duelOpponentDeckCount">Deck: 0</div>
+            <div id="duelOpponentHandCount">Hand: 0</div>
+            <div id="duelOpponentGraveCount">GY: 0</div>
+          </div>
+
+          <div id="duelOpponentFighterZones" class="duel-zones"></div>
+        </div>
+
+        <!-- Center -->
+        <div class="duel-center">
+          <div id="duelStatusText" class="duel-status-text">Waiting...</div>
+          <div class="duel-zone-label">Your Fighter Zones</div>
+          <div id="duelSelfFighterZones" class="duel-zones duel-self-zones"></div>
+        </div>
+
+        <!-- Self hand -->
+        <div class="duel-side duel-self-side">
+          <div class="duel-player-header">
+            <div>You</div>
+            <div id="duelSelfDeckCount">Deck: 0</div>
+            <div id="duelSelfGraveCount">GY: 0</div>
+          </div>
+
+          <div class="duel-zone-label">Your Hand</div>
+          <div id="duelHandCards" class="duel-hand"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
