@@ -1385,7 +1385,7 @@ function updateDuelUi(duel, tableMode = duelTableMode) {
   renderDuelUi();
 }
 
-function closeDuelUi() {
+function closeDuelUi(notifyLua = true) {
   currentDuelState = null;
   selectedHandCardUid = null;
   selectedAttackerZoneIndex = null;
@@ -1397,11 +1397,13 @@ function closeDuelUi() {
   tableDuelWrap.classList.add('hidden');
   app.classList.add('hidden');
 
-  fetch(`https://${GetParentResourceName()}/duelCloseUi`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({})
-  });
+  if (notifyLua) {
+    fetch(`https://${GetParentResourceName()}/duelCloseUi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+  }
 }
 
 function renderZoneCard(zoneCard, side, zoneIndex, extraClass = '') {
@@ -1883,7 +1885,7 @@ window.addEventListener('message', (event) => {
   }
 
   if (data.action === 'closeDuelUi') {
-    closeDuelUi();
+    closeDuelUi(false);
   }
 
   if (data.action === 'hideCard') {

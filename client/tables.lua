@@ -60,9 +60,6 @@ local function StopDuelCamera()
     SetEntityVisible(ped, true, false)
     SetPlayerControl(PlayerId(), true, 0)
 
-    -- extra “un-stuck” bits
-    DisableAllControlActions(0)
-    Wait(0)
     EnableAllControlActions(0)
 
     SetNuiFocus(false, false)

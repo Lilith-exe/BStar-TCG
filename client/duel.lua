@@ -6,11 +6,10 @@ local latestDuelState = nil
 
 local function ForceDuelFocus()
     CreateThread(function()
-        for i = 1, 10 do
+        for i = 1, 3 do
             Wait(0)
             SetNuiFocus(true, true)
             SetNuiFocusKeepInput(false)
-            SetCursorLocation(0.5, 0.5)
         end
     end)
 end
@@ -52,7 +51,6 @@ local function UpdateDuelUi(duelState)
         tableMode = duelState.tableMode == true
     })
 
-    ForceDuelFocus()
 end
 
 local function CloseDuelUi()
