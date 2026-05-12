@@ -551,3 +551,5 @@ Verified:
 
 - `node --check html/app.js` passes.
 - No Lua parser (`luac`) is available in this workspace, so Lua still needs in-server restart/F8 validation.
+
+
