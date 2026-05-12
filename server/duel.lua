@@ -199,6 +199,14 @@ local function resetTurnFlags(playerState)
     end
 end
 
+local function resetBattleFlags(playerState)
+    for _, zoneCard in pairs(playerState.fighterZones) do
+        if zoneCard then
+            zoneCard.hasAttacked = false
+        end
+    end
+end
+
 local function buildPrivateStateForPlayer(duel, viewerIndex)
     local selfState = duel.players[viewerIndex]
     local oppIndex = getOpponentIndex(viewerIndex)
@@ -656,6 +664,7 @@ function Duel.AdvancePhase(src, duelId)
         duel.phase = "battle"
     elseif duel.phase == "battle" then
         duel.phase = "end"
+        resetBattleFlags(duel.players[playerIndex])
     else
         return false, 'No further phase to advance'
     end

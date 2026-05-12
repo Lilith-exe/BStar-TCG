@@ -69,6 +69,14 @@ const tableBoard = document.getElementById('tableBoard');
 const tableOpponentLP = document.getElementById('tableOpponentLP');
 const tableSelfLP = document.getElementById('tableSelfLP');
 const tablePhaseBadge = document.getElementById('tablePhaseBadge');
+const tableOpponentDeckCount = document.getElementById('tableOpponentDeckCount');
+const tableSelfDeckCount = document.getElementById('tableSelfDeckCount');
+const tableOpponentCemeterySlot = document.getElementById('tableOpponentCemeterySlot');
+const tableSelfCemeterySlot = document.getElementById('tableSelfCemeterySlot');
+const tableOpponentCemeteryCount = document.getElementById('tableOpponentCemeteryCount');
+const tableSelfCemeteryCount = document.getElementById('tableSelfCemeteryCount');
+const tableOpponentCemeteryImage = document.getElementById('tableOpponentCemeteryImage');
+const tableSelfCemeteryImage = document.getElementById('tableSelfCemeteryImage');
 const tableOpponentZones = document.getElementById('tableOpponentZones');
 const tableSelfZones = document.getElementById('tableSelfZones');
 const tableHandRow = document.getElementById('tableHandRow');
@@ -80,6 +88,7 @@ const tablePreviewStats = document.getElementById('tablePreviewStats');
 const tablePreviewEffect = document.getElementById('tablePreviewEffect');
 const tableSelfGraveBtn = document.getElementById('tableSelfGraveBtn');
 const tableOpponentGraveBtn = document.getElementById('tableOpponentGraveBtn');
+const tableGravePanel = document.getElementById('tableGravePanel');
 const tableGraveList = document.getElementById('tableGraveList');
 const tableNextPhaseBtn = document.getElementById('tableNextPhaseBtn');
 const tableEndTurnBtn = document.getElementById('tableEndTurnBtn');
@@ -1037,6 +1046,12 @@ function renderTableZone(card, side, zoneIndex) {
   return zone;
 }
 
+function closeTableGraveyard() {
+  if (!openTableGraveSide) return;
+  openTableGraveSide = null;
+  renderTableGraveyard();
+}
+
 function setDuelPreviewCard(card) {
   tablePreviewCard = card || null;
   renderTablePreview();
@@ -1095,19 +1110,40 @@ function renderTableGraveyard() {
 
   const selfGrave = currentDuelState.selfPlayer?.graveyard || [];
   const oppGrave = currentDuelState.opponentPlayer?.graveyard || [];
+  const selfLastGrave = selfGrave[selfGrave.length - 1] || null;
+  const oppLastGrave = oppGrave[oppGrave.length - 1] || null;
 
-  tableSelfGraveBtn.textContent = `GY ${selfGrave.length}`;
-  tableOpponentGraveBtn.textContent = `OPP GY ${oppGrave.length}`;
+  tableSelfGraveBtn.textContent = `YOUR CEMETERY ${selfGrave.length}`;
+  tableOpponentGraveBtn.textContent = `OPPONENT CEMETERY ${oppGrave.length}`;
+  tableSelfGraveBtn.classList.toggle('hidden', openTableGraveSide !== 'self');
+  tableOpponentGraveBtn.classList.toggle('hidden', openTableGraveSide !== 'opponent');
   tableSelfGraveBtn.classList.toggle('active', openTableGraveSide === 'self');
   tableOpponentGraveBtn.classList.toggle('active', openTableGraveSide === 'opponent');
+  tableSelfCemeterySlot?.classList.toggle('active', openTableGraveSide === 'self');
+  tableOpponentCemeterySlot?.classList.toggle('active', openTableGraveSide === 'opponent');
+
+  if (tableSelfCemeteryImage) {
+    tableSelfCemeteryImage.src = selfLastGrave ? getCardImagePathFromPayload(selfLastGrave) : '';
+    tableSelfCemeteryImage.classList.toggle('hidden', !selfLastGrave);
+  }
+
+  if (tableOpponentCemeteryImage) {
+    tableOpponentCemeteryImage.src = oppLastGrave ? getCardImagePathFromPayload(oppLastGrave) : '';
+    tableOpponentCemeteryImage.classList.toggle('hidden', !oppLastGrave);
+  }
 
   if (!openTableGraveSide) {
+    tableGravePanel?.classList.add('hidden');
+    tableGravePanel?.classList.remove('self', 'opponent');
     tableGraveList.classList.add('hidden');
     tableGraveList.innerHTML = '';
     return;
   }
 
   const cards = openTableGraveSide === 'self' ? selfGrave : oppGrave;
+  tableGravePanel?.classList.remove('hidden');
+  tableGravePanel?.classList.toggle('self', openTableGraveSide === 'self');
+  tableGravePanel?.classList.toggle('opponent', openTableGraveSide === 'opponent');
   tableGraveList.classList.remove('hidden');
   tableGraveList.innerHTML = '';
 
@@ -1148,6 +1184,10 @@ function renderTableDuelUi() {
 
   tableSelfLP.textContent = currentDuelState.selfPlayer?.lifePoints ?? 0;
   tableOpponentLP.textContent = currentDuelState.opponentPlayer?.lifePoints ?? 0;
+  if (tableOpponentDeckCount) tableOpponentDeckCount.textContent = `DECK ${currentDuelState.opponentPlayer?.deckCount ?? 0}`;
+  if (tableSelfDeckCount) tableSelfDeckCount.textContent = `DECK ${currentDuelState.selfPlayer?.deckCount ?? 0}`;
+  if (tableOpponentCemeteryCount) tableOpponentCemeteryCount.textContent = `CEMETERY ${currentDuelState.opponentPlayer?.graveyardCount ?? 0}`;
+  if (tableSelfCemeteryCount) tableSelfCemeteryCount.textContent = `CEMETERY ${currentDuelState.selfPlayer?.graveyardCount ?? 0}`;
 
   tableOpponentZones.innerHTML = '';
   tableSelfZones.innerHTML = '';
@@ -2169,16 +2209,43 @@ if (tableCloseBtn) {
 }
 
 if (tableSelfGraveBtn) {
-  tableSelfGraveBtn.addEventListener('click', () => {
+  tableSelfGraveBtn.addEventListener('click', (event) => event.stopPropagation());
+}
+
+if (tableOpponentGraveBtn) {
+  tableOpponentGraveBtn.addEventListener('click', (event) => event.stopPropagation());
+}
+
+if (tableSelfCemeterySlot) {
+  tableSelfCemeterySlot.addEventListener('click', (event) => {
+    event.stopPropagation();
     openTableGraveSide = openTableGraveSide === 'self' ? null : 'self';
     renderTableGraveyard();
   });
 }
 
-if (tableOpponentGraveBtn) {
-  tableOpponentGraveBtn.addEventListener('click', () => {
+if (tableOpponentCemeterySlot) {
+  tableOpponentCemeterySlot.addEventListener('click', (event) => {
+    event.stopPropagation();
     openTableGraveSide = openTableGraveSide === 'opponent' ? null : 'opponent';
     renderTableGraveyard();
+  });
+}
+
+if (tableGravePanel) {
+  tableGravePanel.addEventListener('click', (event) => event.stopPropagation());
+}
+
+if (tablePreviewPanel) {
+  tablePreviewPanel.addEventListener('click', (event) => event.stopPropagation());
+}
+
+if (tableDuelWrap) {
+  tableDuelWrap.addEventListener('click', (event) => {
+    if (event.target.closest('.table-preview-panel')) return;
+    if (event.target.closest('.table-grave-panel')) return;
+    if (event.target.closest('.table-card-pile.cemetery')) return;
+    closeTableGraveyard();
   });
 }
 
