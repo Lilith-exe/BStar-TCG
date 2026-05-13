@@ -71,6 +71,7 @@ const tableSelfLP = document.getElementById('tableSelfLP');
 const tablePhaseBadge = document.getElementById('tablePhaseBadge');
 const tableOpponentDeckCount = document.getElementById('tableOpponentDeckCount');
 const tableSelfDeckCount = document.getElementById('tableSelfDeckCount');
+const tableOpponentHandBacks = document.getElementById('tableOpponentHandBacks');
 const tableOpponentCemeterySlot = document.getElementById('tableOpponentCemeterySlot');
 const tableSelfCemeterySlot = document.getElementById('tableSelfCemeterySlot');
 const tableOpponentCemeteryCount = document.getElementById('tableOpponentCemeteryCount');
@@ -1173,6 +1174,19 @@ function renderTableGraveyard() {
   }
 }
 
+function renderTableOpponentHandBacks() {
+  if (!tableOpponentHandBacks || !currentDuelState) return;
+
+  const count = Math.min(currentDuelState.opponentPlayer?.handCount || 0, 7);
+  tableOpponentHandBacks.innerHTML = '';
+
+  for (let i = 0; i < count; i++) {
+    const back = document.createElement('div');
+    back.className = 'table-opponent-hand-card';
+    tableOpponentHandBacks.appendChild(back);
+  }
+}
+
 function renderTableDuelUi() {
   if (!currentDuelState) return;
 
@@ -1194,6 +1208,7 @@ function renderTableDuelUi() {
   tableHandRow.innerHTML = '';
   renderTablePreview();
   renderTableGraveyard();
+  renderTableOpponentHandBacks();
 
   const oppZones = currentDuelState.opponentPlayer?.fighterZones || [null, null, null];
   const selfZones = currentDuelState.selfPlayer?.fighterZones || [null, null, null];
