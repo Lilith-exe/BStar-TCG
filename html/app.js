@@ -1040,6 +1040,15 @@ function renderTableZone(card, side, zoneIndex) {
   img.src = getCardImagePathFromPayload(card);
   zone.appendChild(img);
 
+  const statStrip = document.createElement('div');
+  statStrip.className = 'table-card-stats';
+  statStrip.innerHTML = `
+    <div class="table-card-stat atk"><strong>${card.attack ?? '-'}</strong></div>
+    <div class="table-card-stat def"><strong>${card.defense ?? '-'}</strong></div>
+    <div class="table-card-stat spd"><strong>${card.speed ?? '-'}</strong></div>
+  `;
+  zone.appendChild(statStrip);
+
   zone.addEventListener('click', () => {
     setDuelPreviewCard(card);
   });
@@ -1090,9 +1099,9 @@ function renderTablePreview() {
 
   if (tablePreviewStats) {
     tablePreviewStats.innerHTML = `
-      <div class="table-preview-stat atk"><span>ATK</span><strong>${card.attack ?? '-'}</strong></div>
-      <div class="table-preview-stat def"><span>DEF</span><strong>${card.defense ?? '-'}</strong></div>
-      <div class="table-preview-stat spd"><span>SPD</span><strong>${card.speed ?? '-'}</strong></div>
+      <div class="table-preview-stat atk"><strong>${card.attack ?? '-'}</strong></div>
+      <div class="table-preview-stat def"><strong>${card.defense ?? '-'}</strong></div>
+      <div class="table-preview-stat spd"><strong>${card.speed ?? '-'}</strong></div>
     `;
   }
 

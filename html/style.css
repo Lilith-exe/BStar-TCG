@@ -1543,10 +1543,11 @@ button:hover {
 }
 
 .table-phase-badge {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  position: fixed;
+  top: 18px;
+  right: 202px;
+  z-index: 9998;
+  transform: none;
   padding: 7px 16px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(10, 18, 30, 0.86), rgba(18, 12, 30, 0.78));
@@ -1898,6 +1899,56 @@ button.table-card-pile {
   filter:
     drop-shadow(0 14px 18px rgba(0,0,0,0.6))
     drop-shadow(0 0 12px rgba(70, 220, 255, 0.32));
+}
+
+.table-card-stats {
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: 130%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.table-card-stat {
+  min-width: 0;
+  display: flex;
+  gap: 1px;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-weight: 900;
+  text-shadow:
+    0 1px 2px rgba(0,0,0,0.95),
+    0 0 7px currentColor;
+}
+
+.table-card-stat span {
+  font-size: 9px;
+  line-height: 1;
+}
+
+.table-card-stat strong {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.table-card-stat.atk {
+  color: rgb(255, 84, 112);
+}
+
+.table-card-stat.def {
+  color: rgb(90, 190, 255);
+}
+
+.table-card-stat.spd {
+  color: rgb(92, 235, 150);
 }
 
 .table-zone.selected {
