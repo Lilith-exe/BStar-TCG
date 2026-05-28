@@ -322,6 +322,17 @@ local function getCardStat(card, statName)
     return 0
 end
 
+local function getCardLevelValue(cardDef)
+    if not cardDef then return 0 end
+
+    if type(cardDef.level) == 'number' then
+        return cardDef.level
+    end
+
+    local match = string.match(tostring(cardDef.level or ''), "%d+")
+    return match and tonumber(match) or 0
+end
+
 local function getOccupiedFighterCount(playerState)
     local count = 0
     for i = 1, 3 do
@@ -743,6 +754,10 @@ function Duel.SummonFighter(src, duelId, handUid, zoneIndex)
     local def = getCardDefinition(card.cardId)
     if not def or string.upper(def.type or '') ~= 'FIGHTER' then
         return false, 'Only fighters can be summoned right now'
+    end
+
+    if getCardLevelValue(def) ~= 1 then
+        return false, 'Only stage 1 fighters can be normal summoned'
     end
 
     table.remove(playerState.hand, handIndex)

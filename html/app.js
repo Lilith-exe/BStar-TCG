@@ -1113,6 +1113,19 @@ function removeCardFromSelectedDeck(cardId) {
   renderDeckBuilder();
 }
 
+function getCardLevelNumber(card) {
+  const value = card?.level ?? '';
+  if (typeof value === 'number') return value;
+  const match = String(value).match(/\d+/);
+  return match ? Number(match[0]) : 0;
+}
+
+function isNormalSummonableFighter(card) {
+  if (!card) return false;
+  const type = String(card.type || '').trim().toUpperCase();
+  return type === 'FIGHTER' && getCardLevelNumber(card) === 1;
+}
+
 function renderTableZone(card, side, zoneIndex) {
   const zone = document.createElement('div');
   zone.className = 'table-zone';
@@ -1346,6 +1359,7 @@ function renderTableDuelUi() {
   const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
   const isMainPhase = currentDuelState.phase === 'main';
   const isBattlePhase = currentDuelState.phase === 'battle';
+  const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
 
   tablePhaseBadge.textContent = `${String(currentDuelState.phase || 'draw').toUpperCase()} PHASE`;
 
@@ -1395,7 +1409,7 @@ function renderTableDuelUi() {
     const card = selfZones[i] || null;
     const zone = renderTableZone(card, 'self', i + 1);
 
-    if (!card && selectedHandCardUid && isMyTurn && isMainPhase) {
+    if (!card && selectedHandCardUid && canNormalSummon) {
       zone.classList.add('targetable');
       zone.addEventListener('click', () => {
         fetch(`https://${GetParentResourceName()}/duelSummonFighter`, {
@@ -1412,6 +1426,7 @@ function renderTableDuelUi() {
     }
 
     if (card && isMyTurn && isBattlePhase && !card.hasAttacked) {
+      zone.classList.add('attack-ready');
       zone.addEventListener('click', () => {
         selectedHandCardUid = null;
         selectedAttackerZoneIndex = selectedAttackerZoneIndex === (i + 1) ? null : i + 1;
@@ -1457,6 +1472,11 @@ function renderTableDuelUi() {
   for (const card of hand) {
     const div = document.createElement('div');
     div.className = 'table-hand-card';
+    const canSummonCard = canNormalSummon && isNormalSummonableFighter(card);
+
+    if (canSummonCard) {
+      div.classList.add('summonable');
+    }
 
     if (selectedHandCardUid === card.uid) {
       div.classList.add('selected');
@@ -1469,7 +1489,7 @@ function renderTableDuelUi() {
     div.addEventListener('click', () => {
       setDuelPreviewCard(card);
 
-      if (!isMyTurn || !isMainPhase) return;
+      if (!canSummonCard) return;
 
       selectedAttackerZoneIndex = null;
       selectedHandCardUid = selectedHandCardUid === card.uid ? null : card.uid;
@@ -1703,12 +1723,13 @@ function renderSelfZones() {
   const isMyTurn = currentDuelState?.turnPlayer === currentDuelState?.viewerIndex;
   const isMainPhase = currentDuelState?.phase === 'main';
   const isBattlePhase = currentDuelState?.phase === 'battle';
+  const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
 
   for (let i = 0; i < 3; i++) {
     const zoneCard = zones[i] || null;
     const zoneEl = renderZoneCard(zoneCard, 'self', i + 1);
 
-    if (!zoneCard && selectedHandCardUid && isMyTurn && isMainPhase) {
+    if (!zoneCard && selectedHandCardUid && canNormalSummon) {
       zoneEl.classList.add('summon-target');
       zoneEl.addEventListener('click', () => {
         fetch(`https://${GetParentResourceName()}/duelSummonFighter`, {
@@ -1728,6 +1749,7 @@ function renderSelfZones() {
       if (zoneCard.hasAttacked) {
         zoneEl.classList.add('duel-zone-used');
       } else {
+        zoneEl.classList.add('attack-ready');
         zoneEl.addEventListener('click', () => {
           selectedHandCardUid = null;
           selectedAttackerZoneIndex = selectedAttackerZoneIndex === (i + 1) ? null : (i + 1);
@@ -1825,10 +1847,16 @@ function renderHand() {
   const hand = currentDuelState?.selfPlayer?.hand || [];
   const isMyTurn = currentDuelState?.turnPlayer === currentDuelState?.viewerIndex;
   const isMainPhase = currentDuelState?.phase === 'main';
+  const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
 
   for (const card of hand) {
     const div = document.createElement('div');
     div.className = 'duel-hand-card';
+    const canSummonCard = canNormalSummon && isNormalSummonableFighter(card);
+
+    if (canSummonCard) {
+      div.classList.add('summonable');
+    }
 
     if (selectedHandCardUid === card.uid) {
       div.classList.add('selected');
@@ -1845,7 +1873,7 @@ function renderHand() {
     div.appendChild(name);
 
     div.addEventListener('click', () => {
-      if (!isMyTurn || !isMainPhase) return;
+      if (!canSummonCard) return;
 
       selectedAttackerZoneIndex = null;
       selectedHandCardUid = selectedHandCardUid === card.uid ? null : card.uid;
