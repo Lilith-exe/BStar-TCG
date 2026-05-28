@@ -100,6 +100,20 @@ RegisterNUICallback('duelEndTurn', function(data, cb)
     cb({ ok = true })
 end)
 
+RegisterNUICallback('duelSurrender', function(data, cb)
+    if currentDuelId then
+        TriggerServerEvent('bstar_cards:server:DuelSurrender', currentDuelId)
+    end
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('duelDrawCard', function(data, cb)
+    if currentDuelId then
+        TriggerServerEvent('bstar_cards:server:DuelDrawCard', currentDuelId)
+    end
+    cb({ ok = true })
+end)
+
 RegisterNUICallback('duelSummonFighter', function(data, cb)
     if currentDuelId and data and data.handUid and data.zoneIndex then
         TriggerServerEvent('bstar_cards:server:DuelSummonFighter', currentDuelId, data.handUid, data.zoneIndex)

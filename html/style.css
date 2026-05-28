@@ -41,7 +41,7 @@ button:hover {
 .viewer-wrap {
   position: absolute;
   inset: 0;
-  z-index: 20;
+  z-index: 1000002;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1677,6 +1677,28 @@ button:hover {
   box-shadow: 0 0 18px rgba(30, 190, 255, 0.18);
 }
 
+.table-draw-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: 206px;
+  transform: translateX(-50%);
+  z-index: 96;
+  padding: 9px 18px;
+  border-radius: 999px;
+  color: rgb(170, 232, 255);
+  font-size: 18px;
+  font-weight: 900;
+  background:
+    linear-gradient(180deg, rgba(6, 18, 28, 0.84), rgba(8, 22, 34, 0.72));
+  border: 1px solid rgba(130, 225, 255, 0.28);
+  box-shadow:
+    0 0 18px rgba(70, 200, 255, 0.28),
+    inset 0 0 14px rgba(70, 200, 255, 0.08);
+  text-shadow: 0 0 14px rgba(70, 200, 255, 0.65);
+  animation: tableDrawPromptPulse 1s ease-in-out infinite;
+  pointer-events: none;
+}
+
 .table-lp-wrap {
   position: absolute;
   display: flex;
@@ -1932,6 +1954,14 @@ button.table-card-pile {
     0 0 22px rgba(255, 205, 90, 0.22);
 }
 
+.table-card-pile.draw-ready {
+  border-color: rgba(110, 215, 255, 0.88);
+  box-shadow:
+    inset 0 0 20px rgba(80, 210, 255, 0.18),
+    0 0 28px rgba(70, 200, 255, 0.42);
+  animation: tableDeckDrawPulse 0.95s ease-in-out infinite;
+}
+
 .table-pile-label {
   position: absolute;
   left: 4px;
@@ -2032,6 +2062,11 @@ button.table-card-pile {
   pointer-events: none;
 }
 
+.table-zone[data-side="opponent"] .table-card-stats {
+  top: -20px;
+  bottom: auto;
+}
+
 .table-card-stat {
   min-width: 0;
   display: flex;
@@ -2115,8 +2150,10 @@ button.table-card-pile {
 }
 
 .table-direct-target {
-  grid-column: 2;
-  grid-row: 1;
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
   color: rgba(255,255,255,0.92);
   font-size: 18px;
   font-weight: 900;
@@ -2209,20 +2246,41 @@ button.table-card-pile {
 
 .table-debug-actions {
   position: fixed;
-  top: 18px;
   right: 18px;
+  bottom: 190px;
   z-index: 9999;
   display: flex;
+  flex-direction: column;
   gap: 8px;
   pointer-events: auto;
 }
 
 .table-debug-actions button {
-  padding: 8px 12px;
+  min-width: 118px;
+  padding: 10px 14px;
   border-radius: 8px;
-  background: rgba(6, 18, 28, 0.82);
+  background:
+    linear-gradient(180deg, rgba(13, 38, 55, 0.92), rgba(6, 18, 28, 0.88));
   color: white;
-  border: 1px solid rgba(130, 225, 255, 0.18);
+  border: 1px solid rgba(130, 225, 255, 0.24);
+  box-shadow:
+    0 10px 22px rgba(0,0,0,0.24),
+    inset 0 0 14px rgba(80, 210, 255, 0.06);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.table-debug-actions button:hover:not(:disabled) {
+  border-color: rgba(170, 238, 255, 0.44);
+  box-shadow:
+    0 12px 24px rgba(0,0,0,0.3),
+    0 0 18px rgba(70, 200, 255, 0.2);
+}
+
+.table-debug-actions button:disabled {
+  opacity: 0.42;
+  cursor: default;
+  filter: grayscale(0.25);
 }
 
 .table-preview-panel {
@@ -2241,6 +2299,7 @@ button.table-card-pile {
   box-shadow: 0 16px 34px rgba(0,0,0,0.28);
   overflow: hidden;
   z-index: 70;
+  cursor: zoom-in;
 }
 
 .table-preview-panel.empty {
@@ -2464,6 +2523,59 @@ button.table-card-pile {
   }
   50% {
     filter: brightness(1.3);
+  }
+}
+
+@keyframes tableDrawPromptPulse {
+  0%, 100% {
+    opacity: 0.82;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.04);
+  }
+}
+
+@keyframes tableDeckDrawPulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.28);
+  }
+}
+
+.table-draw-card-ghost {
+  position: fixed;
+  width: 92px;
+  aspect-ratio: 5 / 7;
+  border-radius: 7px;
+  z-index: 1000001;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  background:
+    linear-gradient(135deg, rgba(255, 224, 130, 0.34), rgba(70, 210, 255, 0.24)),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.11) 0 4px, rgba(255,255,255,0.025) 4px 8px),
+    rgba(8, 18, 28, 0.88);
+  border: 1px solid rgba(170, 238, 255, 0.42);
+  box-shadow:
+    0 14px 24px rgba(0,0,0,0.48),
+    0 0 22px rgba(70, 200, 255, 0.36);
+  animation: tableDrawCardFly 0.52s ease forwards;
+}
+
+@keyframes tableDrawCardFly {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7) rotate(-7deg);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--draw-dx)), calc(-50% + var(--draw-dy))) scale(1.05) rotate(8deg);
   }
 }
 

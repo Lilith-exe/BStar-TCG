@@ -79,9 +79,12 @@ const tableOpponentCemeteryCount = document.getElementById('tableOpponentCemeter
 const tableSelfCemeteryCount = document.getElementById('tableSelfCemeteryCount');
 const tableOpponentCemeteryImage = document.getElementById('tableOpponentCemeteryImage');
 const tableSelfCemeteryImage = document.getElementById('tableSelfCemeteryImage');
+const tableOpponentDeckSlot = document.getElementById('tableOpponentDeckSlot');
+const tableSelfDeckSlot = document.getElementById('tableSelfDeckSlot');
 const tableOpponentZones = document.getElementById('tableOpponentZones');
 const tableSelfZones = document.getElementById('tableSelfZones');
 const tableHandRow = document.getElementById('tableHandRow');
+const tableDrawPrompt = document.getElementById('tableDrawPrompt');
 const tablePreviewPanel = document.getElementById('tablePreviewPanel');
 const tablePreviewImage = document.getElementById('tablePreviewImage');
 const tablePreviewName = document.getElementById('tablePreviewName');
@@ -137,6 +140,7 @@ let selectedAttackerZoneIndex = null;
 let duelTableMode = false;
 let tablePreviewCard = null;
 let openTableGraveSide = null;
+let tableDrawAnimating = false;
 
 let builderFilters = {
   type: 'all',
@@ -336,6 +340,56 @@ function openFullViewer(card, fromDeckBox = false, fromDeckBuilder = false) {
   resetTilt();
   app.classList.remove('hidden');
   ensureAnimationLoop();
+}
+
+function closeFullViewer(notifyLua = true) {
+  viewerWrap.classList.add('hidden');
+  cardImage.src = '';
+  cardImage.classList.remove('zoomed');
+  isZoomed = false;
+  resetTilt();
+
+  const returningToDeckBox = viewerOpenedFromDeckBox;
+  const returningToDeckBuilder = viewerOpenedFromDeckBuilder;
+
+  viewerOpenedFromDeckBox = false;
+  viewerOpenedFromDeckBuilder = false;
+
+  if (returningToDeckBox || returningToDeckBuilder || currentDuelState) {
+    app.classList.remove('hidden');
+    return;
+  }
+
+  app.classList.add('hidden');
+
+  if (notifyLua) {
+    fetch(`https://${GetParentResourceName()}/closeCard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+  }
+}
+
+function requestDuelSurrender() {
+  if (!currentDuelState || currentDuelState.status !== 'active') {
+    closeDuelUi();
+    return;
+  }
+
+  openModal({
+    title: 'Surrender Duel',
+    text: 'Surrender this duel and take the loss?',
+    showInput: false,
+    confirmText: 'Surrender',
+    onConfirm: () => {
+      fetch(`https://${GetParentResourceName()}/duelSurrender`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+    }
+  });
 }
 
 // ---------- Deck Box Storage Screen ----------
@@ -1334,6 +1388,81 @@ function renderTableOpponentHandBacks() {
   }
 }
 
+function canCurrentViewerDraw() {
+  return currentDuelState
+    && currentDuelState.status === 'active'
+    && currentDuelState.turnPlayer === currentDuelState.viewerIndex
+    && currentDuelState.phase === 'draw'
+    && currentDuelState.hasDrawnThisTurn !== true;
+}
+
+function animateTableDraw() {
+  if (!tableSelfDeckSlot || !tableHandRow) return;
+
+  const deckRect = tableSelfDeckSlot.getBoundingClientRect();
+  const handRect = tableHandRow.getBoundingClientRect();
+  const ghost = document.createElement('div');
+  ghost.className = 'table-draw-card-ghost';
+  ghost.style.left = `${deckRect.left + deckRect.width / 2}px`;
+  ghost.style.top = `${deckRect.top + deckRect.height / 2}px`;
+  ghost.style.setProperty('--draw-dx', `${(handRect.left + handRect.width / 2) - (deckRect.left + deckRect.width / 2)}px`);
+  ghost.style.setProperty('--draw-dy', `${(handRect.top + 30) - (deckRect.top + deckRect.height / 2)}px`);
+
+  document.body.appendChild(ghost);
+  setTimeout(() => ghost.remove(), 520);
+}
+
+function drawCardForTurn() {
+  if (!canCurrentViewerDraw() || tableDrawAnimating) return;
+
+  tableDrawAnimating = true;
+  animateTableDraw();
+
+  setTimeout(() => {
+    fetch(`https://${GetParentResourceName()}/duelDrawCard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+
+    setTimeout(() => {
+      tableDrawAnimating = false;
+    }, 260);
+  }, 240);
+}
+
+function clearDuelSelections() {
+  const hadSelection = selectedHandCardUid || selectedAttackerZoneIndex;
+  selectedHandCardUid = null;
+  selectedAttackerZoneIndex = null;
+  return !!hadSelection;
+}
+
+function reconcileDuelSelections() {
+  if (!currentDuelState || currentDuelState.status !== 'active') {
+    clearDuelSelections();
+    return;
+  }
+
+  const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
+  const isMainPhase = currentDuelState.phase === 'main';
+  const isBattlePhase = currentDuelState.phase === 'battle';
+
+  if (!isMyTurn || !isMainPhase || currentDuelState.selfPlayer?.hasSummonedThisTurn) {
+    selectedHandCardUid = null;
+  }
+
+  if (!isMyTurn || !isBattlePhase) {
+    selectedAttackerZoneIndex = null;
+    return;
+  }
+
+  const attacker = currentDuelState.selfPlayer?.fighterZones?.[selectedAttackerZoneIndex - 1];
+  if (!attacker || attacker.hasAttacked) {
+    selectedAttackerZoneIndex = null;
+  }
+}
+
 function getDuelResultText() {
   if (!currentDuelState || currentDuelState.status !== 'finished') {
     return null;
@@ -1349,7 +1478,8 @@ function getDuelResultText() {
   const reasonMap = {
     life_points: 'Life Points depleted',
     deck_out: 'Deck out',
-    draw: 'Draw'
+    draw: 'Draw',
+    surrender: 'Surrender'
   };
 
   const selfLp = currentDuelState.selfPlayer?.lifePoints ?? 0;
@@ -1395,8 +1525,13 @@ function renderTableDuelUi() {
   const isMainPhase = currentDuelState.phase === 'main';
   const isBattlePhase = currentDuelState.phase === 'battle';
   const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
+  const canDraw = canCurrentViewerDraw();
 
   tablePhaseBadge.textContent = `${String(currentDuelState.phase || 'draw').toUpperCase()} PHASE`;
+  tableDrawPrompt?.classList.toggle('hidden', !canDraw);
+  tableSelfDeckSlot?.classList.toggle('draw-ready', canDraw);
+  tableNextPhaseBtn.disabled = !isMyTurn || currentDuelState.status !== 'active' || currentDuelState.phase === 'draw';
+  tableEndTurnBtn.disabled = !isMyTurn || currentDuelState.status !== 'active';
 
   tableSelfLP.textContent = currentDuelState.selfPlayer?.lifePoints ?? 0;
   tableOpponentLP.textContent = currentDuelState.opponentPlayer?.lifePoints ?? 0;
@@ -1486,7 +1621,7 @@ function renderTableDuelUi() {
       });
     }
 
-    if (selectedAttackerZoneIndex === i + 1) {
+    if (isMyTurn && isBattlePhase && selectedAttackerZoneIndex === i + 1) {
       zone.classList.add('selected');
     }
 
@@ -1661,6 +1796,10 @@ function openDuelUi(duel, tableMode = false) {
 function updateDuelUi(duel, tableMode = duelTableMode) {
   currentDuelState = duel;
   duelTableMode = tableMode;
+  reconcileDuelSelections();
+  if (!canCurrentViewerDraw()) {
+    tableDrawAnimating = false;
+  }
 
   if ((duelTableMode && tableDuelWrap.classList.contains('hidden')) ||
       (!duelTableMode && duelWrap.classList.contains('hidden'))) {
@@ -1678,6 +1817,7 @@ function closeDuelUi(notifyLua = true) {
   duelTableMode = false;
   tablePreviewCard = null;
   openTableGraveSide = null;
+  tableDrawAnimating = false;
   tableResultOverlay?.classList.add('hidden');
   duelResultOverlay?.classList.add('hidden');
 
@@ -1970,6 +2110,9 @@ function renderDuelUi() {
 
   duelTurnText.textContent = `Turn ${currentDuelState.turnNumber || 1}`;
   duelPhaseText.textContent = `${String(currentDuelState.phase || 'draw').toUpperCase()} PHASE`;
+  if (duelAdvancePhaseBtn) {
+    duelAdvancePhaseBtn.textContent = currentDuelState.phase === 'draw' ? 'Draw Card' : 'Next Phase';
+  }
 
   const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
   duelStatusText.textContent = isMyTurn ? 'Your turn' : 'Opponent turn';
@@ -2234,31 +2377,7 @@ uiModalConfirmBtn.addEventListener('click', () => {
 });
 
 closeBtn.addEventListener('click', () => {
-  viewerWrap.classList.add('hidden');
-  cardImage.src = '';
-  cardImage.classList.remove('zoomed');
-  isZoomed = false;
-  resetTilt();
-
-  if (viewerOpenedFromDeckBox) {
-    viewerOpenedFromDeckBox = false;
-    app.classList.remove('hidden');
-    return;
-  }
-
-  if (viewerOpenedFromDeckBuilder) {
-    viewerOpenedFromDeckBuilder = false;
-    app.classList.remove('hidden');
-    return;
-  }
-
-  app.classList.add('hidden');
-
-  fetch(`https://${GetParentResourceName()}/closeCard`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({})
-  });
+  closeFullViewer();
 });
 
 deckboxCloseBtn.addEventListener('click', () => {
@@ -2403,7 +2522,9 @@ deckHubCardsBtn.addEventListener('click', () => {
 
 if (duelAdvancePhaseBtn) {
   duelAdvancePhaseBtn.addEventListener('click', () => {
-    fetch(`https://${GetParentResourceName()}/duelAdvancePhase`, {
+    const action = currentDuelState?.phase === 'draw' ? 'duelDrawCard' : 'duelAdvancePhase';
+
+    fetch(`https://${GetParentResourceName()}/${action}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
@@ -2475,9 +2596,33 @@ if (tableEndTurnBtn) {
   });
 }
 
+if (tableSelfDeckSlot) {
+  tableSelfDeckSlot.addEventListener('click', (event) => {
+    event.stopPropagation();
+    drawCardForTurn();
+  });
+}
+
+if (tableDuelWrap) {
+  tableDuelWrap.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    if (clearDuelSelections()) {
+      renderDuelUi();
+    }
+  });
+}
+
 if (tableCloseBtn) {
   tableCloseBtn.addEventListener('click', () => {
     closeDuelUi();
+  });
+}
+
+if (tablePreviewPanel) {
+  tablePreviewPanel.addEventListener('click', () => {
+    if (tablePreviewCard) {
+      openFullViewer(tablePreviewCard, false, false);
+    }
   });
 }
 
@@ -2661,27 +2806,23 @@ if (builderPreviewImage) {
 
 cardImage.addEventListener('click', () => {
   if (viewerOpenedFromDeckBox) {
-    viewerWrap.classList.add('hidden');
-    cardImage.src = '';
-    cardImage.classList.remove('zoomed');
-    isZoomed = false;
-    resetTilt();
-    viewerOpenedFromDeckBox = false;
+    closeFullViewer(false);
     return;
   }
 
   if (viewerOpenedFromDeckBuilder) {
-    viewerWrap.classList.add('hidden');
-    cardImage.src = '';
-    cardImage.classList.remove('zoomed');
-    isZoomed = false;
-    resetTilt();
-    viewerOpenedFromDeckBuilder = false;
+    closeFullViewer(false);
     return;
   }
 
   isZoomed = !isZoomed;
   cardImage.classList.toggle('zoomed', isZoomed);
+});
+
+viewerWrap.addEventListener('click', (event) => {
+  if (event.target === viewerWrap) {
+    closeFullViewer();
+  }
 });
 
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
@@ -2728,21 +2869,8 @@ document.addEventListener('mouseleave', () => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (!viewerWrap.classList.contains('hidden')) {
-      viewerWrap.classList.add('hidden');
-      cardImage.src = '';
-      cardImage.classList.remove('zoomed');
-      isZoomed = false;
-      resetTilt();
-
-      if (viewerOpenedFromDeckBox) {
-        viewerOpenedFromDeckBox = false;
-        return;
-      }
-
-      if (viewerOpenedFromDeckBuilder) {
-        viewerOpenedFromDeckBuilder = false;
-        return;
-      }
+      closeFullViewer();
+      return;
     }
 
     if (!uiModalWrap.classList.contains('hidden')) {
@@ -2750,15 +2878,13 @@ document.addEventListener('keydown', (e) => {
       return;
     }
 
+    if (currentDuelState && (!duelWrap.classList.contains('hidden') || !tableDuelWrap.classList.contains('hidden'))) {
+      requestDuelSurrender();
+      return;
+    }
+
     hideAll();
-
     fetch(`https://${GetParentResourceName()}/closeCard`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    });
-
-    fetch(`https://${GetParentResourceName()}/closeDeckBox`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})

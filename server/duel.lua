@@ -223,6 +223,7 @@ local function buildPrivateStateForPlayer(duel, viewerIndex)
         viewerIndex = viewerIndex,
         winner = duel.winner,
         winReason = duel.winReason,
+        hasDrawnThisTurn = duel.hasDrawnThisTurn == true,
 
         selfPlayer = {
             source = selfState.source,
@@ -418,6 +419,29 @@ local function checkWinCondition(duel)
     end
 
     return false
+end
+
+function Duel.Surrender(src, duelId)
+    local duel = Duel.Active[duelId]
+    if not duel then
+        return false, 'Duel not found'
+    end
+
+    if duel.status == "finished" then
+        return true
+    end
+
+    local playerIndex = getControllingPlayerIndex(duel, src)
+    if not playerIndex then
+        return false, 'Player not in duel'
+    end
+
+    duel.status = "finished"
+    duel.winner = getOpponentIndex(playerIndex)
+    duel.winReason = "surrender"
+
+    sendDuelStateToPlayers(duel)
+    return true
 end
 
 function Duel.DebugSpawnFighter(duelId, playerIndex, cardId, zoneIndex)
@@ -642,6 +666,7 @@ function Duel.Create(srcA, srcB, deckA, deckB)
         turnPlayer = 1,
         turnNumber = 1,
         phase = "draw",
+        hasDrawnThisTurn = false,
         log = {}
     }
 
@@ -664,6 +689,7 @@ function Duel.Start(duelId)
     duel.phase = "draw"
     duel.turnPlayer = 1
     duel.turnNumber = 1
+    duel.hasDrawnThisTurn = false
 
     checkWinCondition(duel)
 
@@ -687,6 +713,9 @@ function Duel.AdvancePhase(src, duelId)
     end
 
     if duel.phase == "draw" then
+        if not duel.hasDrawnThisTurn then
+            return false, 'Draw a card first'
+        end
         duel.phase = "main"
     elseif duel.phase == "main" then
         duel.phase = "battle"
@@ -716,14 +745,49 @@ function Duel.EndTurn(src, duelId)
         return false, 'Not your turn'
     end
 
+    resetBattleFlags(duel.players[playerIndex])
+
     duel.turnPlayer = getOpponentIndex(duel.turnPlayer)
     duel.turnNumber = duel.turnNumber + 1
     duel.phase = "draw"
+    duel.hasDrawnThisTurn = false
 
     local turnPlayerState = duel.players[duel.turnPlayer]
     resetTurnFlags(turnPlayerState)
-    drawCards(duel, duel.turnPlayer, 1)
-    checkWinCondition(duel)
+
+    sendDuelStateToPlayers(duel)
+    return true
+end
+
+function Duel.DrawForTurn(src, duelId)
+    local duel = Duel.Active[duelId]
+    if not duel then
+        return false, 'Duel not found'
+    end
+
+    local playerIndex = getControllingPlayerIndex(duel, src)
+    if not playerIndex then
+        return false, 'Player not in duel'
+    end
+
+    if duel.turnPlayer ~= playerIndex then
+        return false, 'Not your turn'
+    end
+
+    if duel.phase ~= "draw" then
+        return false, 'You can only draw in Draw Phase'
+    end
+
+    if duel.hasDrawnThisTurn then
+        return false, 'You already drew this turn'
+    end
+
+    drawCards(duel, playerIndex, 1)
+    duel.hasDrawnThisTurn = true
+
+    if not checkWinCondition(duel) then
+        duel.phase = "main"
+    end
 
     sendDuelStateToPlayers(duel)
     return true

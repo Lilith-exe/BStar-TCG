@@ -834,6 +834,24 @@ RegisterNetEvent('bstar_cards:server:DuelEndTurn', function(duelId)
     end
 end)
 
+RegisterNetEvent('bstar_cards:server:DuelSurrender', function(duelId)
+    local src = source
+    local ok, err = Duel.Surrender(src, duelId)
+
+    if not ok and err then
+        TriggerClientEvent('QBCore:Notify', src, err, 'error')
+    end
+end)
+
+RegisterNetEvent('bstar_cards:server:DuelDrawCard', function(duelId)
+    local src = source
+    local ok, err = Duel.DrawForTurn(src, duelId)
+
+    if not ok and err then
+        TriggerClientEvent('QBCore:Notify', src, err, 'error')
+    end
+end)
+
 RegisterNetEvent('bstar_cards:server:DuelSummonFighter', function(duelId, handUid, zoneIndex)
     local src = source
     local ok, err = Duel.SummonFighter(src, duelId, handUid, zoneIndex)
