@@ -103,7 +103,8 @@ RegisterNetEvent('bstar_cards:client:UseDeckBox', function(item)
             action = 'openDeckBuilder',
             deckBoxId = deckBoxId,
             storedCards = result.storedCards or {},
-            decks = result.decks or {}
+            decks = result.decks or {},
+            cardCatalog = result.cardCatalog or {}
         })
     end, deckBoxId)
 end)
@@ -143,7 +144,8 @@ RegisterNetEvent('bstar_cards:client:OpenDeckBuilder', function(data)
             action = 'openDeckBuilder',
             deckBoxId = deckBoxId,
             storedCards = result.storedCards or {},
-            decks = result.decks or {}
+            decks = result.decks or {},
+            cardCatalog = result.cardCatalog or {}
         })
     end, deckBoxId)
 end)

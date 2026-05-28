@@ -162,6 +162,19 @@ local function validateDeckDataForPlay(deckData, storedCards)
     return true, 'Legal', {}
 end
 
+local function addDeckValidationForPlay(decks, storedCards)
+    decks = decks or {}
+
+    for i = 1, #decks do
+        local valid, message, issues = validateDeckDataForPlay(decks[i].deck_data, storedCards)
+        decks[i].isValid = valid
+        decks[i].validationMessage = message
+        decks[i].validationIssues = issues
+    end
+
+    return decks
+end
+
 function DeckBox.GetPlayerCards(source, cb)
     local Player = QBCore.Functions.GetPlayer(source)
     if not Player then
@@ -498,6 +511,8 @@ end)
 QBCore.Functions.CreateCallback('bstar_cards:server:GetDeckBuilderData', function(source, cb, deckBoxId)
     DeckBox.GetStoredCards(source, deckBoxId, function(storedCards)
         GetDecksForBox(source, deckBoxId, function(decks)
+            decks = addDeckValidationForPlay(decks, storedCards)
+
             cb({
                 storedCards = storedCards,
                 decks = decks,
@@ -514,14 +529,7 @@ QBCore.Functions.CreateCallback('bstar_cards:server:GetDecksForTestDuel', functi
 
     DeckBox.GetStoredCards(source, deckBoxId, function(storedCards)
         GetDecksForBox(source, deckBoxId, function(decks)
-            decks = decks or {}
-
-            for i = 1, #decks do
-                local valid, message, issues = validateDeckDataForPlay(decks[i].deck_data, storedCards)
-                decks[i].isValid = valid
-                decks[i].validationMessage = message
-                decks[i].validationIssues = issues
-            end
+            decks = addDeckValidationForPlay(decks, storedCards)
 
             print('[BStar Duel] decks found:', #decks)
             cb(decks)

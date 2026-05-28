@@ -29,6 +29,7 @@ const closeDeckBuilderBtn = document.getElementById('closeDeckBuilderBtn');
 
 // Deck hub refs
 const deckHubWrap = document.getElementById('deckHubWrap');
+const deckHubTitleEl = deckHubWrap.querySelector('.deckhub-title');
 const deckHubListEl = document.getElementById('deckHubList');
 const deckHubCloseBtn = document.getElementById('deckHubCloseBtn');
 const deckHubNewBtn = document.getElementById('deckHubNewBtn');
@@ -117,6 +118,8 @@ let selectedDeck = null;
 let builderOwnedCards = {};
 let builderSearchTerm = '';
 let selectedHubDeckId = null;
+let deckHubMode = 'manage';
+let pendingTableDuelId = null;
 
 let currentDuelState = null;
 let selectedHandCardUid = null;
@@ -464,10 +467,13 @@ function openDeckHub(data) {
   hideAll();
 
   currentDeckBoxId = data.deckBoxId;
+  deckHubMode = data.mode || 'manage';
+  pendingTableDuelId = data.tableId || null;
   window.BSTAR_CARD_DEFS = data.cardCatalog || window.BSTAR_CARD_DEFS || {};
   builderOwnedCards = data.storedCards || {};
   currentDecks = (data.decks || []).map(d => normalizeDeck(clone(d)));
-  selectedHubDeckId = currentDecks.length ? currentDecks[0].id : null;
+  const firstLegalDeck = currentDecks.find(deck => deck.isValid !== false && isDeckValid(deck));
+  selectedHubDeckId = firstLegalDeck?.id || (currentDecks[0]?.id || null);
 
   app.classList.remove('hidden');
   deckHubWrap.classList.remove('hidden');
@@ -476,6 +482,16 @@ function openDeckHub(data) {
 
 function renderDeckHub() {
   deckHubListEl.innerHTML = '';
+
+  if (deckHubTitleEl) {
+    deckHubTitleEl.textContent = deckHubMode === 'tableSelect' ? 'Choose Duel Deck' : 'Deck Box';
+  }
+
+  const selectingForTable = deckHubMode === 'tableSelect';
+  deckHubNewBtn.classList.toggle('hidden', selectingForTable);
+  deckHubDeleteBtn.classList.toggle('hidden', selectingForTable);
+  deckHubCardsBtn.classList.toggle('hidden', selectingForTable);
+  deckHubEditBtn.textContent = selectingForTable ? 'Start Duel' : 'Edit';
 
   if (!currentDecks.length) {
     deckHubListEl.innerHTML = '<div style="opacity:.65;padding:12px;">No decks yet. Create one below.</div>';
@@ -530,8 +546,19 @@ function renderDeckHub() {
       renderDeckHub();
     });
 
+    row.addEventListener('dblclick', () => {
+      selectedHubDeckId = deck.id;
+      renderDeckHub();
+
+      if (deckHubMode === 'tableSelect') {
+        startSelectedTableDuelDeck();
+      }
+    });
+
     row.addEventListener('contextmenu', (e) => {
       e.preventDefault();
+      if (deckHubMode === 'tableSelect') return;
+
       selectedHubDeckId = deck.id;
       renderDeckHub();
 
@@ -574,6 +601,36 @@ function getSelectedHubDeck() {
   return currentDecks.find(d => d.id === selectedHubDeckId) || null;
 }
 
+function startSelectedTableDuelDeck() {
+  const deck = getSelectedHubDeck();
+  if (!deck) return;
+
+  const valid = deck.isValid === false ? false : isDeckValid(deck);
+  if (!valid) {
+    openModal({
+      title: 'Invalid Deck',
+      text: deck.validationMessage || getDeckValidationIssues(deck).join(', '),
+      showInput: false,
+      confirmText: 'OK'
+    });
+    return;
+  }
+
+  hideAll();
+
+  fetch(`https://${GetParentResourceName()}/selectTableDuelDeck`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tableId: pendingTableDuelId,
+      deckId: deck.id
+    })
+  });
+
+  deckHubMode = 'manage';
+  pendingTableDuelId = null;
+}
+
 function refreshDeckHub() {
   if (!currentDeckBoxId) return;
 
@@ -584,6 +641,8 @@ function refreshDeckHub() {
   })
     .then(res => res.json())
     .then(data => {
+      window.BSTAR_CARD_DEFS = data.cardCatalog || window.BSTAR_CARD_DEFS || {};
+      builderOwnedCards = data.storedCards || {};
       currentDecks = (data.decks || []).map(d => normalizeDeck(clone(d)));
 
       if (selectedHubDeckId) {
@@ -1968,6 +2027,13 @@ window.addEventListener('message', (event) => {
     openDeckHub(data);
   }
 
+  if (data.action === 'openTableDeckSelect') {
+    openDeckHub({
+      ...data,
+      mode: 'tableSelect'
+    });
+  }
+
   if (data.action === 'forceCloseAll') {
     hideAll();
     viewerOpenedFromDeckBox = false;
@@ -2049,7 +2115,11 @@ deckboxCloseBtn.addEventListener('click', () => {
 deckHubCloseBtn.addEventListener('click', () => {
   hideAll();
 
-  fetch(`https://${GetParentResourceName()}/closeDeckBuilder`, {
+  const closeAction = deckHubMode === 'tableSelect' ? 'closeTableDeckSelect' : 'closeDeckBuilder';
+  deckHubMode = 'manage';
+  pendingTableDuelId = null;
+
+  fetch(`https://${GetParentResourceName()}/${closeAction}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({})
@@ -2081,6 +2151,11 @@ deckHubNewBtn.addEventListener('click', () => {
 });
 
 deckHubEditBtn.addEventListener('click', () => {
+  if (deckHubMode === 'tableSelect') {
+    startSelectedTableDuelDeck();
+    return;
+  }
+
   const deck = getSelectedHubDeck();
   if (!deck) return;
 

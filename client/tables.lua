@@ -7,6 +7,7 @@ print('[BStar Tables] client/tables.lua loaded')
 
 CurrentDuelTableId = nil
 local DuelCam = nil
+local PendingDeckSelectTableId = nil
 
 local function FindDuelTable(tableId)
     if not Config or not Config.DuelTables then
@@ -32,30 +33,53 @@ local function UseDuelTable(tableId)
         return
     end
 
-    QBCore.Functions.TriggerCallback('bstar_cards:server:GetDecksForTestDuel', function(decks)
-        print('[BStar Tables] GetDecksForTestDuel callback, deck count:', decks and #decks or 0)
+    QBCore.Functions.TriggerCallback('bstar_cards:server:GetDeckBuilderData', function(result)
+        local decks = result and result.decks or {}
+        print('[BStar Tables] GetDeckBuilderData callback, deck count:', decks and #decks or 0)
 
         if not decks or #decks < 1 then
             QBCore.Functions.Notify('No saved decks found in this deck box.', 'error')
             return
         end
 
-        local myDeck = nil
-        for _, deck in ipairs(decks) do
-            if deck.isValid ~= false then
-                myDeck = deck
-                break
-            end
-        end
+        PendingDeckSelectTableId = tableId
+        SetNuiFocus(true, true)
+        SetNuiFocusKeepInput(false)
 
-        if not myDeck then
-            QBCore.Functions.Notify('No legal decks found in this deck box.', 'error')
-            return
-        end
-
-        TriggerServerEvent('bstar_cards:server:StartTableTestDuel', tableId, CurrentDeckBoxId, myDeck.id)
+        SendNUIMessage({
+            action = 'openTableDeckSelect',
+            deckBoxId = CurrentDeckBoxId,
+            tableId = tableId,
+            storedCards = result.storedCards or {},
+            decks = decks,
+            cardCatalog = result.cardCatalog or {}
+        })
     end, CurrentDeckBoxId)
 end
+
+RegisterNUICallback('selectTableDuelDeck', function(data, cb)
+    local deckId = data and data.deckId
+    local tableId = data and data.tableId or PendingDeckSelectTableId
+
+    if not tableId or not CurrentDeckBoxId or not deckId then
+        QBCore.Functions.Notify('Could not start duel from that deck selection.', 'error')
+        cb('error')
+        return
+    end
+
+    PendingDeckSelectTableId = nil
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+    TriggerServerEvent('bstar_cards:server:StartTableTestDuel', tableId, CurrentDeckBoxId, deckId)
+    cb('ok')
+end)
+
+RegisterNUICallback('closeTableDeckSelect', function(_, cb)
+    PendingDeckSelectTableId = nil
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+    cb('ok')
+end)
 
 local function StopDuelCamera()
     local ped = PlayerPedId()
