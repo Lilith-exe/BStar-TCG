@@ -333,6 +333,23 @@ local function getCardLevelValue(cardDef)
     return match and tonumber(match) or 0
 end
 
+local function normalizePromotionName(cardDef)
+    return string.lower(tostring(cardDef and cardDef.name or '')):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function canPromoteFromTo(tributeDef, promotionDef)
+    if not tributeDef or not promotionDef then return false end
+    if string.upper(tributeDef.type or '') ~= 'FIGHTER' then return false end
+    if string.upper(promotionDef.type or '') ~= 'FIGHTER' then return false end
+
+    local tributeLevel = getCardLevelValue(tributeDef)
+    local promotionLevel = getCardLevelValue(promotionDef)
+
+    return tributeLevel > 0
+        and promotionLevel == tributeLevel + 1
+        and normalizePromotionName(tributeDef) == normalizePromotionName(promotionDef)
+end
+
 local function getOccupiedFighterCount(playerState)
     local count = 0
     for i = 1, 3 do
@@ -763,6 +780,65 @@ function Duel.SummonFighter(src, duelId, handUid, zoneIndex)
     table.remove(playerState.hand, handIndex)
     card.zone = "fighterZone"
     playerState.fighterZones[zoneIndex] = card
+    playerState.hasSummonedThisTurn = true
+
+    sendDuelStateToPlayers(duel)
+    return true
+end
+
+function Duel.PromoteFighter(src, duelId, handUid, tributeZoneIndex)
+    local duel = Duel.Active[duelId]
+    if not duel then
+        return false, 'Duel not found'
+    end
+
+    local playerIndex = getControllingPlayerIndex(duel, src)
+    if not playerIndex then
+        return false, 'Player not in duel'
+    end
+
+    if duel.turnPlayer ~= playerIndex then
+        return false, 'Not your turn'
+    end
+
+    if duel.phase ~= "main" then
+        return false, 'You can only promote in Main Phase'
+    end
+
+    local playerState = duel.players[playerIndex]
+
+    if playerState.hasSummonedThisTurn then
+        return false, 'You already summoned this turn'
+    end
+
+    tributeZoneIndex = tonumber(tributeZoneIndex)
+    if not tributeZoneIndex or tributeZoneIndex < 1 or tributeZoneIndex > 3 then
+        return false, 'Invalid tribute zone'
+    end
+
+    local tributeCard = playerState.fighterZones[tributeZoneIndex]
+    if not tributeCard then
+        return false, 'No fighter to promote from in that zone'
+    end
+
+    local promotionCard, handIndex = findCardInZoneByUid(playerState, "hand", handUid)
+    if not promotionCard then
+        return false, 'Promotion card not found in hand'
+    end
+
+    local tributeDef = getCardDefinition(tributeCard.cardId)
+    local promotionDef = getCardDefinition(promotionCard.cardId)
+
+    if not canPromoteFromTo(tributeDef, promotionDef) then
+        return false, 'That card cannot promote this fighter'
+    end
+
+    moveFieldCardToGraveyard(playerState, tributeZoneIndex)
+    table.remove(playerState.hand, handIndex)
+
+    promotionCard.zone = "fighterZone"
+    promotionCard.hasAttacked = false
+    playerState.fighterZones[tributeZoneIndex] = promotionCard
     playerState.hasSummonedThisTurn = true
 
     sendDuelStateToPlayers(duel)

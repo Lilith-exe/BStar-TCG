@@ -843,6 +843,15 @@ RegisterNetEvent('bstar_cards:server:DuelSummonFighter', function(duelId, handUi
     end
 end)
 
+RegisterNetEvent('bstar_cards:server:DuelPromoteFighter', function(duelId, handUid, tributeZoneIndex)
+    local src = source
+    local ok, err = Duel.PromoteFighter(src, duelId, handUid, tributeZoneIndex)
+
+    if not ok and err then
+        TriggerClientEvent('QBCore:Notify', src, err, 'error')
+    end
+end)
+
 RegisterNetEvent('bstar_cards:server:DuelAttack', function(duelId, attackerZoneIndex, targetType, targetZoneIndex)
     local src = source
     local ok, err = Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex)

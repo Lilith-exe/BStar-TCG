@@ -107,6 +107,13 @@ RegisterNUICallback('duelSummonFighter', function(data, cb)
     cb({ ok = true })
 end)
 
+RegisterNUICallback('duelPromoteFighter', function(data, cb)
+    if currentDuelId and data and data.handUid and data.tributeZoneIndex then
+        TriggerServerEvent('bstar_cards:server:DuelPromoteFighter', currentDuelId, data.handUid, data.tributeZoneIndex)
+    end
+    cb({ ok = true })
+end)
+
 RegisterNUICallback('duelCloseUi', function(_, cb)
     CloseDuelUi()
     cb({ ok = true })

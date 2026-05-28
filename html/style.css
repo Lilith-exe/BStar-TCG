@@ -1321,6 +1321,12 @@ button:hover {
     0 0 18px rgba(60, 180, 255, 0.32);
 }
 
+.duel-hand-card.promotion-ready {
+  box-shadow:
+    0 0 0 2px rgba(255, 220, 120, 0.85),
+    0 0 20px rgba(80, 185, 255, 0.42);
+}
+
 .duel-hand-card img {
   width: 100%;
   height: 180px;
@@ -1355,6 +1361,14 @@ button:hover {
 .duel-zone.attack-ready.duel-zone-selected {
   outline-color: rgba(180, 140, 255, 0.95);
   box-shadow: 0 0 18px rgba(180,140,255,0.28);
+}
+
+.duel-zone.promotion-target {
+  outline: 2px solid rgba(255, 220, 120, 0.94);
+  outline-offset: -2px;
+  box-shadow:
+    0 0 20px rgba(255, 210, 90, 0.38),
+    inset 0 0 16px rgba(255, 220, 120, 0.12);
 }
 
 .duel-zone-used {
@@ -2086,6 +2100,15 @@ button.table-card-pile {
     inset 0 0 18px rgba(255, 220, 120, 0.12);
 }
 
+.table-zone.promote-target {
+  outline: 2px solid rgba(255, 220, 120, 0.98);
+  outline-offset: 4px;
+  box-shadow:
+    0 0 26px rgba(255, 210, 90, 0.42),
+    inset 0 0 18px rgba(255, 220, 120, 0.14);
+  animation: tablePromotePulse 1.05s ease-in-out infinite;
+}
+
 .table-zone.used {
   opacity: 0.58;
   filter: grayscale(0.3);
@@ -2163,6 +2186,18 @@ button.table-card-pile {
   box-shadow:
     0 0 0 2px rgba(80, 185, 255, 0.78),
     0 0 20px rgba(60, 175, 255, 0.38);
+}
+
+.table-hand-card.promotion-ready {
+  filter:
+    drop-shadow(0 12px 16px rgba(0,0,0,0.45))
+    drop-shadow(0 0 16px rgba(255, 220, 120, 0.72));
+}
+
+.table-hand-card.promotion-ready img {
+  box-shadow:
+    0 0 0 2px rgba(255, 220, 120, 0.82),
+    0 0 22px rgba(255, 210, 90, 0.42);
 }
 
 .table-hand-card.selected {
@@ -2420,6 +2455,15 @@ button.table-card-pile {
   }
   50% {
     filter: brightness(1.22);
+  }
+}
+
+@keyframes tablePromotePulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.3);
   }
 }
 

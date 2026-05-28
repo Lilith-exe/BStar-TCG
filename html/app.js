@@ -1126,6 +1126,41 @@ function isNormalSummonableFighter(card) {
   return type === 'FIGHTER' && getCardLevelNumber(card) === 1;
 }
 
+function normalizePromotionName(card) {
+  return String(card?.name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function canPromoteFromTo(tributeCard, promotionCard) {
+  if (!tributeCard || !promotionCard) return false;
+
+  const tributeType = String(tributeCard.type || '').trim().toUpperCase();
+  const promotionType = String(promotionCard.type || '').trim().toUpperCase();
+  if (tributeType !== 'FIGHTER' || promotionType !== 'FIGHTER') return false;
+
+  return getCardLevelNumber(tributeCard) > 0
+    && getCardLevelNumber(promotionCard) === getCardLevelNumber(tributeCard) + 1
+    && normalizePromotionName(tributeCard) === normalizePromotionName(promotionCard);
+}
+
+function getSelfHandCardByUid(uid) {
+  const hand = currentDuelState?.selfPlayer?.hand || [];
+  return hand.find(card => card.uid === uid) || null;
+}
+
+function getPromotionTributeZoneIndex(promotionCard) {
+  const zones = currentDuelState?.selfPlayer?.fighterZones || [];
+  for (let i = 0; i < zones.length; i++) {
+    if (canPromoteFromTo(zones[i], promotionCard)) {
+      return i + 1;
+    }
+  }
+  return null;
+}
+
+function isPromotionSummonableFighter(card) {
+  return !!getPromotionTributeZoneIndex(card);
+}
+
 function renderTableZone(card, side, zoneIndex) {
   const zone = document.createElement('div');
   zone.className = 'table-zone';
@@ -1380,6 +1415,7 @@ function renderTableDuelUi() {
 
   const oppZones = currentDuelState.opponentPlayer?.fighterZones || [null, null, null];
   const selfZones = currentDuelState.selfPlayer?.fighterZones || [null, null, null];
+  const selectedHandCard = getSelfHandCardByUid(selectedHandCardUid);
 
   for (let i = 0; i < 3; i++) {
     const card = oppZones[i] || null;
@@ -1409,7 +1445,7 @@ function renderTableDuelUi() {
     const card = selfZones[i] || null;
     const zone = renderTableZone(card, 'self', i + 1);
 
-    if (!card && selectedHandCardUid && canNormalSummon) {
+    if (!card && selectedHandCardUid && canNormalSummon && isNormalSummonableFighter(selectedHandCard)) {
       zone.classList.add('targetable');
       zone.addEventListener('click', () => {
         fetch(`https://${GetParentResourceName()}/duelSummonFighter`, {
@@ -1418,6 +1454,22 @@ function renderTableDuelUi() {
           body: JSON.stringify({
             handUid: selectedHandCardUid,
             zoneIndex: i + 1
+          })
+        });
+
+        selectedHandCardUid = null;
+      });
+    }
+
+    if (card && selectedHandCardUid && canNormalSummon && canPromoteFromTo(card, selectedHandCard)) {
+      zone.classList.add('promote-target');
+      zone.addEventListener('click', () => {
+        fetch(`https://${GetParentResourceName()}/duelPromoteFighter`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            handUid: selectedHandCardUid,
+            tributeZoneIndex: i + 1
           })
         });
 
@@ -1472,10 +1524,14 @@ function renderTableDuelUi() {
   for (const card of hand) {
     const div = document.createElement('div');
     div.className = 'table-hand-card';
-    const canSummonCard = canNormalSummon && isNormalSummonableFighter(card);
+    const canSummonCard = canNormalSummon && (isNormalSummonableFighter(card) || isPromotionSummonableFighter(card));
 
     if (canSummonCard) {
       div.classList.add('summonable');
+    }
+
+    if (canNormalSummon && isPromotionSummonableFighter(card)) {
+      div.classList.add('promotion-ready');
     }
 
     if (selectedHandCardUid === card.uid) {
@@ -1724,12 +1780,13 @@ function renderSelfZones() {
   const isMainPhase = currentDuelState?.phase === 'main';
   const isBattlePhase = currentDuelState?.phase === 'battle';
   const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
+  const selectedHandCard = getSelfHandCardByUid(selectedHandCardUid);
 
   for (let i = 0; i < 3; i++) {
     const zoneCard = zones[i] || null;
     const zoneEl = renderZoneCard(zoneCard, 'self', i + 1);
 
-    if (!zoneCard && selectedHandCardUid && canNormalSummon) {
+    if (!zoneCard && selectedHandCardUid && canNormalSummon && isNormalSummonableFighter(selectedHandCard)) {
       zoneEl.classList.add('summon-target');
       zoneEl.addEventListener('click', () => {
         fetch(`https://${GetParentResourceName()}/duelSummonFighter`, {
@@ -1738,6 +1795,22 @@ function renderSelfZones() {
           body: JSON.stringify({
             handUid: selectedHandCardUid,
             zoneIndex: i + 1
+          })
+        });
+
+        selectedHandCardUid = null;
+      });
+    }
+
+    if (zoneCard && selectedHandCardUid && canNormalSummon && canPromoteFromTo(zoneCard, selectedHandCard)) {
+      zoneEl.classList.add('promotion-target');
+      zoneEl.addEventListener('click', () => {
+        fetch(`https://${GetParentResourceName()}/duelPromoteFighter`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            handUid: selectedHandCardUid,
+            tributeZoneIndex: i + 1
           })
         });
 
@@ -1852,10 +1925,14 @@ function renderHand() {
   for (const card of hand) {
     const div = document.createElement('div');
     div.className = 'duel-hand-card';
-    const canSummonCard = canNormalSummon && isNormalSummonableFighter(card);
+    const canSummonCard = canNormalSummon && (isNormalSummonableFighter(card) || isPromotionSummonableFighter(card));
 
     if (canSummonCard) {
       div.classList.add('summonable');
+    }
+
+    if (canNormalSummon && isPromotionSummonableFighter(card)) {
+      div.classList.add('promotion-ready');
     }
 
     if (selectedHandCardUid === card.uid) {
