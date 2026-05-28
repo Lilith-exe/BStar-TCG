@@ -40,7 +40,19 @@ local function UseDuelTable(tableId)
             return
         end
 
-        local myDeck = decks[1]
+        local myDeck = nil
+        for _, deck in ipairs(decks) do
+            if deck.isValid ~= false then
+                myDeck = deck
+                break
+            end
+        end
+
+        if not myDeck then
+            QBCore.Functions.Notify('No legal decks found in this deck box.', 'error')
+            return
+        end
+
         TriggerServerEvent('bstar_cards:server:StartTableTestDuel', tableId, CurrentDeckBoxId, myDeck.id)
     end, CurrentDeckBoxId)
 end

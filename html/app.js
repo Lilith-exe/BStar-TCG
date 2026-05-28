@@ -222,18 +222,35 @@ function getMaxCopiesPerCard() {
   return 3;
 }
 
-function isDeckValid(deck) {
-  if (!deck || !deck.deck_data || !deck.deck_data.cards) return false;
+function getDeckValidationIssues(deck, checkOwnedCards = true) {
+  const issues = [];
 
-  const count = getDeckCardCount(deck);
-  if (count < 30 || count > 50) return false;
-
-  for (const cardId in deck.deck_data.cards) {
-    const copies = deck.deck_data.cards[cardId];
-    if (copies > getMaxCopiesPerCard()) return false;
+  if (!deck || !deck.deck_data || !deck.deck_data.cards) {
+    return ['No deck data'];
   }
 
-  return true;
+  const count = getDeckCardCount(deck);
+  if (count < 30) issues.push('Too small');
+  if (count > 50) issues.push('Too large');
+
+  for (const cardId in deck.deck_data.cards) {
+    const copies = Number(deck.deck_data.cards[cardId]) || 0;
+    const owned = builderOwnedCards[cardId]?.amount || 0;
+
+    if (copies > getMaxCopiesPerCard()) {
+      issues.push('Too many copies');
+    }
+
+    if (checkOwnedCards && copies > owned) {
+      issues.push('Missing cards');
+    }
+  }
+
+  return [...new Set(issues)];
+}
+
+function isDeckValid(deck, checkOwnedCards = true) {
+  return getDeckValidationIssues(deck, checkOwnedCards).length === 0;
 }
 
 function isOwnedCardDimmed(cardId) {
@@ -247,7 +264,7 @@ function isOwnedCardDimmed(cardId) {
 function isDeckCardInvalid(cardId) {
   const owned = builderOwnedCards[cardId]?.amount || 0;
   const inDeck = getSelectedDeckCardCount(cardId);
-  return inDeck > owned;
+  return inDeck > owned || inDeck > getMaxCopiesPerCard();
 }
 
 // ---------- Modal ----------
@@ -447,6 +464,8 @@ function openDeckHub(data) {
   hideAll();
 
   currentDeckBoxId = data.deckBoxId;
+  window.BSTAR_CARD_DEFS = data.cardCatalog || window.BSTAR_CARD_DEFS || {};
+  builderOwnedCards = data.storedCards || {};
   currentDecks = (data.decks || []).map(d => normalizeDeck(clone(d)));
   selectedHubDeckId = currentDecks.length ? currentDecks[0].id : null;
 
@@ -467,7 +486,10 @@ function renderDeckHub() {
     const row = document.createElement('div');
     row.className = 'deckhub-row';
 
-    const valid = isDeckValid(deck);
+    const valid = deck.isValid === false ? false : isDeckValid(deck);
+    const issues = deck.validationMessage
+      ? [deck.validationMessage]
+      : getDeckValidationIssues(deck);
 
     if (!valid) {
       row.classList.add('invalid');
@@ -493,13 +515,9 @@ function renderDeckHub() {
     const meta = document.createElement('div');
     meta.className = 'deckhub-row-meta';
 
-    if (count < 30) {
-      meta.textContent = `${count} cards • Too small`;
-    } else if (count > 50) {
-      meta.textContent = `${count} cards • Too large`;
-    } else {
-      meta.textContent = `${count} cards • Ready to duel`;
-    }
+    meta.textContent = issues.length
+      ? `${count} cards • ${issues.join(', ')}`
+      : `${count} cards • Ready to duel`;
 
     top.appendChild(name);
     top.appendChild(status);
@@ -670,6 +688,7 @@ function openDeckBuilder(data) {
   hideAll();
 
   currentDeckBoxId = data.deckBoxId;
+  window.BSTAR_CARD_DEFS = data.cardCatalog || window.BSTAR_CARD_DEFS || {};
   builderOwnedCards = data.storedCards || {};
   currentDecks = (data.decks || []).map(d => normalizeDeck(clone(d)));
   selectedDeck = currentDecks.length ? clone(currentDecks[0]) : null;
@@ -706,12 +725,19 @@ function renderSavedDeckList() {
     const row = document.createElement('div');
     row.className = 'saved-deck-row';
 
+    if (!isDeckValid(deck)) {
+      row.classList.add('invalid');
+    }
+
     if (selectedDeck && selectedDeck.id === deck.id) {
       row.classList.add('active');
     }
 
     const count = getDeckCardCount(deck);
-    row.textContent = `${deck.name} (${count})`;
+    const issues = getDeckValidationIssues(deck);
+    row.textContent = issues.length
+      ? `${deck.name} (${count}) - ${issues[0]}`
+      : `${deck.name} (${count})`;
 
     row.addEventListener('click', () => {
       if (selectedDeck && selectedDeck.id === deck.id) return;
@@ -833,12 +859,10 @@ function renderBuilderDeckCards() {
     const amount = cards[cardId] || 0;
     if (amount <= 0) continue;
 
-    const ownedCard = builderOwnedCards[cardId] || {
+    const ownedCard = resolveCardData(builderOwnedCards[cardId] || {
       cardId,
-      name: cardId,
-      inventoryImage: 'default.png',
       amount: 0
-    };
+    });
 
     const invalid = isDeckCardInvalid(cardId);
 
@@ -948,8 +972,8 @@ function setBuilderPreview(card) {
 function updateBuilderPreviewFromSelectedDeck() {
   if (selectedDeck && selectedDeck.deck_data && selectedDeck.deck_data.cards) {
     const firstCardId = Object.keys(selectedDeck.deck_data.cards)[0];
-    if (firstCardId && builderOwnedCards[firstCardId]) {
-      setBuilderPreview(builderOwnedCards[firstCardId]);
+    if (firstCardId) {
+      setBuilderPreview(resolveCardData(builderOwnedCards[firstCardId] || { cardId: firstCardId }));
       return;
     }
   }
@@ -968,15 +992,12 @@ function updateDeckHeader() {
   }
 
   const count = getDeckCardCount(selectedDeck);
+  const issues = getDeckValidationIssues(selectedDeck);
 
   currentDeckNameEl.textContent = selectedDeck.name || 'Unnamed Deck';
 
-  if (count < 30) {
-    currentDeckCountEl.textContent = `${count} / 30–50  •  Too small`;
-    currentDeckCountEl.style.color = '#ff6b6b';
-    currentDeckCountEl.style.textShadow = '0 0 8px rgba(255,107,107,0.25)';
-  } else if (count > 50) {
-    currentDeckCountEl.textContent = `${count} / 30–50  •  Too large`;
+  if (issues.length) {
+    currentDeckCountEl.textContent = `${count} / 30–50  •  ${issues.join(', ')}`;
     currentDeckCountEl.style.color = '#ff6b6b';
     currentDeckCountEl.style.textShadow = '0 0 8px rgba(255,107,107,0.25)';
   } else {
@@ -1353,6 +1374,7 @@ function refreshDeckBuilder(selectDeckId = null) {
   })
     .then(res => res.json())
     .then(data => {
+      window.BSTAR_CARD_DEFS = data.cardCatalog || window.BSTAR_CARD_DEFS || {};
       builderOwnedCards = data.storedCards || {};
       currentDecks = (data.decks || []).map(d => normalizeDeck(clone(d)));
 
@@ -1747,68 +1769,50 @@ function renderDuelUi() {
   renderHand();
 }
 
-function handleBattleEvent(data) {
-  const attacker = document.querySelector(`[data-slot="${data.attackerSlot}"]`);
-  const defender = document.querySelector(`[data-slot="${data.targetSlot}"]`);
-
-  if (attacker) {
-    attacker.classList.add('attacking');
-    setTimeout(() => {
-      attacker.classList.remove('attacking');
-    }, 500);
-  }
-
-  if (defender) {
-    defender.classList.add('targeted');
-
-    setTimeout(() => {
-      defender.classList.remove('targeted');
-    }, 700);
-
-    if (data.defenderDestroyed) {
-      setTimeout(() => {
-        defender.classList.add('destroyed');
-
-        setTimeout(() => {
-          defender.classList.remove('destroyed');
-        }, 600);
-      }, 250);
-    }
-  }
-
-  if (data.damage > 0 && defender) {
-    spawnDamageNumber(defender, data.damage);
-  }
-}
-
-function spawnDamageNumber(targetEl, amount) {
-  const rect = targetEl.getBoundingClientRect();
-
-  const el = document.createElement('div');
-  el.className = 'damage-popup';
-  el.textContent = `-${amount}`;
-
-  el.style.left = `${rect.left + rect.width / 2}px`;
-  el.style.top = `${rect.top + rect.height / 2}px`;
-
-  document.body.appendChild(el);
-
-  setTimeout(() => {
-    el.remove();
-  }, 1200);
-}
-
 function getZoneElement(side, zoneIndex) {
-  return document.querySelector(`.duel-zone[data-side="${side}"][data-zone-index="${zoneIndex}"]`);
+  const selector = `[data-side="${side}"][data-zone-index="${zoneIndex}"]`;
+
+  if (duelTableMode) {
+    return document.querySelector(`.table-zone${selector}`);
+  }
+
+  return document.querySelector(`.duel-zone${selector}`);
+}
+
+function getDirectAttackTargetElement(defenderSide) {
+  if (duelTableMode) {
+    return defenderSide === 'opponent'
+      ? document.getElementById('tableOpponentLPWrap')
+      : document.getElementById('tableSelfLPWrap');
+  }
+
+  return defenderSide === 'opponent' ? duelOpponentFighterZones : duelSelfFighterZones;
 }
 
 function spawnDamageNumberAt(x, y, amount) {
   const el = document.createElement('div');
   el.className = 'damage-popup';
-  el.textContent = `-${amount}`;
+  el.textContent = '-0';
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
   document.body.appendChild(el);
+
+  const finalAmount = Number(amount) || 0;
+  const startedAt = performance.now();
+  const duration = 520;
+
+  function tick(now) {
+    const progress = Math.min(1, (now - startedAt) / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.max(1, Math.round(finalAmount * eased));
+    el.textContent = `-${current}`;
+
+    if (progress < 1) {
+      requestAnimationFrame(tick);
+    }
+  }
+
+  requestAnimationFrame(tick);
 
   setTimeout(() => {
     el.remove();
@@ -1880,7 +1884,7 @@ function handleBattleEvent(result) {
   if (result.targetType === 'fighter') {
     targetEl = getZoneElement(defenderSide, result.targetZoneIndex);
   } else if (result.targetType === 'direct') {
-    targetEl = defenderSide === 'opponent' ? duelOpponentFighterZones : duelSelfFighterZones;
+    targetEl = getDirectAttackTargetElement(defenderSide);
   }
 
   if (attackerEl && targetEl) {
@@ -1968,10 +1972,6 @@ window.addEventListener('message', (event) => {
     hideAll();
     viewerOpenedFromDeckBox = false;
     viewerOpenedFromDeckBuilder = false;
-  }
-
-  if (data.action === 'battleEvent') {
-    handleBattleEvent(data.data);
   }
 
   if (data.action === 'battleEvent') {
@@ -2093,6 +2093,7 @@ deckHubEditBtn.addEventListener('click', () => {
   })
     .then(res => res.json())
     .then(data => {
+      window.BSTAR_CARD_DEFS = data.cardCatalog || window.BSTAR_CARD_DEFS || {};
       builderOwnedCards = data.storedCards || {};
       currentDecks = (data.decks || []).map(d => normalizeDeck(clone(d)));
 

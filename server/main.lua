@@ -4,6 +4,10 @@ print('[BStar] server/main.lua loading')
 
 DeckBox = {}
 
+local MIN_DECK_CARDS = 30
+local MAX_DECK_CARDS = 50
+local MAX_COPIES_PER_CARD = 3
+
 local function BuildCardItemInfo(cardId)
     local card = Cards and Cards[cardId]
 
@@ -67,6 +71,95 @@ local function getPlayerCardCounts(Player)
     end
 
     return results
+end
+
+local function BuildCardCatalog()
+    local catalog = {}
+
+    for cardId, card in pairs(Cards or {}) do
+        catalog[cardId] = {
+            cardId = cardId,
+            id = card.id or cardId,
+            name = card.name,
+            rarity = card.rarity,
+            type = card.type,
+            job = card.job,
+            level = card.level,
+            speed = card.speed or card.spd,
+            attack = card.attack or card.atk,
+            defense = card.defense or card.def,
+            effectTitle = card.effectTitle,
+            effectText = card.effectText,
+            setCode = card.setCode,
+            edition = card.edition,
+            inventoryImage = card.inventoryImage
+        }
+    end
+
+    return catalog
+end
+
+local function validateDeckDataForPlay(deckData, storedCards)
+    local issues = {}
+
+    if type(deckData) ~= 'table' then
+        return false, 'No deck data', { 'No deck data' }
+    end
+
+    if type(deckData.cards) ~= 'table' then
+        deckData.cards = {}
+    end
+
+    local totalCards = 0
+
+    for cardId, rawAmount in pairs(deckData.cards) do
+        local amount = tonumber(rawAmount) or 0
+
+        if amount > 0 then
+            totalCards = totalCards + amount
+
+            if not Cards or not Cards[cardId] then
+                issues[#issues + 1] = 'Unknown card'
+            end
+
+            if amount > MAX_COPIES_PER_CARD then
+                issues[#issues + 1] = 'Too many copies'
+            end
+
+            local storedAmount = 0
+            if storedCards and storedCards[cardId] then
+                storedAmount = tonumber(storedCards[cardId].amount) or 0
+            end
+
+            if amount > storedAmount then
+                issues[#issues + 1] = 'Missing cards'
+            end
+        end
+    end
+
+    if totalCards < MIN_DECK_CARDS then
+        issues[#issues + 1] = 'Too small'
+    end
+
+    if totalCards > MAX_DECK_CARDS then
+        issues[#issues + 1] = 'Too large'
+    end
+
+    local uniqueIssues = {}
+    local seen = {}
+
+    for _, issue in ipairs(issues) do
+        if not seen[issue] then
+            seen[issue] = true
+            uniqueIssues[#uniqueIssues + 1] = issue
+        end
+    end
+
+    if #uniqueIssues > 0 then
+        return false, table.concat(uniqueIssues, ', '), uniqueIssues
+    end
+
+    return true, 'Legal', {}
 end
 
 function DeckBox.GetPlayerCards(source, cb)
@@ -407,7 +500,8 @@ QBCore.Functions.CreateCallback('bstar_cards:server:GetDeckBuilderData', functio
         GetDecksForBox(source, deckBoxId, function(decks)
             cb({
                 storedCards = storedCards,
-                decks = decks
+                decks = decks,
+                cardCatalog = BuildCardCatalog()
             })
         end)
     end)
@@ -418,9 +512,20 @@ QBCore.Functions.CreateCallback('bstar_cards:server:GetDecksForTestDuel', functi
     print('[BStar Duel] source:', source)
     print('[BStar Duel] deckBoxId:', deckBoxId)
 
-    GetDecksForBox(source, deckBoxId, function(decks)
-        print('[BStar Duel] decks found:', decks and #decks or 0)
-        cb(decks or {})
+    DeckBox.GetStoredCards(source, deckBoxId, function(storedCards)
+        GetDecksForBox(source, deckBoxId, function(decks)
+            decks = decks or {}
+
+            for i = 1, #decks do
+                local valid, message, issues = validateDeckDataForPlay(decks[i].deck_data, storedCards)
+                decks[i].isValid = valid
+                decks[i].validationMessage = message
+                decks[i].validationIssues = issues
+            end
+
+            print('[BStar Duel] decks found:', #decks)
+            cb(decks)
+        end)
     end)
 end)
 
@@ -619,27 +724,35 @@ RegisterNetEvent('bstar_cards:server:StartTestDuel', function(deckBoxId, myDeckI
             return
         end
 
-        -- TEMP SOLO TEST: same deck on both sides
-        local deckB = deckA
+        DeckBox.GetStoredCards(src, deckBoxId, function(storedCards)
+            local valid, message = validateDeckDataForPlay(deckA.deck_data, storedCards)
+            if not valid then
+                TriggerClientEvent('QBCore:Notify', src, 'Deck is invalid: ' .. tostring(message), 'error')
+                return
+            end
 
-        local duel, err = Duel.Create(src, src, deckA, deckB)
-        if not duel then
-            print('[BStar Duel] Duel.Create failed:', err)
-            TriggerClientEvent('QBCore:Notify', src, err or 'Failed to create duel.', 'error')
-            return
-        end
+            -- TEMP SOLO TEST: same deck on both sides
+            local deckB = deckA
 
-        print('[BStar Duel] Duel created:', duel.id)
+            local duel, err = Duel.Create(src, src, deckA, deckB)
+            if not duel then
+                print('[BStar Duel] Duel.Create failed:', err)
+                TriggerClientEvent('QBCore:Notify', src, err or 'Failed to create duel.', 'error')
+                return
+            end
 
-        local ok, startErr = Duel.Start(duel.id)
-        if not ok then
-            print('[BStar Duel] Duel.Start failed:', startErr)
-            TriggerClientEvent('QBCore:Notify', src, startErr or 'Failed to start duel.', 'error')
-            return
-        end
+            print('[BStar Duel] Duel created:', duel.id)
 
-        print('[BStar Duel] Duel started successfully')
-        TriggerClientEvent('QBCore:Notify', src, 'Test duel started.', 'success')
+            local ok, startErr = Duel.Start(duel.id)
+            if not ok then
+                print('[BStar Duel] Duel.Start failed:', startErr)
+                TriggerClientEvent('QBCore:Notify', src, startErr or 'Failed to start duel.', 'error')
+                return
+            end
+
+            print('[BStar Duel] Duel started successfully')
+            TriggerClientEvent('QBCore:Notify', src, 'Test duel started.', 'success')
+        end)
     end)
 end)
 
@@ -660,30 +773,38 @@ RegisterNetEvent('bstar_cards:server:StartTableTestDuel', function(tableId, deck
             return
         end
 
-        local deckB = deckA
+        DeckBox.GetStoredCards(src, deckBoxId, function(storedCards)
+            local valid, message = validateDeckDataForPlay(deckA.deck_data, storedCards)
+            if not valid then
+                TriggerClientEvent('QBCore:Notify', src, 'Deck is invalid: ' .. tostring(message), 'error')
+                return
+            end
 
-        local duel, err = Duel.Create(src, src, deckA, deckB)
-        print('[BStar Table Duel] Duel.Create result:', duel and duel.id or nil, err)
+            local deckB = deckA
 
-        if not duel then
-            TriggerClientEvent('QBCore:Notify', src, err or 'Failed to create duel.', 'error')
-            return
-        end
+            local duel, err = Duel.Create(src, src, deckA, deckB)
+            print('[BStar Table Duel] Duel.Create result:', duel and duel.id or nil, err)
 
-        duel.tableId = tableId
+            if not duel then
+                TriggerClientEvent('QBCore:Notify', src, err or 'Failed to create duel.', 'error')
+                return
+            end
 
-        print('[BStar Table Duel] Sending camera event:', tableId)
-        TriggerClientEvent('bstar_cards:client:EnterDuelTableView', src, tableId)
+            duel.tableId = tableId
 
-        local ok, startErr = Duel.Start(duel.id)
-        print('[BStar Table Duel] Duel.Start result:', ok, startErr)
+            print('[BStar Table Duel] Sending camera event:', tableId)
+            TriggerClientEvent('bstar_cards:client:EnterDuelTableView', src, tableId)
 
-        if not ok then
-            TriggerClientEvent('QBCore:Notify', src, startErr or 'Failed to start duel.', 'error')
-            return
-        end
+            local ok, startErr = Duel.Start(duel.id)
+            print('[BStar Table Duel] Duel.Start result:', ok, startErr)
 
-        TriggerClientEvent('QBCore:Notify', src, 'Table duel started.', 'success')
+            if not ok then
+                TriggerClientEvent('QBCore:Notify', src, startErr or 'Failed to start duel.', 'error')
+                return
+            end
+
+            TriggerClientEvent('QBCore:Notify', src, 'Table duel started.', 'success')
+        end)
     end)
 end)
 
@@ -777,4 +898,3 @@ RegisterCommand('givecardtest', function(source, args)
     TriggerClientEvent('inventory:client:ItemBox', src, notifItem, 'add', 1)
     TriggerClientEvent('QBCore:Notify', src, 'Given card: ' .. card.name, 'success')
 end, false)
-    

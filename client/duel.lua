@@ -214,13 +214,25 @@ RegisterCommand('testduel', function()
         print('[BStar Duel] Callback returned')
         print('[BStar Duel] decks:', json.encode(decks))
 
-        if not decks or #decks < 2 then
-            QBCore.Functions.Notify('You need at least 2 saved decks in this deck box for test duel.', 'error')
+        if not decks or #decks < 1 then
+            QBCore.Functions.Notify('No saved decks found in this deck box.', 'error')
             return
         end
 
-        local myDeck = decks[1]
-        local oppDeck = decks[2]
+        local myDeck = nil
+        for _, deck in ipairs(decks) do
+            if deck.isValid ~= false then
+                myDeck = deck
+                break
+            end
+        end
+
+        if not myDeck then
+            QBCore.Functions.Notify('No legal decks found in this deck box.', 'error')
+            return
+        end
+
+        local oppDeck = myDeck
 
         print('[BStar Duel] Starting test duel with decks:', myDeck.id, oppDeck.id)
         QBCore.Functions.Notify('Starting test duel...', 'success')

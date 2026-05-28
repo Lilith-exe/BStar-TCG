@@ -854,6 +854,16 @@ button:hover {
   background: rgba(120, 80, 180, 0.18);
 }
 
+.saved-deck-row.invalid {
+  border: 1px solid rgba(255, 80, 80, 0.55);
+  color: rgba(255, 205, 205, 0.96);
+}
+
+.saved-deck-row.invalid.active {
+  outline-color: rgba(255, 95, 95, 0.78);
+  background: rgba(120, 25, 40, 0.2);
+}
+
 .deckbuilder-actions button,
 .deckhub-bottombar button,
 .deckbox-header button,
