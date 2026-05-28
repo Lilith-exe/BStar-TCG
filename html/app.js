@@ -44,6 +44,16 @@ const uiModalText = document.getElementById('uiModalText');
 const uiModalInput = document.getElementById('uiModalInput');
 const uiModalCancelBtn = document.getElementById('uiModalCancelBtn');
 const uiModalConfirmBtn = document.getElementById('uiModalConfirmBtn');
+const coinFlipWrap = document.getElementById('coinFlipWrap');
+const coinDisc = document.getElementById('coinDisc');
+const coinFlipTitle = document.getElementById('coinFlipTitle');
+const coinFlipText = document.getElementById('coinFlipText');
+const coinChoiceActions = document.getElementById('coinChoiceActions');
+const turnChoiceActions = document.getElementById('turnChoiceActions');
+const coinHeadsBtn = document.getElementById('coinHeadsBtn');
+const coinTailsBtn = document.getElementById('coinTailsBtn');
+const goFirstBtn = document.getElementById('goFirstBtn');
+const goSecondBtn = document.getElementById('goSecondBtn');
 
 // Duel refs
 const duelWrap = document.getElementById('duelWrap');
@@ -133,6 +143,7 @@ let builderSearchTerm = '';
 let selectedHubDeckId = null;
 let deckHubMode = 'manage';
 let pendingTableDuelId = null;
+let pendingCoinDuelId = null;
 
 let currentDuelState = null;
 let selectedHandCardUid = null;
@@ -193,6 +204,7 @@ function hideAll() {
   deckBuilderWrap.classList.add('hidden');
   deckHubWrap.classList.add('hidden');
   uiModalWrap.classList.add('hidden');
+  coinFlipWrap.classList.add('hidden');
   duelWrap.classList.add('hidden');
   tableDuelWrap.classList.add('hidden');
 
@@ -310,6 +322,63 @@ function closeModal() {
   uiModalInput.classList.add('hidden');
   uiModalInput.value = '';
   activeModalAction = null;
+}
+
+function openCoinFlip(data) {
+  hideAll();
+  pendingCoinDuelId = data?.duelId || null;
+
+  app.classList.remove('hidden');
+  coinFlipWrap.classList.remove('hidden');
+  coinDisc.textContent = '?';
+  coinDisc.classList.remove('flipping', 'heads', 'tails');
+  coinFlipTitle.textContent = 'Call the Toss';
+  coinFlipText.textContent = 'Choose heads or tails.';
+  coinChoiceActions.classList.remove('hidden');
+  turnChoiceActions.classList.add('hidden');
+}
+
+function sendCoinChoice(choice) {
+  if (!pendingCoinDuelId) return;
+
+  coinDisc.classList.add('flipping');
+  coinChoiceActions.classList.add('hidden');
+  coinFlipTitle.textContent = 'Flipping...';
+  coinFlipText.textContent = `You called ${choice}.`;
+
+  fetch(`https://${GetParentResourceName()}/duelChooseCoin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ choice })
+  });
+}
+
+function showCoinFlipResult(result) {
+  if (!result) return;
+
+  coinDisc.classList.remove('flipping', 'heads', 'tails');
+  coinDisc.classList.add(result.result);
+  coinDisc.textContent = result.result === 'heads' ? 'H' : 'T';
+  coinFlipTitle.textContent = result.playerWon ? 'You won the toss' : 'Opponent won the toss';
+  coinFlipText.textContent = result.playerWon
+    ? 'Choose who takes the first turn.'
+    : 'Opponent chooses to go first.';
+
+  coinChoiceActions.classList.add('hidden');
+  turnChoiceActions.classList.toggle('hidden', !result.canChooseTurnOrder);
+}
+
+function chooseTurnOrder(choice) {
+  if (!pendingCoinDuelId) return;
+
+  turnChoiceActions.classList.add('hidden');
+  coinFlipText.textContent = choice === 'first' ? 'You chose to go first.' : 'You chose to go second.';
+
+  fetch(`https://${GetParentResourceName()}/duelChooseTurnOrder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ choice })
+  });
 }
 
 // ---------- Viewer ----------
@@ -1447,12 +1516,13 @@ function reconcileDuelSelections() {
   const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
   const isMainPhase = currentDuelState.phase === 'main';
   const isBattlePhase = currentDuelState.phase === 'battle';
+  const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState.turnNumber === 1 && currentDuelState.firstTurnPlayer === currentDuelState.viewerIndex);
 
   if (!isMyTurn || !isMainPhase || currentDuelState.selfPlayer?.hasSummonedThisTurn) {
     selectedHandCardUid = null;
   }
 
-  if (!isMyTurn || !isBattlePhase) {
+  if (!canAttackThisTurn) {
     selectedAttackerZoneIndex = null;
     return;
   }
@@ -1524,14 +1594,26 @@ function renderTableDuelUi() {
   const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
   const isMainPhase = currentDuelState.phase === 'main';
   const isBattlePhase = currentDuelState.phase === 'battle';
+  const isDiscardPhase = currentDuelState.phase === 'discard';
+  const canAttackThisTurn = isMyTurn
+    && isBattlePhase
+    && !(currentDuelState.turnNumber === 1 && currentDuelState.firstTurnPlayer === currentDuelState.viewerIndex);
+  const handSize = currentDuelState.selfPlayer?.hand?.length || 0;
+  const discardCount = Math.max(0, handSize - 9);
   const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
   const canDraw = canCurrentViewerDraw();
 
   tablePhaseBadge.textContent = `${String(currentDuelState.phase || 'draw').toUpperCase()} PHASE`;
-  tableDrawPrompt?.classList.toggle('hidden', !canDraw);
+  if (tableDrawPrompt) {
+    tableDrawPrompt.textContent = isDiscardPhase && discardCount > 0 ? `Discard ${discardCount} card${discardCount === 1 ? '' : 's'}` : 'Draw a card!';
+    tableDrawPrompt.classList.toggle('hidden', !canDraw && !(isDiscardPhase && discardCount > 0));
+  }
   tableSelfDeckSlot?.classList.toggle('draw-ready', canDraw);
-  tableNextPhaseBtn.disabled = !isMyTurn || currentDuelState.status !== 'active' || currentDuelState.phase === 'draw';
-  tableEndTurnBtn.disabled = !isMyTurn || currentDuelState.status !== 'active';
+  tableNextPhaseBtn.disabled = !isMyTurn
+    || currentDuelState.status !== 'active'
+    || currentDuelState.phase === 'draw'
+    || currentDuelState.phase === 'discard';
+  tableEndTurnBtn.disabled = !isMyTurn || currentDuelState.status !== 'active' || (isDiscardPhase && discardCount > 0);
 
   tableSelfLP.textContent = currentDuelState.selfPlayer?.lifePoints ?? 0;
   tableOpponentLP.textContent = currentDuelState.opponentPlayer?.lifePoints ?? 0;
@@ -1556,7 +1638,7 @@ function renderTableDuelUi() {
     const card = oppZones[i] || null;
     const zone = renderTableZone(card, 'opponent', i + 1);
 
-    if (selectedAttackerZoneIndex && isMyTurn && isBattlePhase && card) {
+    if (selectedAttackerZoneIndex && canAttackThisTurn && card) {
       zone.classList.add('targetable');
       zone.addEventListener('click', () => {
         fetch(`https://${GetParentResourceName()}/duelAttack`, {
@@ -1612,7 +1694,7 @@ function renderTableDuelUi() {
       });
     }
 
-    if (card && isMyTurn && isBattlePhase && !card.hasAttacked) {
+    if (card && canAttackThisTurn && !card.hasAttacked) {
       zone.classList.add('attack-ready');
       zone.addEventListener('click', () => {
         selectedHandCardUid = null;
@@ -1621,7 +1703,7 @@ function renderTableDuelUi() {
       });
     }
 
-    if (isMyTurn && isBattlePhase && selectedAttackerZoneIndex === i + 1) {
+    if (canAttackThisTurn && selectedAttackerZoneIndex === i + 1) {
       zone.classList.add('selected');
     }
 
@@ -1630,7 +1712,7 @@ function renderTableDuelUi() {
 
   const opponentHasFighters = oppZones.some(Boolean);
 
-  if (selectedAttackerZoneIndex && isMyTurn && isBattlePhase && !opponentHasFighters) {
+  if (selectedAttackerZoneIndex && canAttackThisTurn && !opponentHasFighters) {
     const direct = document.createElement('div');
     direct.className = 'table-zone targetable table-direct-target';
     direct.textContent = 'DIRECT';
@@ -1669,6 +1751,10 @@ function renderTableDuelUi() {
       div.classList.add('promotion-ready');
     }
 
+    if (isMyTurn && isDiscardPhase && handSize > 9) {
+      div.classList.add('discardable');
+    }
+
     if (selectedHandCardUid === card.uid) {
       div.classList.add('selected');
     }
@@ -1679,6 +1765,15 @@ function renderTableDuelUi() {
 
     div.addEventListener('click', () => {
       setDuelPreviewCard(card);
+
+      if (isMyTurn && isDiscardPhase && handSize > 9) {
+        fetch(`https://${GetParentResourceName()}/duelDiscardCard`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ handUid: card.uid })
+        });
+        return;
+      }
 
       if (!canSummonCard) return;
 
@@ -1861,12 +1956,13 @@ function renderOpponentZones() {
   const zones = currentDuelState?.opponentPlayer?.fighterZones || [null, null, null];
   const isMyTurn = currentDuelState?.turnPlayer === currentDuelState?.viewerIndex;
   const isBattlePhase = currentDuelState?.phase === 'battle';
+  const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState?.turnNumber === 1 && currentDuelState?.firstTurnPlayer === currentDuelState?.viewerIndex);
 
   for (let i = 0; i < 3; i++) {
     const zoneCard = zones[i] || null;
     const zoneEl = renderZoneCard(zoneCard, 'opponent', i + 1);
 
-    if (selectedAttackerZoneIndex && isMyTurn && isBattlePhase && zoneCard) {
+    if (selectedAttackerZoneIndex && canAttackThisTurn && zoneCard) {
       zoneEl.classList.add('summon-target');
       zoneEl.addEventListener('click', () => {
         fetch(`https://${GetParentResourceName()}/duelAttack`, {
@@ -1887,7 +1983,7 @@ function renderOpponentZones() {
   }
 
   const occupiedOpponent = zones.some(z => !!z);
-  if (selectedAttackerZoneIndex && isMyTurn && isBattlePhase && !occupiedOpponent) {
+  if (selectedAttackerZoneIndex && canAttackThisTurn && !occupiedOpponent) {
     const directZone = document.createElement('div');
     directZone.className = 'duel-zone summon-target duel-direct-target';
     directZone.dataset.side = 'opponent';
@@ -1919,6 +2015,7 @@ function renderSelfZones() {
   const isMyTurn = currentDuelState?.turnPlayer === currentDuelState?.viewerIndex;
   const isMainPhase = currentDuelState?.phase === 'main';
   const isBattlePhase = currentDuelState?.phase === 'battle';
+  const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState?.turnNumber === 1 && currentDuelState?.firstTurnPlayer === currentDuelState?.viewerIndex);
   const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
   const selectedHandCard = getSelfHandCardByUid(selectedHandCardUid);
 
@@ -1958,7 +2055,7 @@ function renderSelfZones() {
       });
     }
 
-    if (zoneCard && isMyTurn && isBattlePhase) {
+    if (zoneCard && canAttackThisTurn) {
       if (zoneCard.hasAttacked) {
         zoneEl.classList.add('duel-zone-used');
       } else {
@@ -2060,6 +2157,7 @@ function renderHand() {
   const hand = currentDuelState?.selfPlayer?.hand || [];
   const isMyTurn = currentDuelState?.turnPlayer === currentDuelState?.viewerIndex;
   const isMainPhase = currentDuelState?.phase === 'main';
+  const isDiscardPhase = currentDuelState?.phase === 'discard';
   const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
 
   for (const card of hand) {
@@ -2073,6 +2171,10 @@ function renderHand() {
 
     if (canNormalSummon && isPromotionSummonableFighter(card)) {
       div.classList.add('promotion-ready');
+    }
+
+    if (isMyTurn && isDiscardPhase && hand.length > 9) {
+      div.classList.add('discardable');
     }
 
     if (selectedHandCardUid === card.uid) {
@@ -2090,6 +2192,15 @@ function renderHand() {
     div.appendChild(name);
 
     div.addEventListener('click', () => {
+      if (isMyTurn && isDiscardPhase && hand.length > 9) {
+        fetch(`https://${GetParentResourceName()}/duelDiscardCard`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ handUid: card.uid })
+        });
+        return;
+      }
+
       if (!canSummonCard) return;
 
       selectedAttackerZoneIndex = null;
@@ -2320,6 +2431,8 @@ window.addEventListener('message', (event) => {
   }
 
   if (data.action === 'openDuelUi') {
+    coinFlipWrap.classList.add('hidden');
+    pendingCoinDuelId = null;
     openDuelUi(data.duel, !!data.tableMode);
   }
 
@@ -2350,6 +2463,18 @@ window.addEventListener('message', (event) => {
     });
   }
 
+  if (data.action === 'openCoinFlip') {
+    openCoinFlip(data);
+  }
+
+  if (data.action === 'coinFlipResult') {
+    showCoinFlipResult(data.result);
+  }
+
+  if (data.action === 'requestDuelSurrender') {
+    requestDuelSurrender();
+  }
+
   if (data.action === 'forceCloseAll') {
     hideAll();
     viewerOpenedFromDeckBox = false;
@@ -2375,6 +2500,11 @@ uiModalConfirmBtn.addEventListener('click', () => {
   }
   closeModal();
 });
+
+coinHeadsBtn?.addEventListener('click', () => sendCoinChoice('heads'));
+coinTailsBtn?.addEventListener('click', () => sendCoinChoice('tails'));
+goFirstBtn?.addEventListener('click', () => chooseTurnOrder('first'));
+goSecondBtn?.addEventListener('click', () => chooseTurnOrder('second'));
 
 closeBtn.addEventListener('click', () => {
   closeFullViewer();

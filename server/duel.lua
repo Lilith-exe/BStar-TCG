@@ -189,6 +189,16 @@ local function drawCards(duel, playerIndex, amount)
 
     return drawn
 end
+
+local function moveHandCardToGraveyard(playerState, handIndex)
+    local card = table.remove(playerState.hand, handIndex)
+    if not card then return nil end
+
+    card.zone = "graveyard"
+    playerState.graveyard[#playerState.graveyard + 1] = card
+    return card
+end
+
 local function resetTurnFlags(playerState)
     playerState.hasSummonedThisTurn = false
 
@@ -224,6 +234,7 @@ local function buildPrivateStateForPlayer(duel, viewerIndex)
         winner = duel.winner,
         winReason = duel.winReason,
         hasDrawnThisTurn = duel.hasDrawnThisTurn == true,
+        firstTurnPlayer = duel.firstTurnPlayer,
 
         selfPlayer = {
             source = selfState.source,
@@ -421,6 +432,17 @@ local function checkWinCondition(duel)
     return false
 end
 
+local function completeEndTurn(duel, playerIndex)
+    resetBattleFlags(duel.players[playerIndex])
+
+    duel.turnPlayer = getOpponentIndex(duel.turnPlayer)
+    duel.turnNumber = duel.turnNumber + 1
+    duel.phase = "draw"
+    duel.hasDrawnThisTurn = false
+
+    resetTurnFlags(duel.players[duel.turnPlayer])
+end
+
 function Duel.Surrender(src, duelId)
     local duel = Duel.Active[duelId]
     if not duel then
@@ -505,6 +527,10 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
 
     if duel.phase ~= "battle" then
         return false, 'You can only attack in Battle Phase'
+    end
+
+    if duel.turnNumber == 1 and duel.firstTurnPlayer == playerIndex then
+        return false, 'The player who goes first cannot attack on their first turn'
     end
 
     local attackerState = duel.players[playerIndex]
@@ -658,12 +684,13 @@ function Duel.Create(srcA, srcB, deckA, deckB)
 
     local duel = {
         id = duelId,
-        status = "active",
+        status = "setup",
         players = {
             [1] = playerA,
             [2] = playerB
         },
         turnPlayer = 1,
+        firstTurnPlayer = 1,
         turnNumber = 1,
         phase = "draw",
         hasDrawnThisTurn = false,
@@ -674,11 +701,23 @@ function Duel.Create(srcA, srcB, deckA, deckB)
     return duel
 end
 
-function Duel.Start(duelId)
+function Duel.Start(duelId, firstPlayer)
     local duel = Duel.Active[duelId]
     if not duel then
         return false, 'Duel not found'
     end
+
+    if duel.started then
+        return false, 'Duel already started'
+    end
+
+    firstPlayer = tonumber(firstPlayer) or 1
+    if firstPlayer ~= 1 and firstPlayer ~= 2 then
+        firstPlayer = 1
+    end
+
+    duel.status = "active"
+    duel.started = true
 
     drawCards(duel, 1, 4)
     drawCards(duel, 2, 4)
@@ -687,7 +726,8 @@ function Duel.Start(duelId)
     resetTurnFlags(duel.players[2])
 
     duel.phase = "draw"
-    duel.turnPlayer = 1
+    duel.turnPlayer = firstPlayer
+    duel.firstTurnPlayer = firstPlayer
     duel.turnNumber = 1
     duel.hasDrawnThisTurn = false
 
@@ -722,6 +762,8 @@ function Duel.AdvancePhase(src, duelId)
     elseif duel.phase == "battle" then
         duel.phase = "end"
         resetBattleFlags(duel.players[playerIndex])
+    elseif duel.phase == "discard" then
+        return false, 'Discard down to 9 cards before ending your turn'
     else
         return false, 'No further phase to advance'
     end
@@ -745,15 +787,53 @@ function Duel.EndTurn(src, duelId)
         return false, 'Not your turn'
     end
 
-    resetBattleFlags(duel.players[playerIndex])
+    local playerState = duel.players[playerIndex]
+    if #playerState.hand > 9 then
+        duel.phase = "discard"
+        sendDuelStateToPlayers(duel)
+        return true
+    end
 
-    duel.turnPlayer = getOpponentIndex(duel.turnPlayer)
-    duel.turnNumber = duel.turnNumber + 1
-    duel.phase = "draw"
-    duel.hasDrawnThisTurn = false
+    completeEndTurn(duel, playerIndex)
 
-    local turnPlayerState = duel.players[duel.turnPlayer]
-    resetTurnFlags(turnPlayerState)
+    sendDuelStateToPlayers(duel)
+    return true
+end
+
+function Duel.DiscardFromHand(src, duelId, handUid)
+    local duel = Duel.Active[duelId]
+    if not duel then
+        return false, 'Duel not found'
+    end
+
+    local playerIndex = getControllingPlayerIndex(duel, src)
+    if not playerIndex then
+        return false, 'Player not in duel'
+    end
+
+    if duel.turnPlayer ~= playerIndex then
+        return false, 'Not your turn'
+    end
+
+    if duel.phase ~= "discard" then
+        return false, 'You can only discard during discard cleanup'
+    end
+
+    local playerState = duel.players[playerIndex]
+    if #playerState.hand <= 9 then
+        return false, 'Your hand is already at 9 cards'
+    end
+
+    local _, handIndex = findCardInZoneByUid(playerState, "hand", handUid)
+    if not handIndex then
+        return false, 'Card not found in hand'
+    end
+
+    moveHandCardToGraveyard(playerState, handIndex)
+
+    if #playerState.hand <= 9 then
+        completeEndTurn(duel, playerIndex)
+    end
 
     sendDuelStateToPlayers(duel)
     return true

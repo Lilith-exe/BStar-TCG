@@ -79,6 +79,28 @@ RegisterNetEvent('bstar_cards:client:CloseDuelUi', function()
     CloseDuelUi()
 end)
 
+RegisterNetEvent('bstar_cards:client:OpenCoinFlip', function(data)
+    if not data or not data.duelId then return end
+
+    currentDuelId = data.duelId
+    duelUiOpen = false
+
+    SendNUIMessage({
+        action = 'openCoinFlip',
+        duelId = data.duelId,
+        tableMode = data.tableMode == true
+    })
+
+    ForceDuelFocus()
+end)
+
+RegisterNetEvent('bstar_cards:client:CoinFlipResult', function(data)
+    SendNUIMessage({
+        action = 'coinFlipResult',
+        result = data
+    })
+end)
+
 RegisterNetEvent('bstar_cards:client:BattleEvent', function(data)
     SendNUIMessage({
         action = 'battleEvent',
@@ -100,9 +122,30 @@ RegisterNUICallback('duelEndTurn', function(data, cb)
     cb({ ok = true })
 end)
 
+RegisterNUICallback('duelDiscardCard', function(data, cb)
+    if currentDuelId and data and data.handUid then
+        TriggerServerEvent('bstar_cards:server:DuelDiscardCard', currentDuelId, data.handUid)
+    end
+    cb({ ok = true })
+end)
+
 RegisterNUICallback('duelSurrender', function(data, cb)
     if currentDuelId then
         TriggerServerEvent('bstar_cards:server:DuelSurrender', currentDuelId)
+    end
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('duelChooseCoin', function(data, cb)
+    if currentDuelId and data and data.choice then
+        TriggerServerEvent('bstar_cards:server:DuelChooseCoin', currentDuelId, data.choice)
+    end
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('duelChooseTurnOrder', function(data, cb)
+    if currentDuelId and data and data.choice then
+        TriggerServerEvent('bstar_cards:server:DuelChooseTurnOrder', currentDuelId, data.choice)
     end
     cb({ ok = true })
 end)
@@ -210,7 +253,10 @@ CreateThread(function()
             DisableControlAction(0, 106, true)
 
             if IsControlJustReleased(0, 322) then -- ESC
-                CloseDuelUi()
+                SendNUIMessage({
+                    action = 'requestDuelSurrender'
+                })
+                ForceDuelFocus()
             end
         else
             Wait(250)

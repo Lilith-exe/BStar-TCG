@@ -716,6 +716,97 @@ local function GetDeckByIdForPlayer(source, deckBoxId, deckId, cb)
     end)
 end
 
+local function startDuelAfterCoin(duelId, firstPlayer, src, successMessage)
+    local ok, startErr = Duel.Start(duelId, firstPlayer)
+    print('[BStar Duel] Duel.Start after coin result:', ok, startErr)
+
+    if not ok then
+        TriggerClientEvent('QBCore:Notify', src, startErr or 'Failed to start duel.', 'error')
+        return false
+    end
+
+    TriggerClientEvent('QBCore:Notify', src, successMessage or 'Duel started.', 'success')
+    return true
+end
+
+local function openCoinFlipForDuel(src, duel, tableMode)
+    duel.coinFlip = {
+        chooser = 1,
+        starterSource = src
+    }
+
+    TriggerClientEvent('bstar_cards:client:OpenCoinFlip', src, {
+        duelId = duel.id,
+        tableMode = tableMode == true,
+        tableId = duel.tableId
+    })
+end
+
+RegisterNetEvent('bstar_cards:server:DuelChooseCoin', function(duelId, choice)
+    local src = source
+    local duel = Duel.GetById(duelId)
+    if not duel then
+        TriggerClientEvent('QBCore:Notify', src, 'Duel not found.', 'error')
+        return
+    end
+
+    if duel.started then
+        return
+    end
+
+    choice = tostring(choice or ''):lower()
+    if choice ~= 'heads' and choice ~= 'tails' then
+        TriggerClientEvent('QBCore:Notify', src, 'Pick heads or tails.', 'error')
+        return
+    end
+
+    local result = math.random(1, 2) == 1 and 'heads' or 'tails'
+    local playerWon = result == choice
+
+    duel.coinFlip = duel.coinFlip or {}
+    duel.coinFlip.choice = choice
+    duel.coinFlip.result = result
+    duel.coinFlip.playerWon = playerWon
+
+    TriggerClientEvent('bstar_cards:client:CoinFlipResult', src, {
+        choice = choice,
+        result = result,
+        playerWon = playerWon,
+        canChooseTurnOrder = playerWon
+    })
+
+    if not playerWon then
+        CreateThread(function()
+            Wait(1800)
+            if duel and not duel.started then
+                startDuelAfterCoin(duel.id, 2, src, 'Opponent won the toss and chose to go first.')
+            end
+        end)
+    end
+end)
+
+RegisterNetEvent('bstar_cards:server:DuelChooseTurnOrder', function(duelId, choice)
+    local src = source
+    local duel = Duel.GetById(duelId)
+    if not duel then
+        TriggerClientEvent('QBCore:Notify', src, 'Duel not found.', 'error')
+        return
+    end
+
+    if duel.started then
+        return
+    end
+
+    if not duel.coinFlip or duel.coinFlip.playerWon ~= true then
+        TriggerClientEvent('QBCore:Notify', src, 'You did not win the coin toss.', 'error')
+        return
+    end
+
+    choice = tostring(choice or ''):lower()
+    local firstPlayer = choice == 'second' and 2 or 1
+    startDuelAfterCoin(duel.id, firstPlayer, src, firstPlayer == 1 and 'You chose to go first.' or 'You chose to go second.')
+end)
+
 RegisterNetEvent('bstar_cards:server:StartTestDuel', function(deckBoxId, myDeckId, opponentDeckId)
     local src = source
 
@@ -751,15 +842,7 @@ RegisterNetEvent('bstar_cards:server:StartTestDuel', function(deckBoxId, myDeckI
 
             print('[BStar Duel] Duel created:', duel.id)
 
-            local ok, startErr = Duel.Start(duel.id)
-            if not ok then
-                print('[BStar Duel] Duel.Start failed:', startErr)
-                TriggerClientEvent('QBCore:Notify', src, startErr or 'Failed to start duel.', 'error')
-                return
-            end
-
-            print('[BStar Duel] Duel started successfully')
-            TriggerClientEvent('QBCore:Notify', src, 'Test duel started.', 'success')
+            openCoinFlipForDuel(src, duel, false)
         end)
     end)
 end)
@@ -803,15 +886,7 @@ RegisterNetEvent('bstar_cards:server:StartTableTestDuel', function(tableId, deck
             print('[BStar Table Duel] Sending camera event:', tableId)
             TriggerClientEvent('bstar_cards:client:EnterDuelTableView', src, tableId)
 
-            local ok, startErr = Duel.Start(duel.id)
-            print('[BStar Table Duel] Duel.Start result:', ok, startErr)
-
-            if not ok then
-                TriggerClientEvent('QBCore:Notify', src, startErr or 'Failed to start duel.', 'error')
-                return
-            end
-
-            TriggerClientEvent('QBCore:Notify', src, 'Table duel started.', 'success')
+            openCoinFlipForDuel(src, duel, true)
         end)
     end)
 end)
@@ -828,6 +903,15 @@ end)
 RegisterNetEvent('bstar_cards:server:DuelEndTurn', function(duelId)
     local src = source
     local ok, err = Duel.EndTurn(src, duelId)
+
+    if not ok and err then
+        TriggerClientEvent('QBCore:Notify', src, err, 'error')
+    end
+end)
+
+RegisterNetEvent('bstar_cards:server:DuelDiscardCard', function(duelId, handUid)
+    local src = source
+    local ok, err = Duel.DiscardFromHand(src, duelId, handUid)
 
     if not ok and err then
         TriggerClientEvent('QBCore:Notify', src, err, 'error')
