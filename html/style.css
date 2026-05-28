@@ -1439,6 +1439,81 @@ button:hover {
   animation: attackLineFlash 0.35s ease forwards;
 }
 
+.duel-result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  background: rgba(4, 8, 14, 0.34);
+}
+
+.duel-result-panel {
+  width: min(420px, calc(100vw - 48px));
+  padding: 26px 28px 24px;
+  border-radius: 8px;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(12, 20, 34, 0.95), rgba(7, 10, 18, 0.94));
+  border: 1px solid rgba(150, 220, 255, 0.24);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.48),
+    0 0 36px rgba(80, 200, 255, 0.14);
+}
+
+.duel-result-title {
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 0;
+  color: white;
+}
+
+.duel-result-overlay.victory .duel-result-title {
+  color: rgb(124, 255, 170);
+  text-shadow: 0 0 22px rgba(60, 255, 150, 0.5);
+}
+
+.duel-result-overlay.defeat .duel-result-title {
+  color: rgb(255, 95, 112);
+  text-shadow: 0 0 22px rgba(255, 70, 95, 0.46);
+}
+
+.duel-result-overlay.draw .duel-result-title {
+  color: rgb(255, 224, 130);
+  text-shadow: 0 0 22px rgba(255, 210, 80, 0.42);
+}
+
+.duel-result-reason {
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 800;
+  color: rgba(235, 245, 255, 0.9);
+}
+
+.duel-result-meta {
+  margin-top: 12px;
+  font-size: 13px;
+  color: rgba(210, 226, 242, 0.78);
+}
+
+.duel-result-close {
+  margin-top: 20px;
+  min-width: 132px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(130, 225, 255, 0.24);
+  background: rgba(16, 34, 48, 0.9);
+  color: white;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.duel-result-close:hover {
+  background: rgba(24, 54, 76, 0.94);
+}
+
 .duel-lp-wrap {
   position: absolute;
   left: 50%;

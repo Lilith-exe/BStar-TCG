@@ -95,6 +95,16 @@ const tableGraveList = document.getElementById('tableGraveList');
 const tableNextPhaseBtn = document.getElementById('tableNextPhaseBtn');
 const tableEndTurnBtn = document.getElementById('tableEndTurnBtn');
 const tableCloseBtn = document.getElementById('tableCloseBtn');
+const tableResultOverlay = document.getElementById('tableResultOverlay');
+const tableResultTitle = document.getElementById('tableResultTitle');
+const tableResultReason = document.getElementById('tableResultReason');
+const tableResultMeta = document.getElementById('tableResultMeta');
+const tableResultCloseBtn = document.getElementById('tableResultCloseBtn');
+const duelResultOverlay = document.getElementById('duelResultOverlay');
+const duelResultTitle = document.getElementById('duelResultTitle');
+const duelResultReason = document.getElementById('duelResultReason');
+const duelResultMeta = document.getElementById('duelResultMeta');
+const duelResultCloseBtn = document.getElementById('duelResultCloseBtn');
 
 // General state
 let activeModalAction = null;
@@ -1276,6 +1286,60 @@ function renderTableOpponentHandBacks() {
   }
 }
 
+function getDuelResultText() {
+  if (!currentDuelState || currentDuelState.status !== 'finished') {
+    return null;
+  }
+
+  let title = 'DEFEAT';
+  if (currentDuelState.winner === currentDuelState.viewerIndex) {
+    title = 'VICTORY';
+  } else if (currentDuelState.winner === 0) {
+    title = 'DRAW';
+  }
+
+  const reasonMap = {
+    life_points: 'Life Points depleted',
+    deck_out: 'Deck out',
+    draw: 'Draw'
+  };
+
+  const selfLp = currentDuelState.selfPlayer?.lifePoints ?? 0;
+  const opponentLp = currentDuelState.opponentPlayer?.lifePoints ?? 0;
+
+  return {
+    title,
+    reason: reasonMap[currentDuelState.winReason] || 'Duel finished',
+    meta: `Your LP ${selfLp} / Opponent LP ${opponentLp}`
+  };
+}
+
+function renderDuelResultOverlay() {
+  const result = getDuelResultText();
+  const overlay = duelTableMode ? tableResultOverlay : duelResultOverlay;
+  const titleEl = duelTableMode ? tableResultTitle : duelResultTitle;
+  const reasonEl = duelTableMode ? tableResultReason : duelResultReason;
+  const metaEl = duelTableMode ? tableResultMeta : duelResultMeta;
+  const otherOverlay = duelTableMode ? duelResultOverlay : tableResultOverlay;
+
+  otherOverlay?.classList.add('hidden');
+
+  if (!overlay || !result) {
+    tableResultOverlay?.classList.add('hidden');
+    duelResultOverlay?.classList.add('hidden');
+    return;
+  }
+
+  overlay.classList.remove('hidden');
+  overlay.classList.toggle('victory', result.title === 'VICTORY');
+  overlay.classList.toggle('defeat', result.title === 'DEFEAT');
+  overlay.classList.toggle('draw', result.title === 'DRAW');
+
+  if (titleEl) titleEl.textContent = result.title;
+  if (reasonEl) reasonEl.textContent = result.reason;
+  if (metaEl) metaEl.textContent = result.meta;
+}
+
 function renderTableDuelUi() {
   if (!currentDuelState) return;
 
@@ -1298,6 +1362,7 @@ function renderTableDuelUi() {
   renderTablePreview();
   renderTableGraveyard();
   renderTableOpponentHandBacks();
+  renderDuelResultOverlay();
 
   const oppZones = currentDuelState.opponentPlayer?.fighterZones || [null, null, null];
   const selfZones = currentDuelState.selfPlayer?.fighterZones || [null, null, null];
@@ -1537,6 +1602,8 @@ function closeDuelUi(notifyLua = true) {
   duelTableMode = false;
   tablePreviewCard = null;
   openTableGraveSide = null;
+  tableResultOverlay?.classList.add('hidden');
+  duelResultOverlay?.classList.add('hidden');
 
   duelWrap.classList.add('hidden');
   tableDuelWrap.classList.add('hidden');
@@ -1826,6 +1893,7 @@ function renderDuelUi() {
   renderOpponentZones();
   renderSelfZones();
   renderHand();
+  renderDuelResultOverlay();
 }
 
 function getZoneElement(side, zoneIndex) {
@@ -2304,6 +2372,18 @@ if (tableEndTurnBtn) {
 
 if (tableCloseBtn) {
   tableCloseBtn.addEventListener('click', () => {
+    closeDuelUi();
+  });
+}
+
+if (tableResultCloseBtn) {
+  tableResultCloseBtn.addEventListener('click', () => {
+    closeDuelUi();
+  });
+}
+
+if (duelResultCloseBtn) {
+  duelResultCloseBtn.addEventListener('click', () => {
     closeDuelUi();
   });
 }
