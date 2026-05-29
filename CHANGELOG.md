@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.2.18
 - Refined and optimised annimations
 - Switched to using thumbnails for hand and annimations (optimisation)
 
