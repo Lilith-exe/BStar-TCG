@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.2.16
 - Increased glow around selected attackers and potential promotion targets
 - Added 'Attacker' and 'Tribute' pills above targets
 - Added deckout lose condition
