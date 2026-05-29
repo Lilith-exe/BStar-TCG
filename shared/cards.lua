@@ -645,9 +645,9 @@ Cards = {
         inventoryImage = 'ALPH1-EN038_PADDY_SOULJA.png'
     },
 
-    ['ALPH1_EN039_LUKE_TAYLOR'] = {
-        id = 'ALPH1_EN039_LUKE_TAYLOR',
-        name = 'Luke Taylor',
+    ['ALPH1_EN039_BK'] = {
+        id = 'ALPH1_EN039_BK',
+        name = 'BK',
         rarity = 'COMMON',
         type = 'Fighter',
         job = '',
@@ -659,7 +659,7 @@ Cards = {
         effectText = 'Your opponent must do a mickey mouse impression, otherwise you gain +30 HP.',
         setCode = 'ALPH1-EN039',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN039_LUKE_TAYLOR.png'
+        inventoryImage = 'ALPH1-EN039_BK.png'
     },
 
     ['ALPH1_EN040_LUKE_TAYLOR'] = {
