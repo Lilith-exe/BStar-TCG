@@ -3,6 +3,7 @@
 ## Latest
 - Relabeled opponents deck and cemetary to better distinguish from your own
 - Added annimations for summoning, destroying and promoting
+- Adjusted deck and cemetery location
 
 ## v0.2.16
 - Increased glow around selected attackers and potential promotion targets

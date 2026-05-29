@@ -2029,23 +2029,23 @@ button:hover {
 }
 
 .table-card-pile.deck.opponent {
-  top: -2%;
+  top: -30%;
   left: -16%;
 }
 
 .table-card-pile.cemetery.opponent {
-  top: 34%;
+  top: 6%;
   left: -16%;
 }
 
 .table-card-pile.deck.self {
   right: -16%;
-  bottom: -2%;
+  bottom: -30%;
 }
 
 .table-card-pile.cemetery.self {
   right: -16%;
-  bottom: 34%;
+  bottom: 6%;
 }
 
 button.table-card-pile {
