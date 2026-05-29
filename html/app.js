@@ -153,6 +153,7 @@ let tablePreviewCard = null;
 let openTableGraveSide = null;
 let tableDrawAnimating = false;
 let tableZoneSnapshot = null;
+let tableGraveSnapshot = null;
 
 let builderFilters = {
   type: 'all',
@@ -1525,27 +1526,55 @@ function getTableCemeteryElementForSide(side) {
   return side === 'opponent' ? tableOpponentCemeterySlot : tableSelfCemeterySlot;
 }
 
+function getTableGraveSnapshotFromState(duelState) {
+  return {
+    self: duelState?.selfPlayer?.graveyardCount || 0,
+    opponent: duelState?.opponentPlayer?.graveyardCount || 0
+  };
+}
+
+function markTableCemeteryReceiving(side, duration = 720) {
+  const cemeteryEl = getTableCemeteryElementForSide(side);
+  if (!cemeteryEl) return;
+
+  cemeteryEl.classList.add('receiving-card');
+  setTimeout(() => {
+    cemeteryEl.classList.remove('receiving-card');
+  }, duration);
+}
+
 function animateTableCardTravel(fromEl, toEl, card, options = {}) {
   if (!fromEl || !toEl) return;
 
   const fromRect = fromEl.getBoundingClientRect();
   const toRect = toEl.getBoundingClientRect();
   const width = options.width || Math.min(Math.max(fromRect.width, 82), 150);
+  const duration = options.duration || 620;
   const ghost = document.createElement('div');
   ghost.className = `table-card-travel-ghost ${options.variant || ''}`.trim();
   ghost.style.left = `${fromRect.left + fromRect.width / 2}px`;
   ghost.style.top = `${fromRect.top + fromRect.height / 2}px`;
   ghost.style.width = `${width}px`;
+  ghost.style.animationDuration = `${duration}ms`;
   ghost.style.setProperty('--travel-dx', `${(toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2)}px`);
   ghost.style.setProperty('--travel-dy', `${(toRect.top + toRect.height / 2) - (fromRect.top + fromRect.height / 2)}px`);
 
+  if (options.variant === 'cemetery') {
+    toEl.classList.add('receiving-card');
+    setTimeout(() => toEl.classList.remove('receiving-card'), duration);
+  }
+
   const img = document.createElement('img');
-  img.src = card ? getCardImagePathFromPayload(card) : '';
+  img.src = card ? getThumbImagePath(card) : '';
+  img.onerror = () => {
+    img.onerror = null;
+    img.src = card ? getCardImagePathFromPayload(card) : '';
+  };
   img.alt = '';
   ghost.appendChild(img);
 
   document.body.appendChild(ghost);
-  setTimeout(() => ghost.remove(), options.duration || 620);
+  setTimeout(() => ghost.remove(), duration);
 }
 
 function canCurrentViewerDraw() {
@@ -1683,6 +1712,7 @@ function renderTableDuelUi() {
   if (!currentDuelState) return;
 
   const nextZoneSnapshot = getTableZoneSnapshotFromState(currentDuelState);
+  const nextGraveSnapshot = getTableGraveSnapshotFromState(currentDuelState);
 
   const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
   const isMainPhase = currentDuelState.phase === 'main';
@@ -1720,6 +1750,14 @@ function renderTableDuelUi() {
   tableHandRow.innerHTML = '';
   renderTablePreview();
   renderTableGraveyard();
+  if (tableGraveSnapshot) {
+    if (nextGraveSnapshot.self > tableGraveSnapshot.self) {
+      markTableCemeteryReceiving('self');
+    }
+    if (nextGraveSnapshot.opponent > tableGraveSnapshot.opponent) {
+      markTableCemeteryReceiving('opponent');
+    }
+  }
   renderTableOpponentHandBacks();
   renderDuelResultOverlay();
 
@@ -1896,6 +1934,7 @@ function renderTableDuelUi() {
   }
 
   tableZoneSnapshot = nextZoneSnapshot;
+  tableGraveSnapshot = nextGraveSnapshot;
 }
 
 function hideCard() {
@@ -1984,6 +2023,7 @@ function openDuelUi(duel, tableMode = false) {
   tablePreviewCard = null;
   openTableGraveSide = null;
   tableZoneSnapshot = null;
+  tableGraveSnapshot = null;
 
   console.log('[BStar NUI] openDuelUi tableMode:', tableMode);
 
@@ -2027,6 +2067,7 @@ function closeDuelUi(notifyLua = true) {
   openTableGraveSide = null;
   tableDrawAnimating = false;
   tableZoneSnapshot = null;
+  tableGraveSnapshot = null;
   tableResultOverlay?.classList.add('hidden');
   duelResultOverlay?.classList.add('hidden');
 

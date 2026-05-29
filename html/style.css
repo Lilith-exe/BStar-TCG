@@ -2098,6 +2098,14 @@ button.table-card-pile {
   opacity: 0;
 }
 
+.table-card-pile.receiving-card .table-pile-last-card {
+  opacity: 0;
+}
+
+.table-card-pile.receiving-card .table-pile-last-card:not(.hidden) + .table-pile-etched {
+  opacity: 1;
+}
+
 .table-card-pile.opponent .table-pile-last-card {
   transform: rotate(180deg);
 }
