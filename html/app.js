@@ -1284,6 +1284,30 @@ function isPromotionSummonableFighter(card) {
   return !!getPromotionTributeZoneIndex(card);
 }
 
+function hasOpenFighterZone(zones) {
+  for (let i = 0; i < 3; i++) {
+    if (!(zones || [])[i]) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function canPlayHandCard(card, canNormalSummon, selfZones) {
+  if (!canNormalSummon || !card) return false;
+  if (isPromotionSummonableFighter(card)) return true;
+  return isNormalSummonableFighter(card) && hasOpenFighterZone(selfZones);
+}
+
+function updateHpDisplay(el, value) {
+  if (!el) return;
+
+  const hp = Number(value) || 0;
+  el.textContent = hp;
+  el.classList.toggle('low-hp', hp > 0 && hp < 200);
+}
+
 function renderTableZone(card, side, zoneIndex) {
   const zone = document.createElement('div');
   zone.className = 'table-zone';
@@ -1546,7 +1570,7 @@ function getDuelResultText() {
   }
 
   const reasonMap = {
-    life_points: 'Life Points depleted',
+    life_points: 'HP depleted',
     deck_out: 'Deck out',
     draw: 'Draw',
     surrender: 'Surrender'
@@ -1558,7 +1582,7 @@ function getDuelResultText() {
   return {
     title,
     reason: reasonMap[currentDuelState.winReason] || 'Duel finished',
-    meta: `Your LP ${selfLp} / Opponent LP ${opponentLp}`
+    meta: `Your HP ${selfLp} / Opponent HP ${opponentLp}`
   };
 }
 
@@ -1615,8 +1639,8 @@ function renderTableDuelUi() {
     || currentDuelState.phase === 'discard';
   tableEndTurnBtn.disabled = !isMyTurn || currentDuelState.status !== 'active' || (isDiscardPhase && discardCount > 0);
 
-  tableSelfLP.textContent = currentDuelState.selfPlayer?.lifePoints ?? 0;
-  tableOpponentLP.textContent = currentDuelState.opponentPlayer?.lifePoints ?? 0;
+  updateHpDisplay(tableSelfLP, currentDuelState.selfPlayer?.lifePoints ?? 0);
+  updateHpDisplay(tableOpponentLP, currentDuelState.opponentPlayer?.lifePoints ?? 0);
   if (tableOpponentDeckCount) tableOpponentDeckCount.textContent = `DECK ${currentDuelState.opponentPlayer?.deckCount ?? 0}`;
   if (tableSelfDeckCount) tableSelfDeckCount.textContent = `DECK ${currentDuelState.selfPlayer?.deckCount ?? 0}`;
   if (tableOpponentCemeteryCount) tableOpponentCemeteryCount.textContent = `CEMETERY ${currentDuelState.opponentPlayer?.graveyardCount ?? 0}`;
@@ -1741,7 +1765,7 @@ function renderTableDuelUi() {
   for (const card of hand) {
     const div = document.createElement('div');
     div.className = 'table-hand-card';
-    const canSummonCard = canNormalSummon && (isNormalSummonableFighter(card) || isPromotionSummonableFighter(card));
+    const canSummonCard = canPlayHandCard(card, canNormalSummon, selfZones);
 
     if (canSummonCard) {
       div.classList.add('summonable');
@@ -2114,12 +2138,12 @@ function updateLifePointsDisplay() {
 
   if (displayedSelfLP === null) {
     displayedSelfLP = selfLP;
-    duelSelfLP.textContent = selfLP;
+    updateHpDisplay(duelSelfLP, selfLP);
   }
 
   if (displayedOpponentLP === null) {
     displayedOpponentLP = opponentLP;
-    duelOpponentLP.textContent = opponentLP;
+    updateHpDisplay(duelOpponentLP, opponentLP);
   }
 
   if (displayedSelfLP !== selfLP) {
@@ -2128,6 +2152,7 @@ function updateLifePointsDisplay() {
     animateNumber(old, selfLP, 450, (value) => {
       duelSelfLP.textContent = value;
     });
+    duelSelfLP.classList.toggle('low-hp', selfLP > 0 && selfLP < 200);
 
     if (selfLP < old) {
       triggerLPDamageEffect(duelSelfLP);
@@ -2142,6 +2167,7 @@ function updateLifePointsDisplay() {
     animateNumber(old, opponentLP, 450, (value) => {
       duelOpponentLP.textContent = value;
     });
+    duelOpponentLP.classList.toggle('low-hp', opponentLP > 0 && opponentLP < 200);
 
     if (opponentLP < old) {
       triggerLPDamageEffect(duelOpponentLP);
@@ -2159,11 +2185,12 @@ function renderHand() {
   const isMainPhase = currentDuelState?.phase === 'main';
   const isDiscardPhase = currentDuelState?.phase === 'discard';
   const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
+  const selfZones = currentDuelState?.selfPlayer?.fighterZones || [null, null, null];
 
   for (const card of hand) {
     const div = document.createElement('div');
     div.className = 'duel-hand-card';
-    const canSummonCard = canNormalSummon && (isNormalSummonableFighter(card) || isPromotionSummonableFighter(card));
+    const canSummonCard = canPlayHandCard(card, canNormalSummon, selfZones);
 
     if (canSummonCard) {
       div.classList.add('summonable');
@@ -2230,10 +2257,10 @@ function renderDuelUi() {
 
   duelOpponentDeckCount.textContent = `Deck: ${currentDuelState.opponentPlayer?.deckCount || 0}`;
   duelOpponentHandCount.textContent = `Hand: ${currentDuelState.opponentPlayer?.handCount || 0}`;
-  duelOpponentGraveCount.textContent = `GY: ${currentDuelState.opponentPlayer?.graveyardCount || 0} • LP: ${currentDuelState.opponentPlayer?.lifePoints || 0}`;
+  duelOpponentGraveCount.textContent = `GY: ${currentDuelState.opponentPlayer?.graveyardCount || 0} • HP: ${currentDuelState.opponentPlayer?.lifePoints || 0}`;
 
   duelSelfDeckCount.textContent = `Deck: ${currentDuelState.selfPlayer?.deckCount || 0}`;
-  duelSelfGraveCount.textContent = `GY: ${currentDuelState.selfPlayer?.graveyardCount || 0} • LP: ${currentDuelState.selfPlayer?.lifePoints || 0}`;
+  duelSelfGraveCount.textContent = `GY: ${currentDuelState.selfPlayer?.graveyardCount || 0} • HP: ${currentDuelState.selfPlayer?.lifePoints || 0}`;
 
   if (currentDuelState.status === 'finished') {
     if (currentDuelState.winner === currentDuelState.viewerIndex) {
