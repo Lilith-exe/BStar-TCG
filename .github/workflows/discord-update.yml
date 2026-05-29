@@ -17,15 +17,32 @@ jobs:
         run: |
           COMMITS=$(jq -r '.commits[] | "• " + .message' "$GITHUB_EVENT_PATH")
 
+          TIMESTAMP=$(date +"%d %B %Y %H:%M")
+
           PAYLOAD=$(jq -n \
             --arg commits "$COMMITS" \
             --arg author "${{ github.actor }}" \
+            --arg avatar "https://github.com/${{ github.actor }}.png" \
             --arg branch "${{ github.ref_name }}" \
+            --arg time "$TIMESTAMP" \
             '{
-              username: "B⭐TCG",
+              username: "LaylaBot",
+              avatar_url: "https://YOUR_LOGO_URL_HERE.png",
+
               embeds: [{
                 title: "BStar Cards Update",
-                color: 16763904,
+
+                color: 16738740,
+
+                author: {
+                  name: $author,
+                  icon_url: $avatar
+                },
+
+                thumbnail: {
+                  url: "https://cdn.discordapp.com/attachments/1475349571390410833/1509963533608288346/ChatGPT_Image_May_29_2026_05_53_59_PM.png?ex=6a1b16a0&is=6a19c520&hm=ae4a746beae4ffbd2d3ed89c241dd1d5ee8262984fbd0e65db46a3009c7387dd&"
+                },
+
                 fields: [
                   {
                     name: "Branch",
@@ -38,11 +55,9 @@ jobs:
                     inline: false
                   }
                 ],
+
                 footer: {
-                  text: "BStar Cards"
-                },
-                author: {
-                  name: $author
+                  text: ("BStar Cards • " + $time)
                 }
               }]
             }')
@@ -52,3 +67,5 @@ jobs:
             -X POST \
             -d "$PAYLOAD" \
             "$DISCORD_WEBHOOK"
+
+
