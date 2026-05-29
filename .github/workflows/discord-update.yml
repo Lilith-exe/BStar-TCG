@@ -27,7 +27,7 @@ jobs:
             --arg time "$TIMESTAMP" \
             '{
               username: "LaylaBot",
-              avatar_url: "https://YOUR_LOGO_URL_HERE.png",
+              avatar_url: "https://cdn.discordapp.com/attachments/1475349571390410833/1509964513850429692/tunerfest_2023-155.jpg?ex=6a1b1789&is=6a19c609&hm=008c181a7b0de1699292cb75aeba6d2461cb1f8ffda98de15b57ca03cfc8ff1f&",
 
               embeds: [{
                 title: "BStar Cards Update",
