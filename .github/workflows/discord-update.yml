@@ -35,10 +35,11 @@ jobs:
             exit 0
           fi
 
-          CURRENT_VERSION=$(cat VERSION)
+          CURRENT_VERSION=$(cat VERSION | tr -d 'v')
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
           NEXT_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
           echo "$NEXT_VERSION" > VERSION
+          DISPLAY_VERSION="v$NEXT_VERSION"
 
           TIMESTAMP=$(date +"%d %B %Y at %H:%M")
 
@@ -48,7 +49,7 @@ jobs:
             --arg avatar "https://github.com/${{ github.actor }}.png" \
             --arg branch "${{ github.ref_name }}" \
             --arg time "$TIMESTAMP" \
-            --arg version "v$NEXT_VERSION" \
+            --arg version "$DISPLAY_VERSION" \
             '{
               username: "LaylaBot",
               avatar_url: "https://cdn.discordapp.com/attachments/1475349571390410833/1509964513850429692/tunerfest_2023-155.jpg?ex=6a1b1789&is=6a19c609&hm=008c181a7b0de1699292cb75aeba6d2461cb1f8ffda98de15b57ca03cfc8ff1f&",
@@ -132,7 +133,7 @@ jobs:
           new_lines.extend(before_latest)
           new_lines.append("## Latest")
           new_lines.append("")
-          new_lines.append(f"## v{version}")
+          new_lines.append(f"## v{version.lstrip('v')}")
           new_lines.extend(latest_lines)
           new_lines.append("")
           new_lines.extend(after_latest)
@@ -144,5 +145,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add CHANGELOG.md VERSION
-          git commit -m "Update changelog for v$NEXT_VERSION [skip ci]"
+          git status
+          if git diff --cached --quiet; then
+            echo "No changelog/version changes to commit."
+          else
+            git commit -m "Update changelog for $DISPLAY_VERSION [skip ci]"
+            git push
+          fi
           git push
