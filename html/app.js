@@ -184,6 +184,14 @@ function getFullImagePath(card) {
   return `nui://bstar_cards/html/images/cards/${file}`;
 }
 
+function setCardThumbImage(img, card) {
+  img.src = getThumbImagePath(card);
+  img.onerror = () => {
+    img.onerror = null;
+    img.src = getCardImagePathFromPayload(card);
+  };
+}
+
 function getBaseScale() {
   return isZoomed ? 1.04 : 1.0;
 }
@@ -1908,7 +1916,7 @@ function renderTableDuelUi() {
     }
 
     const img = document.createElement('img');
-    img.src = getCardImagePathFromPayload(card);
+    setCardThumbImage(img, card);
     div.appendChild(img);
 
     div.addEventListener('click', () => {
@@ -2340,7 +2348,7 @@ function renderHand() {
     }
 
     const img = document.createElement('img');
-    img.src = getCardImagePathFromPayload(card);
+    setCardThumbImage(img, card);
 
     const name = document.createElement('div');
     name.className = 'duel-hand-card-name';
