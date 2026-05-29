@@ -5,32 +5,56 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   notify:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
 
     steps:
-      - name: Send Discord webhook
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Send Discord webhook and update changelog
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
 
         run: |
-          COMMITS=$(jq -r '.commits[] | "• " + .message' "$GITHUB_EVENT_PATH")
+          CHANGES=$(awk '
+            /^## Latest/ { found=1; next }
+            /^## / && found { exit }
+            found && NF { print }
+          ' CHANGELOG.md)
 
-          TIMESTAMP=$(date +"%d %B %Y %H:%M")
+          if [ -z "$CHANGES" ]; then
+            echo "No changes found under ## Latest. Skipping Discord post and changelog update."
+            exit 0
+          fi
+
+          CURRENT_VERSION=$(cat VERSION)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          NEXT_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          echo "$NEXT_VERSION" > VERSION
+
+          TIMESTAMP=$(date +"%d %B %Y at %H:%M")
 
           PAYLOAD=$(jq -n \
-            --arg commits "$COMMITS" \
+            --arg changes "$CHANGES" \
             --arg author "${{ github.actor }}" \
             --arg avatar "https://github.com/${{ github.actor }}.png" \
             --arg branch "${{ github.ref_name }}" \
             --arg time "$TIMESTAMP" \
+            --arg version "v$NEXT_VERSION" \
             '{
               username: "LaylaBot",
               avatar_url: "https://cdn.discordapp.com/attachments/1475349571390410833/1509964513850429692/tunerfest_2023-155.jpg?ex=6a1b1789&is=6a19c609&hm=008c181a7b0de1699292cb75aeba6d2461cb1f8ffda98de15b57ca03cfc8ff1f&",
 
               embeds: [{
-                title: "BStar Cards Update",
+                title: "BStar Cards Update " + $version,
 
                 color: 16738740,
 
@@ -50,8 +74,8 @@ jobs:
                     inline: false
                   },
                   {
-                    name: "Commits",
-                    value: $commits,
+                    name: "Changes",
+                    value: $changes,
                     inline: false
                   }
                 ],
@@ -68,4 +92,57 @@ jobs:
             -d "$PAYLOAD" \
             "$DISCORD_WEBHOOK"
 
+          python3 << 'PY'
+          from pathlib import Path
+          import os
 
+          changelog_path = Path("CHANGELOG.md")
+          version = Path("VERSION").read_text().strip()
+
+          text = changelog_path.read_text()
+          lines = text.splitlines()
+
+          latest_start = None
+          next_section = None
+
+          for i, line in enumerate(lines):
+              if line.strip() == "## Latest":
+                  latest_start = i
+                  continue
+
+              if latest_start is not None and i > latest_start and line.startswith("## "):
+                  next_section = i
+                  break
+
+          if latest_start is None:
+              raise SystemExit("Could not find ## Latest in CHANGELOG.md")
+
+          if next_section is None:
+              next_section = len(lines)
+
+          latest_lines = [
+              line for line in lines[latest_start + 1:next_section]
+              if line.strip()
+          ]
+
+          before_latest = lines[:latest_start]
+          after_latest = lines[next_section:]
+
+          new_lines = []
+          new_lines.extend(before_latest)
+          new_lines.append("## Latest")
+          new_lines.append("")
+          new_lines.append(f"## v{version}")
+          new_lines.extend(latest_lines)
+          new_lines.append("")
+          new_lines.extend(after_latest)
+
+          changelog_path.write_text("\n".join(new_lines).rstrip() + "\n")
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add CHANGELOG.md VERSION
+          git commit -m "Update changelog for v$NEXT_VERSION [skip ci]"
+          git push
