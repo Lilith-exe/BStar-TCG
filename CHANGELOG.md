@@ -1,8 +1,11 @@
 # BStar Cards Changelog
 
 ## Latest
+- Fixed Discord changelog automation
+- Fixedautomatic version bumping
+- Fixed changelog archival system
 
-## vv0.2.15
+## v0.2.14
 - Added Discord changelog automation
 - Added automatic version bumping
 - Added changelog archival system
