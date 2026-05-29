@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.2.17
 - Relabeled opponents deck and cemetary to better distinguish from your own
 - Added annimations for summoning, destroying and promoting
 - Adjusted deck and cemetery location
