@@ -862,6 +862,14 @@ function Duel.DrawForTurn(src, duelId)
         return false, 'You already drew this turn'
     end
 
+    local playerState = duel.players[playerIndex]
+    if not playerState or #playerState.deck == 0 then
+        loseByDeckOut(duel, playerIndex)
+        duel.hasDrawnThisTurn = true
+        sendDuelStateToPlayers(duel)
+        return true
+    end
+
     drawCards(duel, playerIndex, 1)
     duel.hasDrawnThisTurn = true
 

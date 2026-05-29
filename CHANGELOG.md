@@ -1,6 +1,10 @@
 # BStar Cards Changelog
 
 ## Latest
+- Increased glow around selected attackers and potential promotion targets
+- Added 'Attacker' and 'Tribute' pills above targets
+- Added deckout lose condition
+- Fixed opponents hand not showing the correct amount of cards
 
 ## v0.2.15
 - Fixed Discord changelog automation

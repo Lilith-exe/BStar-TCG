@@ -1334,6 +1334,10 @@ function renderTableZone(card, side, zoneIndex) {
   `;
   zone.appendChild(statStrip);
 
+  const stateLabel = document.createElement('div');
+  stateLabel.className = 'table-state-label';
+  zone.appendChild(stateLabel);
+
   zone.addEventListener('click', () => {
     setDuelPreviewCard(card);
   });
@@ -1471,7 +1475,7 @@ function renderTableGraveyard() {
 function renderTableOpponentHandBacks() {
   if (!tableOpponentHandBacks || !currentDuelState) return;
 
-  const count = Math.min(currentDuelState.opponentPlayer?.handCount || 0, 7);
+  const count = Math.min(currentDuelState.opponentPlayer?.handCount || 0, 9);
   tableOpponentHandBacks.innerHTML = '';
 
   for (let i = 0; i < count; i++) {
