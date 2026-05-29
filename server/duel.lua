@@ -559,6 +559,8 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
         targetZoneIndex = tonumber(targetZoneIndex) or 0,
         attackingPlayer = playerIndex,
         defendingPlayer = defenderIndex,
+        attackerCard = buildCardPayload(attackerCard),
+        defenderCard = nil,
         attackerDestroyed = false,
         defenderDestroyed = false,
         dodged = false,
@@ -605,6 +607,7 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
     if not defenderCard then
         return false, 'No defender in that zone'
     end
+    battleResult.defenderCard = buildCardPayload(defenderCard)
 
     local dodgeChance = calculateDodgeChance(attackerCard, defenderCard)
     local dodged = rollSuccess(dodgeChance)

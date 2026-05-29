@@ -152,6 +152,7 @@ let duelTableMode = false;
 let tablePreviewCard = null;
 let openTableGraveSide = null;
 let tableDrawAnimating = false;
+let tableZoneSnapshot = null;
 
 let builderFilters = {
   type: 'all',
@@ -1485,6 +1486,68 @@ function renderTableOpponentHandBacks() {
   }
 }
 
+function getTableZoneSnapshotFromState(duelState) {
+  const snapshot = {};
+  const selfZones = duelState?.selfPlayer?.fighterZones || [];
+  const oppZones = duelState?.opponentPlayer?.fighterZones || [];
+
+  for (let i = 0; i < 3; i++) {
+    snapshot[`self-${i + 1}`] = selfZones[i]?.uid || null;
+    snapshot[`opponent-${i + 1}`] = oppZones[i]?.uid || null;
+  }
+
+  return snapshot;
+}
+
+function addTableZoneTransitionClass(zone, side, zoneIndex, card) {
+  if (!tableZoneSnapshot) return;
+
+  const key = `${side}-${zoneIndex}`;
+  const previousUid = tableZoneSnapshot[key] || null;
+  const currentUid = card?.uid || null;
+
+  if (!currentUid && previousUid) {
+    zone.classList.add('zone-vacated');
+  }
+}
+
+function getTableHandCardElement(cardUid) {
+  const cards = tableHandRow?.querySelectorAll('.table-hand-card') || [];
+  for (const el of cards) {
+    if (el.dataset.cardUid === cardUid) {
+      return el;
+    }
+  }
+  return null;
+}
+
+function getTableCemeteryElementForSide(side) {
+  return side === 'opponent' ? tableOpponentCemeterySlot : tableSelfCemeterySlot;
+}
+
+function animateTableCardTravel(fromEl, toEl, card, options = {}) {
+  if (!fromEl || !toEl) return;
+
+  const fromRect = fromEl.getBoundingClientRect();
+  const toRect = toEl.getBoundingClientRect();
+  const width = options.width || Math.min(Math.max(fromRect.width, 82), 150);
+  const ghost = document.createElement('div');
+  ghost.className = `table-card-travel-ghost ${options.variant || ''}`.trim();
+  ghost.style.left = `${fromRect.left + fromRect.width / 2}px`;
+  ghost.style.top = `${fromRect.top + fromRect.height / 2}px`;
+  ghost.style.width = `${width}px`;
+  ghost.style.setProperty('--travel-dx', `${(toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2)}px`);
+  ghost.style.setProperty('--travel-dy', `${(toRect.top + toRect.height / 2) - (fromRect.top + fromRect.height / 2)}px`);
+
+  const img = document.createElement('img');
+  img.src = card ? getCardImagePathFromPayload(card) : '';
+  img.alt = '';
+  ghost.appendChild(img);
+
+  document.body.appendChild(ghost);
+  setTimeout(() => ghost.remove(), options.duration || 620);
+}
+
 function canCurrentViewerDraw() {
   return currentDuelState
     && currentDuelState.status === 'active'
@@ -1619,6 +1682,8 @@ function renderDuelResultOverlay() {
 function renderTableDuelUi() {
   if (!currentDuelState) return;
 
+  const nextZoneSnapshot = getTableZoneSnapshotFromState(currentDuelState);
+
   const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
   const isMainPhase = currentDuelState.phase === 'main';
   const isBattlePhase = currentDuelState.phase === 'battle';
@@ -1645,10 +1710,10 @@ function renderTableDuelUi() {
 
   updateHpDisplay(tableSelfLP, currentDuelState.selfPlayer?.lifePoints ?? 0);
   updateHpDisplay(tableOpponentLP, currentDuelState.opponentPlayer?.lifePoints ?? 0);
-  if (tableOpponentDeckCount) tableOpponentDeckCount.textContent = `DECK ${currentDuelState.opponentPlayer?.deckCount ?? 0}`;
-  if (tableSelfDeckCount) tableSelfDeckCount.textContent = `DECK ${currentDuelState.selfPlayer?.deckCount ?? 0}`;
-  if (tableOpponentCemeteryCount) tableOpponentCemeteryCount.textContent = `CEMETERY ${currentDuelState.opponentPlayer?.graveyardCount ?? 0}`;
-  if (tableSelfCemeteryCount) tableSelfCemeteryCount.textContent = `CEMETERY ${currentDuelState.selfPlayer?.graveyardCount ?? 0}`;
+  if (tableOpponentDeckCount) tableOpponentDeckCount.textContent = `OPPONENT DECK ${currentDuelState.opponentPlayer?.deckCount ?? 0}`;
+  if (tableSelfDeckCount) tableSelfDeckCount.textContent = `YOUR DECK ${currentDuelState.selfPlayer?.deckCount ?? 0}`;
+  if (tableOpponentCemeteryCount) tableOpponentCemeteryCount.textContent = `OPPONENT CEMETERY ${currentDuelState.opponentPlayer?.graveyardCount ?? 0}`;
+  if (tableSelfCemeteryCount) tableSelfCemeteryCount.textContent = `YOUR CEMETERY ${currentDuelState.selfPlayer?.graveyardCount ?? 0}`;
 
   tableOpponentZones.innerHTML = '';
   tableSelfZones.innerHTML = '';
@@ -1665,6 +1730,7 @@ function renderTableDuelUi() {
   for (let i = 0; i < 3; i++) {
     const card = oppZones[i] || null;
     const zone = renderTableZone(card, 'opponent', i + 1);
+    addTableZoneTransitionClass(zone, 'opponent', i + 1, card);
 
     if (selectedAttackerZoneIndex && canAttackThisTurn && card) {
       zone.classList.add('targetable');
@@ -1689,10 +1755,16 @@ function renderTableDuelUi() {
   for (let i = 0; i < 3; i++) {
     const card = selfZones[i] || null;
     const zone = renderTableZone(card, 'self', i + 1);
+    addTableZoneTransitionClass(zone, 'self', i + 1, card);
 
     if (!card && selectedHandCardUid && canNormalSummon && isNormalSummonableFighter(selectedHandCard)) {
       zone.classList.add('targetable');
       zone.addEventListener('click', () => {
+        animateTableCardTravel(getTableHandCardElement(selectedHandCardUid), zone, selectedHandCard, {
+          variant: 'summon',
+          width: 110
+        });
+
         fetch(`https://${GetParentResourceName()}/duelSummonFighter`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1709,6 +1781,15 @@ function renderTableDuelUi() {
     if (card && selectedHandCardUid && canNormalSummon && canPromoteFromTo(card, selectedHandCard)) {
       zone.classList.add('promote-target');
       zone.addEventListener('click', () => {
+        animateTableCardTravel(zone, tableSelfCemeterySlot, card, {
+          variant: 'cemetery',
+          width: 116
+        });
+        animateTableCardTravel(getTableHandCardElement(selectedHandCardUid), zone, selectedHandCard, {
+          variant: 'summon',
+          width: 110
+        });
+
         fetch(`https://${GetParentResourceName()}/duelPromoteFighter`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1769,6 +1850,7 @@ function renderTableDuelUi() {
   for (const card of hand) {
     const div = document.createElement('div');
     div.className = 'table-hand-card';
+    div.dataset.cardUid = card.uid;
     const canSummonCard = canPlayHandCard(card, canNormalSummon, selfZones);
 
     if (canSummonCard) {
@@ -1812,6 +1894,8 @@ function renderTableDuelUi() {
 
     tableHandRow.appendChild(div);
   }
+
+  tableZoneSnapshot = nextZoneSnapshot;
 }
 
 function hideCard() {
@@ -1899,6 +1983,7 @@ function openDuelUi(duel, tableMode = false) {
   duelTableMode = tableMode;
   tablePreviewCard = null;
   openTableGraveSide = null;
+  tableZoneSnapshot = null;
 
   console.log('[BStar NUI] openDuelUi tableMode:', tableMode);
 
@@ -1941,6 +2026,7 @@ function closeDuelUi(notifyLua = true) {
   tablePreviewCard = null;
   openTableGraveSide = null;
   tableDrawAnimating = false;
+  tableZoneSnapshot = null;
   tableResultOverlay?.classList.add('hidden');
   duelResultOverlay?.classList.add('hidden');
 
@@ -2389,6 +2475,21 @@ function pulseResolved(targetEl) {
   }, 350);
 }
 
+function animateDestroyedCardToCemetery(fromEl, side, card) {
+  if (!duelTableMode || !fromEl || !card) return;
+
+  const cemeteryEl = getTableCemeteryElementForSide(side);
+  if (!cemeteryEl) return;
+
+  setTimeout(() => {
+    animateTableCardTravel(fromEl, cemeteryEl, card, {
+      variant: 'cemetery',
+      width: 116,
+      duration: 680
+    });
+  }, 180);
+}
+
 function handleBattleEvent(result) {
   if (!result) return;
 
@@ -2430,12 +2531,14 @@ function handleBattleEvent(result) {
   }
 
   if (result.attackerDestroyed) {
+    animateDestroyedCardToCemetery(attackerEl, attackerSide, result.attackerCard);
     setTimeout(() => {
       flashDestroyed(attackerEl);
     }, 180);
   }
 
   if (result.defenderDestroyed) {
+    animateDestroyedCardToCemetery(targetEl, defenderSide, result.defenderCard);
     setTimeout(() => {
       flashDestroyed(targetEl);
     }, 180);
