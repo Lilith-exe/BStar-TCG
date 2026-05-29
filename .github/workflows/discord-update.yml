@@ -1,0 +1,54 @@
+name: Discord Repo Update
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Discord webhook
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+
+        run: |
+          COMMITS=$(jq -r '.commits[] | "• " + .message' "$GITHUB_EVENT_PATH")
+
+          PAYLOAD=$(jq -n \
+            --arg commits "$COMMITS" \
+            --arg author "${{ github.actor }}" \
+            --arg branch "${{ github.ref_name }}" \
+            '{
+              username: "B⭐TCG",
+              embeds: [{
+                title: "BStar Cards Update",
+                color: 16763904,
+                fields: [
+                  {
+                    name: "Branch",
+                    value: $branch,
+                    inline: false
+                  },
+                  {
+                    name: "Commits",
+                    value: $commits,
+                    inline: false
+                  }
+                ],
+                footer: {
+                  text: "BStar Cards"
+                },
+                author: {
+                  name: $author
+                }
+              }]
+            }')
+
+          curl \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK"
