@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+- Refined and optimised annimations
+- Switched to using thumbnails for hand and annimations (optimisation)
 
 ## v0.2.17
 - Relabeled opponents deck and cemetary to better distinguish from your own
