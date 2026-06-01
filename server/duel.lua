@@ -384,6 +384,11 @@ local function moveFieldCardToGraveyard(playerState, zoneIndex)
 end
 
 local function calculateDodgeChance(attackerCard, defenderCard)
+    -- Temporary dodge test override. Uncomment with DEBUG_DODGE_TEST in shared/cards.lua when needed.
+    -- if defenderCard and defenderCard.cardId == 'DEBUG_DODGE_TEST' then
+    --     return 95
+    -- end
+
     local attackerSPD = getCardStat(attackerCard, 'speed')
     local defenderSPD = getCardStat(defenderCard, 'speed')
     local diff = defenderSPD - attackerSPD
@@ -564,6 +569,7 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
         attackerDestroyed = false,
         defenderDestroyed = false,
         dodged = false,
+        dodgeChance = 0,
         damageToDefenderPlayer = 0,
         damageToAttackerPlayer = 0
     }
@@ -615,6 +621,7 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
     attackerCard.hasAttacked = true
     battleResult.targetZoneIndex = targetZoneIndex
     battleResult.dodged = dodged
+    battleResult.dodgeChance = dodgeChance
 
     if dodged then
         sendDuelStateToPlayers(duel)

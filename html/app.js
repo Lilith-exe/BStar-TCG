@@ -144,6 +144,9 @@ let selectedHubDeckId = null;
 let deckHubMode = 'manage';
 let pendingTableDuelId = null;
 let pendingCoinDuelId = null;
+let pendingCoinChoice = null;
+let coinResultTimer = null;
+let coinFlipStartedAt = 0;
 
 let currentDuelState = null;
 let selectedHandCardUid = null;
@@ -208,6 +211,7 @@ function resetTilt() {
 }
 
 function hideAll() {
+  clearCoinResultTimer();
   app.classList.add('hidden');
   viewerWrap.classList.add('hidden');
   deckboxWrap.classList.add('hidden');
@@ -334,14 +338,35 @@ function closeModal() {
   activeModalAction = null;
 }
 
+function clearCoinResultTimer() {
+  if (coinResultTimer) {
+    clearTimeout(coinResultTimer);
+    coinResultTimer = null;
+  }
+}
+
+function setCoinChoiceButtonsDisabled(disabled) {
+  coinHeadsBtn.disabled = disabled;
+  coinTailsBtn.disabled = disabled;
+}
+
+function resetCoinDisc() {
+  clearCoinResultTimer();
+  pendingCoinChoice = null;
+  coinFlipStartedAt = 0;
+  coinDisc.dataset.face = 'CALL';
+  coinDisc.textContent = '';
+  coinDisc.classList.remove('called-heads', 'called-tails', 'flipping', 'resolving', 'heads', 'tails');
+  setCoinChoiceButtonsDisabled(false);
+}
+
 function openCoinFlip(data) {
   hideAll();
   pendingCoinDuelId = data?.duelId || null;
 
   app.classList.remove('hidden');
   coinFlipWrap.classList.remove('hidden');
-  coinDisc.textContent = '?';
-  coinDisc.classList.remove('flipping', 'heads', 'tails');
+  resetCoinDisc();
   coinFlipTitle.textContent = 'Call the Toss';
   coinFlipText.textContent = 'Choose heads or tails.';
   coinChoiceActions.classList.remove('hidden');
@@ -351,7 +376,14 @@ function openCoinFlip(data) {
 function sendCoinChoice(choice) {
   if (!pendingCoinDuelId) return;
 
-  coinDisc.classList.add('flipping');
+  clearCoinResultTimer();
+  pendingCoinChoice = choice;
+  coinFlipStartedAt = performance.now();
+  coinDisc.dataset.face = choice === 'heads' ? 'HEADS' : 'TAILS';
+  coinDisc.textContent = '';
+  coinDisc.classList.remove('heads', 'tails', 'resolving', 'called-heads', 'called-tails');
+  coinDisc.classList.add(`called-${choice}`, 'flipping');
+  setCoinChoiceButtonsDisabled(true);
   coinChoiceActions.classList.add('hidden');
   coinFlipTitle.textContent = 'Flipping...';
   coinFlipText.textContent = `You called ${choice}.`;
@@ -366,16 +398,33 @@ function sendCoinChoice(choice) {
 function showCoinFlipResult(result) {
   if (!result) return;
 
-  coinDisc.classList.remove('flipping', 'heads', 'tails');
-  coinDisc.classList.add(result.result);
-  coinDisc.textContent = result.result === 'heads' ? 'H' : 'T';
-  coinFlipTitle.textContent = result.playerWon ? 'You won the toss' : 'Opponent won the toss';
-  coinFlipText.textContent = result.playerWon
-    ? 'Choose who takes the first turn.'
-    : 'Opponent chooses to go first.';
-
   coinChoiceActions.classList.add('hidden');
-  turnChoiceActions.classList.toggle('hidden', !result.canChooseTurnOrder);
+  turnChoiceActions.classList.add('hidden');
+  coinFlipTitle.textContent = 'Flipping...';
+  coinFlipText.textContent = pendingCoinChoice
+    ? `You called ${pendingCoinChoice}.`
+    : 'The coin is in the air.';
+
+  clearCoinResultTimer();
+  const elapsed = coinFlipStartedAt ? performance.now() - coinFlipStartedAt : 0;
+  const revealDelay = Math.max(0, 1280 - elapsed);
+  coinResultTimer = setTimeout(() => {
+    coinResultTimer = null;
+    const resultFace = result.result === 'heads' ? 'HEADS' : 'TAILS';
+
+    coinDisc.dataset.face = resultFace;
+    coinDisc.textContent = '';
+    coinDisc.classList.remove('called-heads', 'called-tails', 'flipping', 'resolving', 'heads', 'tails');
+    void coinDisc.offsetWidth;
+    coinDisc.classList.add('resolving', result.result);
+
+    coinFlipTitle.textContent = result.playerWon ? 'You won the toss' : 'Opponent won the toss';
+    coinFlipText.textContent = result.playerWon
+      ? 'Choose who takes the first turn.'
+      : 'Opponent chooses to go first.';
+
+    turnChoiceActions.classList.toggle('hidden', !result.canChooseTurnOrder);
+  }, revealDelay);
 }
 
 function chooseTurnOrder(choice) {
@@ -2478,6 +2527,22 @@ function spawnDamageNumberOnElement(targetEl, amount) {
   spawnDamageNumberAt(rect.left + rect.width / 2, rect.top + rect.height / 2, amount);
 }
 
+function spawnDodgeCalloutOnElement(targetEl, cardName) {
+  if (!targetEl) return;
+
+  const rect = targetEl.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'dodge-callout';
+  el.textContent = `${cardName || 'Card'} dodged the attack!`;
+  el.style.left = `${rect.left + rect.width / 2}px`;
+  el.style.top = `${Math.max(48, rect.top - 18)}px`;
+  document.body.appendChild(el);
+
+  setTimeout(() => {
+    el.remove();
+  }, 1800);
+}
+
 function animateAttackLine(fromEl, toEl) {
   if (!fromEl || !toEl) return;
 
@@ -2556,6 +2621,11 @@ function handleBattleEvent(result) {
 
   if (attackerEl && targetEl) {
     animateAttackLine(attackerEl, targetEl);
+  }
+
+  if (result.dodged) {
+    spawnDodgeCalloutOnElement(targetEl, result.defenderCard?.name);
+    return;
   }
 
   if (attackerEl) {
@@ -2857,7 +2927,7 @@ if (duelEndTurnBtn) {
 
 if (duelCloseBtn) {
   duelCloseBtn.addEventListener('click', () => {
-    closeDuelUi();
+    requestDuelSurrender();
   });
 }
 
@@ -2927,7 +2997,7 @@ if (tableDuelWrap) {
 
 if (tableCloseBtn) {
   tableCloseBtn.addEventListener('click', () => {
-    closeDuelUi();
+    requestDuelSurrender();
   });
 }
 

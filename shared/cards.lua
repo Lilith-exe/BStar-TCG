@@ -745,5 +745,23 @@ Cards = {
         setCode = 'ALPH1-EN044',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN044_MATT_JACKSON.png'
-    }
+    },
+
+    -- Temporary dodge test card. Uncomment when testing SPD evasion feedback.
+    -- ['DEBUG_DODGE_TEST'] = {
+    --     id = 'DEBUG_DODGE_TEST',
+    --     name = 'Debug Dodge Test',
+    --     rarity = 'COMMON',
+    --     type = 'Fighter',
+    --     job = 'Debug',
+    --     level = 'LEVEL 1',
+    --     speed = 'SPD: 99',
+    --     attack = 'ATK: 1',
+    --     defense = 'DEF: 1',
+    --     effectTitle = 'DEBUG CARD',
+    --     effectText = 'Temporary test card for checking SPD dodge feedback. Remove before release.',
+    --     setCode = 'DEBUG-001',
+    --     edition = 'Test',
+    --     inventoryImage = 'ALPH1-EN001_LAYLA_HART.png'
+    -- }
 }
