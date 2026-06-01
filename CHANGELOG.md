@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.2.19
 - Changed coin flip animation (placeholder, will be replaced with 3d modeled animation later)
 - Routed close button to same surrender prompt as esc button
 - Added a dodge callout when SPD evasion successfully avoids an attack
