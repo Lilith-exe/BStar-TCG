@@ -34,12 +34,12 @@ jobs:
             echo "No changes found under ## Latest. Skipping Discord post and changelog update."
             exit 0
           fi
-
           CURRENT_VERSION=$(cat VERSION | tr -d 'v')
+          DISPLAY_VERSION="v$CURRENT_VERSION"
+
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
           NEXT_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
           echo "$NEXT_VERSION" > VERSION
-          DISPLAY_VERSION="v$NEXT_VERSION"
 
           TIMESTAMP=$(date +"%d %B %Y at %H:%M")
 

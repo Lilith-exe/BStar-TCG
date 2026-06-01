@@ -1,8 +1,6 @@
 # BStar Cards Changelog
 
 ## Latest
-
-## v0.2.21
 - Added first-pass non-fighter zone plumbing for item, event, location and vehicle/equipment cards
 - Added temporary non-fighter debug cards for testing zone movement
 - Adjusted support-zone layout and changed event cards to use an Activate pill before resolving
