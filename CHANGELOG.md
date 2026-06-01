@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.3.1
 - Fixed YAML
 
 ## v0.3.0
