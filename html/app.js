@@ -93,6 +93,12 @@ const tableOpponentDeckSlot = document.getElementById('tableOpponentDeckSlot');
 const tableSelfDeckSlot = document.getElementById('tableSelfDeckSlot');
 const tableOpponentZones = document.getElementById('tableOpponentZones');
 const tableSelfZones = document.getElementById('tableSelfZones');
+const tableOpponentItemRow = document.querySelector('.table-item-row.opponent');
+const tableSelfItemRow = document.querySelector('.table-item-row.self');
+const tableOpponentEquipRow = document.querySelector('.table-equip-row.opponent');
+const tableSelfEquipRow = document.querySelector('.table-equip-row.self');
+const tableOpponentLocationSlot = document.querySelector('.table-location-slot.opponent');
+const tableSelfLocationSlot = document.querySelector('.table-location-slot.self');
 const tableHandRow = document.getElementById('tableHandRow');
 const tableDrawPrompt = document.getElementById('tableDrawPrompt');
 const tablePreviewPanel = document.getElementById('tablePreviewPanel');
@@ -1308,6 +1314,27 @@ function isNormalSummonableFighter(card) {
   return type === 'FIGHTER' && getCardLevelNumber(card) === 1;
 }
 
+function getCardType(card) {
+  return String(card?.type || '').trim().toUpperCase();
+}
+
+function isItemZoneCard(card) {
+  return getCardType(card) === 'ITEM';
+}
+
+function isEquipmentZoneCard(card) {
+  const type = getCardType(card);
+  return type === 'VEHICLE' || type === 'WEAPON' || type === 'EQUIPMENT';
+}
+
+function isLocationCard(card) {
+  return getCardType(card) === 'LOCATION';
+}
+
+function isEventCard(card) {
+  return getCardType(card) === 'EVENT';
+}
+
 function normalizePromotionName(card) {
   return String(card?.name || '').trim().replace(/\s+/g, ' ').toLowerCase();
 }
@@ -1353,8 +1380,10 @@ function hasOpenFighterZone(zones) {
   return false;
 }
 
-function canPlayHandCard(card, canNormalSummon, selfZones) {
-  if (!canNormalSummon || !card) return false;
+function canPlayHandCard(card, canNormalSummon, selfZones, canPlayNonFighter = false) {
+  if (!card) return false;
+  if (isItemZoneCard(card) || isEquipmentZoneCard(card) || isLocationCard(card) || isEventCard(card)) return canPlayNonFighter;
+  if (!canNormalSummon) return false;
   if (isPromotionSummonableFighter(card)) return true;
   return isNormalSummonableFighter(card) && hasOpenFighterZone(selfZones);
 }
@@ -1367,11 +1396,26 @@ function updateHpDisplay(el, value) {
   el.classList.toggle('low-hp', hp > 0 && hp < 200);
 }
 
-function renderTableZone(card, side, zoneIndex) {
+function renderTableZone(card, side, zoneIndex, equipmentCard = null) {
   const zone = document.createElement('div');
   zone.className = 'table-zone';
   zone.dataset.side = side;
   zone.dataset.zoneIndex = String(zoneIndex);
+
+  if (equipmentCard) {
+    const equipment = document.createElement('button');
+    equipment.className = 'table-equipped-card';
+    equipment.type = 'button';
+    equipment.addEventListener('click', (event) => {
+      event.stopPropagation();
+      setDuelPreviewCard(equipmentCard);
+    });
+
+    const equipmentImg = document.createElement('img');
+    setCardThumbImage(equipmentImg, equipmentCard);
+    equipment.appendChild(equipmentImg);
+    zone.appendChild(equipment);
+  }
 
   if (!card) {
     zone.classList.add('empty');
@@ -1402,6 +1446,103 @@ function renderTableZone(card, side, zoneIndex) {
   });
 
   return zone;
+}
+
+function renderTableSupportZone(card, side, kind, zoneIndex, targetable = false) {
+  const zone = document.createElement('div');
+  zone.className = `table-support-slot ${kind}`;
+  zone.dataset.side = side;
+  zone.dataset.kind = kind;
+  zone.dataset.zoneIndex = String(zoneIndex || 0);
+
+  if (!card) {
+    zone.classList.add('empty');
+    const label = document.createElement('div');
+    label.className = 'table-support-label';
+    label.textContent = kind === 'location' ? 'LOC' : kind === 'equipment' ? 'EQP' : 'ITEM';
+    zone.appendChild(label);
+  } else {
+    zone.classList.add('occupied');
+    const img = document.createElement('img');
+    setCardThumbImage(img, card);
+    zone.appendChild(img);
+
+    zone.addEventListener('click', (event) => {
+      event.stopPropagation();
+      setDuelPreviewCard(card);
+    });
+  }
+
+  if (targetable) {
+    zone.classList.add('targetable');
+  }
+
+  return zone;
+}
+
+function renderTableSupportRow(rowEl, cards, side, kind, selectedCard, canPlayNonFighter) {
+  if (!rowEl) return;
+
+  rowEl.innerHTML = '';
+  const count = kind === 'equipment' ? 3 : 4;
+  const hasCards = (cards || []).some(Boolean);
+  const hasSelectedTarget = kind === 'item' ? isItemZoneCard(selectedCard) : isEquipmentZoneCard(selectedCard);
+
+  rowEl.classList.toggle('has-cards', hasCards);
+  rowEl.classList.toggle('selecting', side === 'self' && canPlayNonFighter && hasSelectedTarget);
+
+  for (let i = 0; i < count; i++) {
+    const card = cards?.[i] || null;
+    const canTarget = side === 'self'
+      && canPlayNonFighter
+      && !card
+      && ((kind === 'item' && isItemZoneCard(selectedCard)) || (kind === 'equipment' && isEquipmentZoneCard(selectedCard)));
+
+    const slot = renderTableSupportZone(card, side, kind, i + 1, canTarget);
+
+    if (canTarget) {
+      slot.addEventListener('click', (event) => {
+        event.stopPropagation();
+        playSelectedNonFighter(kind, i + 1);
+      });
+    }
+
+    rowEl.appendChild(slot);
+  }
+}
+
+function renderTableLocationSlot(slotEl, card, side, selectedCard, canPlayNonFighter) {
+  if (!slotEl) return;
+
+  slotEl.innerHTML = '';
+  const canTarget = side === 'self' && canPlayNonFighter && !card && isLocationCard(selectedCard);
+  const slot = renderTableSupportZone(card, side, 'location', 1, canTarget);
+
+  if (canTarget) {
+    slot.addEventListener('click', (event) => {
+      event.stopPropagation();
+      playSelectedNonFighter('location', 1);
+    });
+  }
+
+  slotEl.appendChild(slot);
+}
+
+function playSelectedNonFighter(targetKind, zoneIndex = 0) {
+  const card = getSelfHandCardByUid(selectedHandCardUid);
+  if (!card) return;
+
+  fetch(`https://${GetParentResourceName()}/duelPlayNonFighter`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      handUid: selectedHandCardUid,
+      targetKind,
+      zoneIndex
+    })
+  });
+
+  selectedHandCardUid = null;
 }
 
 function closeTableGraveyard() {
@@ -1695,7 +1836,11 @@ function reconcileDuelSelections() {
   const isBattlePhase = currentDuelState.phase === 'battle';
   const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState.turnNumber === 1 && currentDuelState.firstTurnPlayer === currentDuelState.viewerIndex);
 
-  if (!isMyTurn || !isMainPhase || currentDuelState.selfPlayer?.hasSummonedThisTurn) {
+  const selectedHandCard = getSelfHandCardByUid(selectedHandCardUid);
+  const selectedNonFighter = selectedHandCard
+    && (isItemZoneCard(selectedHandCard) || isEquipmentZoneCard(selectedHandCard) || isLocationCard(selectedHandCard) || isEventCard(selectedHandCard));
+
+  if (!isMyTurn || !isMainPhase || (currentDuelState.selfPlayer?.hasSummonedThisTurn && !selectedNonFighter)) {
     selectedHandCardUid = null;
   }
 
@@ -1781,6 +1926,7 @@ function renderTableDuelUi() {
   const handSize = currentDuelState.selfPlayer?.hand?.length || 0;
   const discardCount = Math.max(0, handSize - 9);
   const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
+  const canPlayNonFighter = isMyTurn && isMainPhase;
   const canDraw = canCurrentViewerDraw();
 
   tablePhaseBadge.textContent = `${String(currentDuelState.phase || 'draw').toUpperCase()} PHASE`;
@@ -1820,11 +1966,20 @@ function renderTableDuelUi() {
 
   const oppZones = currentDuelState.opponentPlayer?.fighterZones || [null, null, null];
   const selfZones = currentDuelState.selfPlayer?.fighterZones || [null, null, null];
+  const oppEquipmentZones = currentDuelState.opponentPlayer?.equipmentZones || [null, null, null];
+  const selfEquipmentZones = currentDuelState.selfPlayer?.equipmentZones || [null, null, null];
   const selectedHandCard = getSelfHandCardByUid(selectedHandCardUid);
+
+  renderTableSupportRow(tableOpponentItemRow, currentDuelState.opponentPlayer?.itemZones || [], 'opponent', 'item', null, false);
+  renderTableSupportRow(tableSelfItemRow, currentDuelState.selfPlayer?.itemZones || [], 'self', 'item', selectedHandCard, canPlayNonFighter);
+  renderTableSupportRow(tableOpponentEquipRow, [], 'opponent', 'equipment', null, false);
+  renderTableSupportRow(tableSelfEquipRow, [], 'self', 'equipment', null, false);
+  renderTableLocationSlot(tableOpponentLocationSlot, currentDuelState.opponentPlayer?.locationZone || null, 'opponent', null, false);
+  renderTableLocationSlot(tableSelfLocationSlot, currentDuelState.selfPlayer?.locationZone || null, 'self', selectedHandCard, canPlayNonFighter);
 
   for (let i = 0; i < 3; i++) {
     const card = oppZones[i] || null;
-    const zone = renderTableZone(card, 'opponent', i + 1);
+    const zone = renderTableZone(card, 'opponent', i + 1, oppEquipmentZones[i] || null);
     addTableZoneTransitionClass(zone, 'opponent', i + 1, card);
 
     if (selectedAttackerZoneIndex && canAttackThisTurn && card) {
@@ -1849,8 +2004,19 @@ function renderTableDuelUi() {
 
   for (let i = 0; i < 3; i++) {
     const card = selfZones[i] || null;
-    const zone = renderTableZone(card, 'self', i + 1);
+    const zone = renderTableZone(card, 'self', i + 1, selfEquipmentZones[i] || null);
     addTableZoneTransitionClass(zone, 'self', i + 1, card);
+
+    if (card && selectedHandCardUid && canPlayNonFighter && isEquipmentZoneCard(selectedHandCard) && !selfEquipmentZones[i]) {
+      zone.classList.add('equip-target');
+      zone.addEventListener('click', () => {
+        animateTableCardTravel(getTableHandCardElement(selectedHandCardUid), zone, selectedHandCard, {
+          variant: 'summon',
+          width: 104
+        });
+        playSelectedNonFighter('equipment', i + 1);
+      });
+    }
 
     if (!card && selectedHandCardUid && canNormalSummon && isNormalSummonableFighter(selectedHandCard)) {
       zone.classList.add('targetable');
@@ -1946,7 +2112,7 @@ function renderTableDuelUi() {
     const div = document.createElement('div');
     div.className = 'table-hand-card';
     div.dataset.cardUid = card.uid;
-    const canSummonCard = canPlayHandCard(card, canNormalSummon, selfZones);
+    const canSummonCard = canPlayHandCard(card, canNormalSummon, selfZones, canPlayNonFighter);
 
     if (canSummonCard) {
       div.classList.add('summonable');
@@ -1962,6 +2128,19 @@ function renderTableDuelUi() {
 
     if (selectedHandCardUid === card.uid) {
       div.classList.add('selected');
+    }
+
+    if (selectedHandCardUid === card.uid && isEventCard(card) && canPlayNonFighter) {
+      div.classList.add('event-selected');
+      const activate = document.createElement('button');
+      activate.className = 'table-event-activate-pill';
+      activate.type = 'button';
+      activate.textContent = 'ACTIVATE';
+      activate.addEventListener('click', (event) => {
+        event.stopPropagation();
+        playSelectedNonFighter('event', 0);
+      });
+      div.appendChild(activate);
     }
 
     const img = document.createElement('img');

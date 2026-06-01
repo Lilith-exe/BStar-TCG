@@ -747,6 +747,74 @@ Cards = {
         inventoryImage = 'ALPH1-EN044_MATT_JACKSON.png'
     },
 
+    ['DEBUG_ITEM_TEST'] = {
+        id = 'DEBUG_ITEM_TEST',
+        name = 'Debug Item Test',
+        rarity = 'COMMON',
+        type = 'Item',
+        job = 'Debug',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'DEBUG CARD',
+        effectText = 'Temporary item card for testing non-fighter zone plumbing.',
+        setCode = 'DEBUG-ITEM',
+        edition = 'Test',
+        inventoryImage = 'ALPH1-EN001_LAYLA_HART.png'
+    },
+
+    ['DEBUG_EVENT_TEST'] = {
+        id = 'DEBUG_EVENT_TEST',
+        name = 'Debug Event Test',
+        rarity = 'COMMON',
+        type = 'Event',
+        job = 'Debug',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'DEBUG CARD',
+        effectText = 'Temporary event card for testing play-to-cemetery plumbing.',
+        setCode = 'DEBUG-EVENT',
+        edition = 'Test',
+        inventoryImage = 'ALPH1-EN001_LAYLA_HART.png'
+    },
+
+    ['DEBUG_LOCATION_TEST'] = {
+        id = 'DEBUG_LOCATION_TEST',
+        name = 'Debug Location Test',
+        rarity = 'COMMON',
+        type = 'Location',
+        job = 'Debug',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'DEBUG CARD',
+        effectText = 'Temporary location card for testing location zone plumbing.',
+        setCode = 'DEBUG-LOC',
+        edition = 'Test',
+        inventoryImage = 'ALPH1-EN001_LAYLA_HART.png'
+    },
+
+    ['DEBUG_VEHICLE_TEST'] = {
+        id = 'DEBUG_VEHICLE_TEST',
+        name = 'Debug Vehicle Test',
+        rarity = 'COMMON',
+        type = 'Vehicle',
+        job = 'Debug',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'DEBUG CARD',
+        effectText = 'Temporary vehicle card for testing equipment zone plumbing.',
+        setCode = 'DEBUG-VEHICLE',
+        edition = 'Test',
+        inventoryImage = 'ALPH1-EN001_LAYLA_HART.png'
+    },
+
     -- Temporary dodge test card. Uncomment when testing SPD evasion feedback.
     -- ['DEBUG_DODGE_TEST'] = {
     --     id = 'DEBUG_DODGE_TEST',

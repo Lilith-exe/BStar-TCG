@@ -162,6 +162,33 @@ local function buildZonePayload(zone)
     return payload
 end
 
+local function buildFixedZonePayload(zone, count)
+    local payload = {}
+
+    for i = 1, count do
+        if zone and zone[i] then
+            payload[i] = buildCardPayload(zone[i])
+        else
+            payload[i] = nil
+        end
+    end
+
+    return payload
+end
+
+local function getCardTypeValue(card)
+    local def = card and getCardDefinition(card.cardId) or nil
+    return string.upper(tostring(def and def.type or ''))
+end
+
+local function isItemZoneCardType(cardType)
+    return cardType == 'ITEM'
+end
+
+local function isEquipmentZoneCardType(cardType)
+    return cardType == 'VEHICLE' or cardType == 'WEAPON' or cardType == 'EQUIPMENT'
+end
+
 local function loseByDeckOut(duel, playerIndex)
     duel.status = "finished"
     duel.winner = getOpponentIndex(playerIndex)
@@ -241,8 +268,9 @@ local function buildPrivateStateForPlayer(duel, viewerIndex)
             deckCount = #selfState.deck,
             hand = buildCardPayloadList(selfState.hand),
             graveyardCount = #selfState.graveyard,
-            fighterZones = buildZonePayload(selfState.fighterZones),
-            itemZones = buildZonePayload(selfState.itemZones),
+            fighterZones = buildFixedZonePayload(selfState.fighterZones, 3),
+            itemZones = buildFixedZonePayload(selfState.itemZones, 4),
+            equipmentZones = buildFixedZonePayload(selfState.equipmentZones, 3),
             locationZone = selfState.locationZone and buildCardPayload(selfState.locationZone) or nil,
             hasSummonedThisTurn = selfState.hasSummonedThisTurn,
             lifePoints = selfState.lifePoints,
@@ -254,8 +282,9 @@ local function buildPrivateStateForPlayer(duel, viewerIndex)
             deckCount = #oppState.deck,
             handCount = #oppState.hand,
             graveyardCount = #oppState.graveyard,
-            fighterZones = buildZonePayload(oppState.fighterZones),
-            itemZones = buildZonePayload(oppState.itemZones),
+            fighterZones = buildFixedZonePayload(oppState.fighterZones, 3),
+            itemZones = buildFixedZonePayload(oppState.itemZones, 4),
+            equipmentZones = buildFixedZonePayload(oppState.equipmentZones, 3),
             locationZone = oppState.locationZone and buildCardPayload(oppState.locationZone) or nil,
             hasSummonedThisTurn = oppState.hasSummonedThisTurn,
             lifePoints = oppState.lifePoints,
@@ -304,7 +333,8 @@ local function createPlayerState(src, ownerIndex, deckId, deckName, deckData)
         graveyard = {},
         banished = {},
         fighterZones = { nil, nil, nil },
-        itemZones = { nil, nil, nil },
+        itemZones = { nil, nil, nil, nil },
+        equipmentZones = { nil, nil, nil },
         locationZone = nil,
         hasSummonedThisTurn = false,
         lifePoints = 1000
@@ -1005,6 +1035,97 @@ function Duel.PromoteFighter(src, duelId, handUid, tributeZoneIndex)
 
     sendDuelStateToPlayers(duel)
     return true
+end
+
+function Duel.PlayNonFighter(src, duelId, handUid, targetKind, zoneIndex)
+    local duel = Duel.Active[duelId]
+    if not duel then
+        return false, 'Duel not found'
+    end
+
+    local playerIndex = getControllingPlayerIndex(duel, src)
+    if not playerIndex then
+        return false, 'Player not in duel'
+    end
+
+    if duel.turnPlayer ~= playerIndex then
+        return false, 'Not your turn'
+    end
+
+    if duel.phase ~= "main" then
+        return false, 'You can only play non-fighter cards in Main Phase'
+    end
+
+    local playerState = duel.players[playerIndex]
+    local card, handIndex = findCardInZoneByUid(playerState, "hand", handUid)
+    if not card then
+        return false, 'Card not found in hand'
+    end
+
+    local cardType = getCardTypeValue(card)
+    if cardType == 'FIGHTER' then
+        return false, 'Use the fighter summon action for fighter cards'
+    end
+
+    targetKind = tostring(targetKind or ''):lower()
+
+    if cardType == 'LOCATION' then
+        if playerState.locationZone then
+            return false, 'Your location zone is occupied'
+        end
+
+        table.remove(playerState.hand, handIndex)
+        card.zone = "locationZone"
+        playerState.locationZone = card
+        sendDuelStateToPlayers(duel)
+        return true
+    end
+
+    if cardType == 'EVENT' then
+        moveHandCardToGraveyard(playerState, handIndex)
+        sendDuelStateToPlayers(duel)
+        return true
+    end
+
+    if isItemZoneCardType(cardType) then
+        zoneIndex = tonumber(zoneIndex)
+        if not zoneIndex or zoneIndex < 1 or zoneIndex > 4 then
+            return false, 'Invalid item zone'
+        end
+
+        if playerState.itemZones[zoneIndex] ~= nil then
+            return false, 'That item zone is occupied'
+        end
+
+        table.remove(playerState.hand, handIndex)
+        card.zone = "itemZone"
+        playerState.itemZones[zoneIndex] = card
+        sendDuelStateToPlayers(duel)
+        return true
+    end
+
+    if isEquipmentZoneCardType(cardType) then
+        zoneIndex = tonumber(zoneIndex)
+        if not zoneIndex or zoneIndex < 1 or zoneIndex > 3 then
+            return false, 'Invalid equipment zone'
+        end
+
+        if playerState.fighterZones[zoneIndex] == nil then
+            return false, 'Choose a fighter to equip this card to'
+        end
+
+        if playerState.equipmentZones[zoneIndex] ~= nil then
+            return false, 'That fighter already has an equipment card'
+        end
+
+        table.remove(playerState.hand, handIndex)
+        card.zone = "equipmentZone"
+        playerState.equipmentZones[zoneIndex] = card
+        sendDuelStateToPlayers(duel)
+        return true
+    end
+
+    return false, 'This card type is not playable yet'
 end
 
 function Duel.GetById(duelId)

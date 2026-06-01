@@ -1,6 +1,10 @@
 # BStar Cards Changelog
 
 ## Latest
+- Added first-pass non-fighter zone plumbing for item, event, location and vehicle/equipment cards
+- Added temporary non-fighter debug cards for testing zone movement
+- Adjusted support-zone layout and changed event cards to use an Activate pill before resolving
+- Changed equipment cards (weapons and vehicles) to attach to fighter zones and render tucked behind the equipped fighter
 
 ## v0.2.19
 - Changed coin flip animation (placeholder, will be replaced with 3d modeled animation later)
