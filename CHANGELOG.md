@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.3.2
 - Updated README
 
 ## v0.3.1
