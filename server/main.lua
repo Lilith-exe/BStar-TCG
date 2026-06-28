@@ -8,6 +8,13 @@ local MIN_DECK_CARDS = 30
 local MAX_DECK_CARDS = 50
 local MAX_COPIES_PER_CARD = 3
 
+local function GetCardHealthText(card)
+    local raw = card and (card.health or card.hp or card.defense or card.def) or nil
+    if not raw then return nil end
+
+    return tostring(raw):gsub('^DEF', 'HP')
+end
+
 local function BuildCardItemInfo(cardId)
     local card = Cards and Cards[cardId]
 
@@ -53,6 +60,7 @@ local function getPlayerCardCounts(Player)
                     level = card and card.level or nil,
                     attack = card and (card.attack or card.atk) or nil,
                     defense = card and (card.defense or card.def) or nil,
+                    health = GetCardHealthText(card),
                     speed = card and (card.speed or card.spd) or nil,
                     effectTitle = card and card.effectTitle or nil,
                     effectText = card and card.effectText or nil,
@@ -88,6 +96,7 @@ local function BuildCardCatalog()
             speed = card.speed or card.spd,
             attack = card.attack or card.atk,
             defense = card.defense or card.def,
+            health = GetCardHealthText(card),
             effectTitle = card.effectTitle,
             effectText = card.effectText,
             setCode = card.setCode,
@@ -215,6 +224,7 @@ function DeckBox.GetStoredCards(source, deckBoxId, cb)
                 level = card and card.level or nil,
                 attack = card and (card.attack or card.atk) or nil,
                 defense = card and (card.defense or card.def) or nil,
+                health = GetCardHealthText(card),
                 speed = card and (card.speed or card.spd) or nil,
                 effectTitle = card and card.effectTitle or nil,
                 effectText = card and card.effectText or nil,
@@ -1004,7 +1014,7 @@ RegisterCommand('givecardtest', function(source, args)
         description =
             card.setCode .. " - " .. card.edition .. "\n\n" ..
             card.type .. " | " .. card.job .. " | Lv." .. card.level .. "\n\n" ..
-            card.speed .. " • " .. card.attack .. " • " .. card.defense,
+            card.speed .. " • " .. card.attack .. " • " .. (GetCardHealthText(card) or ''),
         display = false
     }
 

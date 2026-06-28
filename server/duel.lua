@@ -111,6 +111,55 @@ local function getCardDefinition(cardId)
     return Cards and Cards[cardId] or nil
 end
 
+local function parseStatValue(raw)
+    if type(raw) == 'number' then
+        return raw
+    end
+
+    if type(raw) == 'string' then
+        local match = string.match(raw, "-?%d+")
+        return match and tonumber(match) or 0
+    end
+
+    return 0
+end
+
+local function getCardBaseHp(card)
+    local def = card and getCardDefinition(card.cardId) or nil
+    if not def then return 0 end
+
+    return parseStatValue(def.health or def.hp or def.defense or def.def)
+end
+
+local function getCardHealthText(def)
+    local raw = def and (def.health or def.hp or def.defense or def.def) or nil
+    if not raw then return nil end
+
+    return tostring(raw):gsub('^DEF', 'HP')
+end
+
+local function ensureFighterHp(card)
+    if not card then return end
+
+    local baseHp = getCardBaseHp(card)
+    if baseHp <= 0 then return end
+
+    card.maxHp = tonumber(card.maxHp) or baseHp
+    card.currentHp = tonumber(card.currentHp) or card.maxHp
+
+    if card.currentHp > card.maxHp then
+        card.currentHp = card.maxHp
+    end
+end
+
+local function resetFighterHp(card)
+    if not card then return end
+
+    local baseHp = getCardBaseHp(card)
+    card.maxHp = baseHp
+    card.currentHp = baseHp
+end
+
 local function buildCardPayload(cardInstance)
     local def = getCardDefinition(cardInstance.cardId)
 
@@ -130,6 +179,9 @@ local function buildCardPayload(cardInstance)
         level = def and def.level or nil,
         attack = def and (def.attack or def.atk) or nil,
         defense = def and (def.defense or def.def) or nil,
+        hp = cardInstance.currentHp,
+        maxHp = cardInstance.maxHp,
+        health = getCardHealthText(def),
         speed = def and (def.speed or def.spd) or nil,
         effectTitle = def and def.effectTitle or nil,
         effectText = def and def.effectText or nil,
@@ -349,19 +401,11 @@ local function getCardStat(card, statName)
     if raw == nil then
         if statName == 'attack' then raw = def.atk end
         if statName == 'defense' then raw = def.def end
+        if statName == 'hp' or statName == 'health' then raw = def.health or def.hp or def.defense or def.def end
         if statName == 'speed' then raw = def.spd end
     end
 
-    if type(raw) == 'number' then
-        return raw
-    end
-
-    if type(raw) == 'string' then
-        local match = string.match(raw, "-?%d+")
-        return match and tonumber(match) or 0
-    end
-
-    return 0
+    return parseStatValue(raw)
 end
 
 local function getCardLevelValue(cardDef)
@@ -535,6 +579,7 @@ function Duel.DebugSpawnFighter(duelId, playerIndex, cardId, zoneIndex)
         hasAttacked = false
     }
 
+    resetFighterHp(card)
     playerState.fighterZones[zoneIndex] = card
 
     sendDuelStateToPlayers(duel)
@@ -582,6 +627,8 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
         return false, 'No attacker in that zone'
     end
 
+    ensureFighterHp(attackerCard)
+
     if attackerCard.hasAttacked then
         return false, 'This fighter already attacked this turn'
     end
@@ -601,7 +648,13 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
         dodged = false,
         dodgeChance = 0,
         damageToDefenderPlayer = 0,
-        damageToAttackerPlayer = 0
+        damageToAttackerPlayer = 0,
+        damageToDefenderFighter = 0,
+        damageToAttackerFighter = 0,
+        defenderHpBefore = nil,
+        defenderHpAfter = nil,
+        attackerHpBefore = attackerCard.currentHp,
+        attackerHpAfter = attackerCard.currentHp
     }
 
     -- Direct attack
@@ -643,6 +696,7 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
     if not defenderCard then
         return false, 'No defender in that zone'
     end
+    ensureFighterHp(defenderCard)
     battleResult.defenderCard = buildCardPayload(defenderCard)
 
     local dodgeChance = calculateDodgeChance(attackerCard, defenderCard)
@@ -668,31 +722,28 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
         return true
     end
 
-    local defenderDEF = getCardStat(defenderCard, 'defense')
-    local difference = math.abs(attackerATK - defenderDEF)
+    local defenderHpBefore = defenderCard.currentHp or getCardBaseHp(defenderCard)
+    local defenderHpAfter = math.max(0, defenderHpBefore - attackerATK)
 
-    if attackerATK > defenderDEF then
+    defenderCard.currentHp = defenderHpAfter
+    battleResult.damageToDefenderFighter = math.max(0, defenderHpBefore - defenderHpAfter)
+    battleResult.defenderHpBefore = defenderHpBefore
+    battleResult.defenderHpAfter = defenderHpAfter
+    battleResult.defenderCard = buildCardPayload(defenderCard)
+
+    if defenderHpAfter <= 0 then
+        local overflowDamage = math.max(0, attackerATK - defenderHpBefore)
+
+        if overflowDamage > 0 then
+            defenderState.lifePoints = math.max(0, defenderState.lifePoints - overflowDamage)
+            battleResult.damageToDefenderPlayer = overflowDamage
+        end
+
         moveFieldCardToGraveyard(defenderState, targetZoneIndex)
         battleResult.defenderDestroyed = true
-
-        if difference > 0 then
-            defenderState.lifePoints = math.max(0, defenderState.lifePoints - difference)
-            battleResult.damageToDefenderPlayer = difference
-        end
-    elseif attackerATK == defenderDEF then
-        moveFieldCardToGraveyard(defenderState, targetZoneIndex)
-        moveFieldCardToGraveyard(attackerState, attackerZoneIndex)
-        battleResult.defenderDestroyed = true
-        battleResult.attackerDestroyed = true
-    else
-        moveFieldCardToGraveyard(attackerState, attackerZoneIndex)
-        battleResult.attackerDestroyed = true
-
-        if difference > 0 then
-            attackerState.lifePoints = math.max(0, attackerState.lifePoints - difference)
-            battleResult.damageToAttackerPlayer = difference
-        end
     end
+
+    battleResult.attackerHpAfter = attackerCard.currentHp
 
     checkWinCondition(duel)
     sendDuelStateToPlayers(duel)
@@ -971,6 +1022,7 @@ function Duel.SummonFighter(src, duelId, handUid, zoneIndex)
 
     table.remove(playerState.hand, handIndex)
     card.zone = "fighterZone"
+    resetFighterHp(card)
     playerState.fighterZones[zoneIndex] = card
     playerState.hasSummonedThisTurn = true
 
@@ -1030,6 +1082,7 @@ function Duel.PromoteFighter(src, duelId, handUid, tributeZoneIndex)
 
     promotionCard.zone = "fighterZone"
     promotionCard.hasAttacked = false
+    resetFighterHp(promotionCard)
     playerState.fighterZones[tributeZoneIndex] = promotionCard
     playerState.hasSummonedThisTurn = true
 

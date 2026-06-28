@@ -179,6 +179,24 @@ let builderFilters = {
 
 // ---------- Helpers ----------
 
+function getCardHpDisplay(card) {
+  if (!card) return '-';
+
+  const current = card.hp ?? card.currentHp;
+  const max = card.maxHp;
+  const base = card.health ?? card.hp ?? card.defense ?? card.def;
+
+  if (current !== undefined && current !== null && max !== undefined && max !== null) {
+    return `${current}/${max}`;
+  }
+
+  if (base === undefined || base === null || base === '') {
+    return '-';
+  }
+
+  return String(base).replace(/^DEF/i, 'HP');
+}
+
 function clone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
@@ -1030,15 +1048,15 @@ function renderBuilderPoolCards() {
       }
 
       const atk = parseCardStat(resolved.attack || resolved.atk);
-      const def = parseCardStat(resolved.defense || resolved.def);
+      const hp = parseCardStat(resolved.health || resolved.hp || resolved.defense || resolved.def);
       const spd = parseCardStat(resolved.speed || resolved.spd);
       const level = parseCardStat(resolved.level);
 
       if (builderFilters.minAtk !== '' && atk < Number(builderFilters.minAtk)) return false;
       if (builderFilters.maxAtk !== '' && atk > Number(builderFilters.maxAtk)) return false;
 
-      if (builderFilters.minDef !== '' && def < Number(builderFilters.minDef)) return false;
-      if (builderFilters.maxDef !== '' && def > Number(builderFilters.maxDef)) return false;
+      if (builderFilters.minDef !== '' && hp < Number(builderFilters.minDef)) return false;
+      if (builderFilters.maxDef !== '' && hp > Number(builderFilters.maxDef)) return false;
 
       if (builderFilters.minSpd !== '' && spd < Number(builderFilters.minSpd)) return false;
       if (builderFilters.maxSpd !== '' && spd > Number(builderFilters.maxSpd)) return false;
@@ -1178,7 +1196,7 @@ function setBuilderPreview(card) {
   const rarity = resolved.rarity || '-';
   const level = resolved.level || '-';
   const atk = resolved.attack || resolved.atk || '-';
-  const def = resolved.defense || resolved.def || '-';
+  const hp = getCardHpDisplay(resolved);
   const spd = resolved.speed || resolved.spd || '-';
 
   builderPreviewMeta.innerHTML = `
@@ -1198,8 +1216,8 @@ function setBuilderPreview(card) {
       <div class="preview-big-stat preview-big-stat-atk">
         <span class="preview-big-stat-value">${atk}</span>
       </div>
-      <div class="preview-big-stat preview-big-stat-def">
-        <span class="preview-big-stat-value">${def}</span>
+      <div class="preview-big-stat preview-big-stat-hp">
+        <span class="preview-big-stat-value">${hp}</span>
       </div>
       <div class="preview-big-stat preview-big-stat-spd">
         <span class="preview-big-stat-value">${spd}</span>
@@ -1432,7 +1450,7 @@ function renderTableZone(card, side, zoneIndex, equipmentCard = null) {
   statStrip.className = 'table-card-stats';
   statStrip.innerHTML = `
     <div class="table-card-stat atk"><strong>${card.attack ?? '-'}</strong></div>
-    <div class="table-card-stat def"><strong>${card.defense ?? '-'}</strong></div>
+    <div class="table-card-stat hp"><strong>${getCardHpDisplay(card)}</strong></div>
     <div class="table-card-stat spd"><strong>${card.speed ?? '-'}</strong></div>
   `;
   zone.appendChild(statStrip);
@@ -1589,7 +1607,7 @@ function renderTablePreview() {
   if (tablePreviewStats) {
     tablePreviewStats.innerHTML = `
       <div class="table-preview-stat atk"><strong>${card.attack ?? '-'}</strong></div>
-      <div class="table-preview-stat def"><strong>${card.defense ?? '-'}</strong></div>
+      <div class="table-preview-stat hp"><strong>${getCardHpDisplay(card)}</strong></div>
       <div class="table-preview-stat spd"><strong>${card.speed ?? '-'}</strong></div>
     `;
   }
@@ -2824,8 +2842,16 @@ function handleBattleEvent(result) {
     }
   }
 
+  if (result.damageToDefenderFighter && result.damageToDefenderFighter > 0) {
+    spawnDamageNumberOnElement(targetEl, result.damageToDefenderFighter);
+  }
+
   if (result.damageToAttackerPlayer && result.damageToAttackerPlayer > 0) {
     spawnDamageNumberOnElement(attackerEl, result.damageToAttackerPlayer);
+  }
+
+  if (result.damageToAttackerFighter && result.damageToAttackerFighter > 0) {
+    spawnDamageNumberOnElement(attackerEl, result.damageToAttackerFighter);
   }
 
   if (result.attackerDestroyed) {

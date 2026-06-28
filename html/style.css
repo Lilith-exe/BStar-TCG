@@ -1239,7 +1239,7 @@ button:hover {
   background: linear-gradient(180deg, rgba(255,80,120,0.22), rgba(120,20,50,0.22));
 }
 
-.preview-big-stat-def {
+.preview-big-stat-hp {
   background: linear-gradient(180deg, rgba(80,160,255,0.22), rgba(20,60,120,0.22));
 }
 
@@ -2601,7 +2601,7 @@ button.table-card-pile {
   color: rgb(255, 84, 112);
 }
 
-.table-card-stat.def {
+.table-card-stat.hp {
   color: rgb(90, 190, 255);
 }
 
@@ -3001,7 +3001,7 @@ button.table-card-pile {
   background: linear-gradient(180deg, rgba(255, 72, 105, 0.22), rgba(92, 14, 34, 0.22));
 }
 
-.table-preview-stat.def {
+.table-preview-stat.hp {
   background: linear-gradient(180deg, rgba(55, 180, 255, 0.22), rgba(18, 58, 100, 0.22));
 }
 

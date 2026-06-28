@@ -1,6 +1,11 @@
 # BStar Cards Changelog
 
 ## Latest
+- Rewrote fighter system to use a HP system instead of the legacy ATK/DEF system
+- Direct attacks still damage player LP, while fighter attacks now damage the targeted fighter HP
+- Fighter attacks now pierce excess damage through to the defending player's LP when the defender is destroyed
+- Updated duel/table/deck-builder stat displays and filters to show HP instead of DEF
+- Kept old `defense` card data as a temporary HP fallback until card definitions/art are regenerated
 
 ## v0.3.3
 - Final ATK/DEF version before redesign
