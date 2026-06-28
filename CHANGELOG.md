@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.4.0
 - Rewrote fighter system to use a HP system instead of the legacy ATK/DEF system
 - Direct attacks still damage player LP, while fighter attacks now damage the targeted fighter HP
 - Fighter attacks now pierce excess damage through to the defending player's LP when the defender is destroyed
