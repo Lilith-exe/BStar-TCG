@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.3.3
 - Final ATK/DEF version before redesign
 
 ## v0.3.2
