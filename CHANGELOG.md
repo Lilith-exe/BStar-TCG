@@ -1,6 +1,7 @@
 # BStar Cards Changelog
 
 ## Latest
+- Fixed Clyde Riley Jr card
 
 ## v0.5.1
 - Fixed visual bug in deck editor
