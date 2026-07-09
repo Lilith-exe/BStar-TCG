@@ -1,6 +1,7 @@
 # BStar Cards Changelog
 
 ## Latest
+- Updated gitignore
 
 ## v0.4.0
 - Rewrote fighter system to use a HP system instead of the legacy ATK/DEF system
