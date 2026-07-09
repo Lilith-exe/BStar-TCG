@@ -2,6 +2,9 @@
 
 ## Latest
 
+## v0.4.1
+- Updated gitignore
+
 ## v0.4.0
 - Rewrote fighter system to use a HP system instead of the legacy ATK/DEF system
 - Direct attacks still damage player LP, while fighter attacks now damage the targeted fighter HP

@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.4.1
 - Updated gitignore
 
 ## v0.4.0
