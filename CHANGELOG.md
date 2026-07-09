@@ -1,6 +1,7 @@
 # BStar Cards Changelog
 
 ## Latest
+- Fixed visual bug in deck editor
 
 ## v0.5.0
 - Removed test cards
