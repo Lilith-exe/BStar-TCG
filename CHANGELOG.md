@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.5.2
 - Fixed Clyde Riley Jr card
 
 ## v0.5.1
