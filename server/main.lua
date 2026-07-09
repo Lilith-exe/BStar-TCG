@@ -571,6 +571,61 @@ RegisterNetEvent('bstar_cards:server:WithdrawCardFromDeckBox', function(deckBoxI
     end)
 end)
 
+RegisterNetEvent('bstar_cards:server:DevFillDeckBox', function(deckBoxId)
+    local src = source
+
+    if Config and Config.Debug ~= true then
+        TriggerClientEvent('QBCore:Notify', src, 'BStar dev commands are disabled.', 'error')
+        return
+    end
+
+    deckBoxId = tostring(deckBoxId or '')
+    if deckBoxId == '' then
+        TriggerClientEvent('QBCore:Notify', src, 'Missing deck box id.', 'error')
+        return
+    end
+
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+
+    local citizenid = Player.PlayerData.citizenid
+    local cardIds = {}
+
+    for cardId in pairs(Cards or {}) do
+        cardIds[#cardIds + 1] = cardId
+    end
+
+    table.sort(cardIds)
+
+    if #cardIds == 0 then
+        TriggerClientEvent('QBCore:Notify', src, 'No BStar card definitions found.', 'error')
+        return
+    end
+
+    exports.oxmysql:update([[
+        DELETE FROM bstar_deckbox_cards
+        WHERE citizenid = ? AND deck_box_id = ?
+    ]], { citizenid, deckBoxId }, function()
+        local placeholders = {}
+        local params = {}
+
+        for _, cardId in ipairs(cardIds) do
+            placeholders[#placeholders + 1] = '(?, ?, ?, ?)'
+            params[#params + 1] = citizenid
+            params[#params + 1] = deckBoxId
+            params[#params + 1] = cardId
+            params[#params + 1] = 3
+        end
+
+        exports.oxmysql:insert(([[
+            INSERT INTO bstar_deckbox_cards (citizenid, deck_box_id, card_id, amount)
+            VALUES %s
+        ]]):format(table.concat(placeholders, ', ')), params, function()
+            TriggerClientEvent('QBCore:Notify', src, ('Deck box filled with 3 copies of %s cards.'):format(#cardIds), 'success')
+        end)
+    end)
+end)
+
 RegisterNetEvent('bstar_cards:server:CreateDeck', function(deckBoxId, deckName)
     local src = source
 

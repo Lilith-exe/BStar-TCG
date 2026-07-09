@@ -174,4 +174,15 @@ RegisterCommand('panicui', function()
     SendNUIMessage({ action = 'forceCloseAll' })
 end)
 
+RegisterCommand('bstarfilldeckbox', function(_, args)
+    local deckBoxId = args[1] or CurrentDeckBoxId
+
+    if not deckBoxId then
+        QBCore.Functions.Notify('Use a deck box first, or pass a deck box id.', 'error')
+        return
+    end
+
+    TriggerServerEvent('bstar_cards:server:DevFillDeckBox', deckBoxId)
+end, false)
+
 RegisterKeyMapping('panicui', 'Force close BStar UI', 'keyboard', 'F11')

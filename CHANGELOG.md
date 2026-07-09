@@ -1,6 +1,11 @@
 # BStar Cards Changelog
 
 ## Latest
+- Removed test cards
+- Reverted .gitignore
++ Added all 151 base set cards
++ Optimised card images 
++ Added dev 'give all cards' command for testing
 
 ## v0.4.1
 - Updated gitignore
