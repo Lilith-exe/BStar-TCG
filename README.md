@@ -2,6 +2,9 @@
 
 ## Latest
 
+## v0.5.1
+- Fixed visual bug in deck editor
+
 ## v0.5.0
 - Removed test cards
 - Reverted .gitignore
