@@ -2,6 +2,10 @@
 
 ## Latest
 
+## v0.5.3
+- Fixed Clyde Riley Sr card
+- Fixed thumbnails for deck editor
+
 ## v0.5.2
 - Fixed Clyde Riley Jr card
 

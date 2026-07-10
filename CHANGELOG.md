@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.5.3
 - Fixed Clyde Riley Sr card
 - Fixed thumbnails for deck editor
 
