@@ -32,7 +32,7 @@ files {
     'html/index.html',
     'html/style.css',
     'html/app.js',
-    'html/images/cards/thumbs/*.png'
+    'html/images/thumbs/*.png'
 }
 
 dependency 'qb-core'

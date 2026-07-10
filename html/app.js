@@ -203,7 +203,7 @@ function clone(obj) {
 
 function getThumbImagePath(card) {
   const file = card?.inventoryImage || 'default.png';
-  return `nui://bstar_cards/html/images/cards/thumbs/${file}`;
+  return `nui://bstar_cards/html/images/thumbs/${file}`;
 }
 
 function getFullImagePath(card) {

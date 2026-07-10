@@ -1356,7 +1356,7 @@ Cards = {
         effectText = 'Shuffle up to 3 of your fighters from the cemetery back into your deck, then draw 1 card.',
         setCode = 'ALPH1-EN080',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN080_CLYDE_RILEY_SR..png'
+        inventoryImage = 'ALPH1-EN080_CLYDE_RILEY_SR.png'
     },
 
     ['ALPH1_EN081_WILLIAM_TAZENTINE'] = {
