@@ -69,7 +69,7 @@ jobs:
             echo "$NEXT_VERSION" > VERSION
           fi
 
-          MAX_CHANGES_LENGTH=3900
+          MAX_CHANGES_LENGTH=3700
           if [ ${#CHANGES} -gt $MAX_CHANGES_LENGTH ]; then
             CHANGES="${CHANGES:0:$MAX_CHANGES_LENGTH}"$'\n…'
           fi
@@ -88,7 +88,7 @@ jobs:
               avatar_url: "https://cdn.discordapp.com/attachments/1475349571390410833/1509964513850429692/tunerfest_2023-155.jpg?ex=6a1b1789&is=6a19c609&hm=008c181a7b0de1699292cb75aeba6d2461cb1f8ffda98de15b57ca03cfc8ff1f&",
               embeds: [{
                 title: ("BStar Cards Update " + $version),
-                description: $changes,
+                description: ("**Branch**\n" + $branch + "\n\n**Changes**\n" + $changes),
                 color: 16738740,
                 author: {
                   name: $author,
@@ -97,11 +97,6 @@ jobs:
                 thumbnail: {
                   url: "https://cdn.discordapp.com/attachments/1475349571390410833/1509963533608288346/ChatGPT_Image_May_29_2026_05_53_59_PM.png?ex=6a1b16a0&is=6a19c520&hm=ae4a746beae4ffbd2d3ed89c241dd1d5ee8262984fbd0e65db46a3009c7387dd&"
                 },
-                fields: [{
-                  name: "Branch",
-                  value: $branch,
-                  inline: false
-                }],
                 footer: {
                   text: ("BStar Cards • " + $time)
                 }
