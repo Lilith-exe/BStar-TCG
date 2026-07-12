@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.6.4
 - Added general annimation engine for card movement throughout field
 - Adjusted equipped card placement
 - Added deselect logic to clicking outside of a card
