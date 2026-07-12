@@ -4,13 +4,19 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      repost_version:
+        description: "Changelog version to repost, e.g. v0.6.0"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
   notify:
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
 
     steps:
@@ -22,25 +28,51 @@ jobs:
       - name: Send Discord webhook and update changelog
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-
+          EVENT_NAME: ${{ github.event_name }}
+          REPOST_VERSION: ${{ github.event.inputs.repost_version }}
         run: |
-          CHANGES=$(awk '
-            /^## Latest/ { found=1; next }
-            /^## / && found { exit }
-            found && NF { print }
-          ' CHANGELOG.md)
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            DISPLAY_VERSION="$REPOST_VERSION"
+            if [[ "$DISPLAY_VERSION" != v* ]]; then
+              DISPLAY_VERSION="v$DISPLAY_VERSION"
+            fi
 
-          if [ -z "$CHANGES" ]; then
-            echo "No changes found under ## Latest. Skipping Discord post and changelog update."
-            exit 0
+            SECTION="## $DISPLAY_VERSION"
+            CHANGES=$(awk -v section="$SECTION" '
+              $0 == section { found=1; next }
+              /^## / && found { exit }
+              found && NF { print }
+            ' CHANGELOG.md)
+
+            if [ -z "$CHANGES" ]; then
+              echo "No changes found under $SECTION."
+              exit 1
+            fi
+          else
+            CHANGES=$(awk '
+              /^## Latest/ { found=1; next }
+              /^## / && found { exit }
+              found && NF { print }
+            ' CHANGELOG.md)
+
+            if [ -z "$CHANGES" ]; then
+              echo "No changes found under ## Latest. Skipping Discord post and changelog update."
+              exit 0
+            fi
+
+            CURRENT_VERSION=$(cat VERSION | tr -d 'v')
+            DISPLAY_VERSION="v$CURRENT_VERSION"
+            echo "$DISPLAY_VERSION" > .display_version
+
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+            NEXT_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+            echo "$NEXT_VERSION" > VERSION
           fi
-          CURRENT_VERSION=$(cat VERSION | tr -d 'v')
-          DISPLAY_VERSION="v$CURRENT_VERSION"
-          echo "$DISPLAY_VERSION" > .display_version
 
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-          NEXT_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
-          echo "$NEXT_VERSION" > VERSION
+          MAX_CHANGES_LENGTH=3900
+          if [ ${#CHANGES} -gt $MAX_CHANGES_LENGTH ]; then
+            CHANGES="${CHANGES:0:$MAX_CHANGES_LENGTH}"$'\n…'
+          fi
 
           TIMESTAMP=$(date +"%d %B %Y at %H:%M")
 
@@ -54,49 +86,41 @@ jobs:
             '{
               username: "LaylaBot",
               avatar_url: "https://cdn.discordapp.com/attachments/1475349571390410833/1509964513850429692/tunerfest_2023-155.jpg?ex=6a1b1789&is=6a19c609&hm=008c181a7b0de1699292cb75aeba6d2461cb1f8ffda98de15b57ca03cfc8ff1f&",
-
               embeds: [{
                 title: ("BStar Cards Update " + $version),
-
+                description: $changes,
                 color: 16738740,
-
                 author: {
                   name: $author,
                   icon_url: $avatar
                 },
-
                 thumbnail: {
                   url: "https://cdn.discordapp.com/attachments/1475349571390410833/1509963533608288346/ChatGPT_Image_May_29_2026_05_53_59_PM.png?ex=6a1b16a0&is=6a19c520&hm=ae4a746beae4ffbd2d3ed89c241dd1d5ee8262984fbd0e65db46a3009c7387dd&"
                 },
-
-                fields: [
-                  {
-                    name: "Branch",
-                    value: $branch,
-                    inline: false
-                  },
-                  {
-                    name: "Changes",
-                    value: $changes,
-                    inline: false
-                  }
-                ],
-
+                fields: [{
+                  name: "Branch",
+                  value: $branch,
+                  inline: false
+                }],
                 footer: {
                   text: ("BStar Cards • " + $time)
                 }
               }]
             }')
 
-          curl \
+          curl --fail-with-body --show-error \
             -H "Content-Type: application/json" \
             -X POST \
             -d "$PAYLOAD" \
             "$DISCORD_WEBHOOK"
 
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "Manual repost complete for $DISPLAY_VERSION."
+            exit 0
+          fi
+
           python3 << 'PY'
           from pathlib import Path
-          import os
 
           changelog_path = Path("CHANGELOG.md")
           version = Path(".display_version").read_text().strip()
@@ -155,4 +179,3 @@ jobs:
             git commit -m "Update changelog for $DISPLAY_VERSION [skip ci]"
             git push
           fi
-          git push
