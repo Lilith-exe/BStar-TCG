@@ -199,7 +199,7 @@ end)
 
 RegisterNUICallback('duelResolvePendingEffect', function(data, cb)
     if currentDuelId and data and data.promptId then
-        TriggerServerEvent('bstar_cards:server:DuelResolvePendingEffect', currentDuelId, data.promptId, data.accepted == true)
+        TriggerServerEvent('bstar_cards:server:DuelResolvePendingEffect', currentDuelId, data.promptId, data.accepted == true, data.response or {})
     end
     cb({ ok = true })
 end)

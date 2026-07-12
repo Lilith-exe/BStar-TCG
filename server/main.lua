@@ -1036,9 +1036,9 @@ RegisterNetEvent('bstar_cards:server:DuelPlayNonFighter', function(duelId, handU
     end
 end)
 
-RegisterNetEvent('bstar_cards:server:DuelResolvePendingEffect', function(duelId, promptId, accepted)
+RegisterNetEvent('bstar_cards:server:DuelResolvePendingEffect', function(duelId, promptId, accepted, response)
     local src = source
-    local ok, err = Duel.ResolvePendingEffect(src, duelId, promptId, accepted == true)
+    local ok, err = Duel.ResolvePendingEffect(src, duelId, promptId, accepted == true, response)
 
     if not ok and err then
         TriggerClientEvent('QBCore:Notify', src, err, 'error')

@@ -353,7 +353,7 @@ function isDeckCardInvalid(cardId) {
 
 // ---------- Modal ----------
 
-function openModal({ title, text, showInput = false, inputValue = '', confirmText = 'Confirm', cancelText = 'Cancel', choices = null, minimizable = false, restoreText = 'Pending Prompt', onConfirm = null, onCancel = null, onChoice = null }) {
+function openModal({ title, text, showInput = false, inputValue = '', confirmText = 'Confirm', cancelText = 'Cancel', choices = null, effectOptions = null, minimizable = false, restoreText = 'Pending Prompt', onConfirm = null, onCancel = null, onChoice = null }) {
   activeModalAction = onConfirm || null;
   activeModalCancelAction = onCancel || null;
   activeModalSelectedChoice = null;
@@ -361,6 +361,7 @@ function openModal({ title, text, showInput = false, inputValue = '', confirmTex
 
   const modalPanel = uiModalWrap.querySelector('.ui-modal');
   const hasChoices = Array.isArray(choices) && choices.length > 0;
+  const hasEffectOptions = Array.isArray(effectOptions) && effectOptions.length > 0;
   modalPanel?.classList.toggle('card-picker', hasChoices);
   uiModalWrap.classList.toggle('card-picker-open', hasChoices);
   modalPanel?.classList.remove('minimizing', 'restoring');
@@ -374,7 +375,7 @@ function openModal({ title, text, showInput = false, inputValue = '', confirmTex
   uiModalText.textContent = text || '';
   uiModalConfirmBtn.textContent = confirmText;
   uiModalCancelBtn.textContent = cancelText;
-  uiModalConfirmBtn.disabled = hasChoices;
+  uiModalConfirmBtn.disabled = hasChoices || hasEffectOptions;
 
   if (showInput) {
     uiModalInput.classList.remove('hidden');
@@ -470,6 +471,42 @@ function openModal({ title, text, showInput = false, inputValue = '', confirmTex
       }
 
       renderChoicePreview(choices[0]);
+    } else if (hasEffectOptions) {
+      uiModalChoices.classList.remove('hidden');
+      uiModalConfirmBtn.classList.remove('hidden');
+      if (uiModalChoicePreview) {
+        uiModalChoicePreview.classList.add('hidden');
+        uiModalChoicePreview.innerHTML = '';
+      }
+
+      const selectEffectOption = (choice, btn) => {
+        activeModalSelectedChoice = choice;
+        uiModalChoices.querySelectorAll('.ui-modal-choice.selected').forEach(el => el.classList.remove('selected'));
+        btn.classList.add('selected');
+        uiModalConfirmBtn.disabled = false;
+        if (onChoice) onChoice(choice);
+      };
+
+      for (const option of effectOptions) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ui-modal-choice effect-option';
+
+        const body = document.createElement('div');
+        const name = document.createElement('div');
+        name.className = 'ui-modal-choice-name';
+        name.textContent = option.label || option.name || option.id || 'Option';
+
+        const meta = document.createElement('div');
+        meta.className = 'ui-modal-choice-meta';
+        meta.textContent = option.description || '';
+
+        body.appendChild(name);
+        body.appendChild(meta);
+        btn.appendChild(body);
+        btn.addEventListener('click', () => selectEffectOption(option, btn));
+        uiModalChoices.appendChild(btn);
+      }
     } else {
       uiModalChoices.classList.add('hidden');
       uiModalConfirmBtn.classList.remove('hidden');
@@ -531,13 +568,14 @@ function closeModal() {
   activeModalCanMinimize = false;
 }
 
-function resolvePendingEffect(promptId, accepted) {
+function resolvePendingEffect(promptId, accepted, response = {}) {
   fetch(`https://${GetParentResourceName()}/duelResolvePendingEffect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       promptId,
-      accepted
+      accepted,
+      response
     })
   });
 }
@@ -557,15 +595,34 @@ function showPendingEffectPrompt(prompt) {
   if (!prompt || !prompt.id || activeEffectPromptId === prompt.id) return;
 
   activeEffectPromptId = prompt.id;
+  const numberForm = prompt.form?.number || null;
+  const options = prompt.form?.options || [];
+
   openModal({
     title: prompt.title || `${prompt.cardName || 'Card'} Effect`,
     text: prompt.text || `Do you want to activate ${prompt.cardName || 'this card'}'s effect?`,
+    showInput: !!numberForm,
+    inputValue: numberForm?.default ?? '',
+    effectOptions: options,
     confirmText: 'Activate',
     cancelText: 'Skip',
     minimizable: true,
     restoreText: `${prompt.cardName || 'Card'} Effect`,
-    onConfirm: () => {
-      resolvePendingEffect(prompt.id, true);
+    onConfirm: (value, selectedOption) => {
+      const response = {};
+      if (numberForm) {
+        const key = numberForm.key || 'amount';
+        let numberValue = Number(value);
+        if (!Number.isFinite(numberValue)) numberValue = Number(numberForm.default || 0);
+        if (numberForm.min !== undefined) numberValue = Math.max(Number(numberForm.min), numberValue);
+        if (numberForm.max !== undefined) numberValue = Math.min(Number(numberForm.max), numberValue);
+        response[key] = numberValue;
+      }
+      if (selectedOption) {
+        response.option = selectedOption.id || selectedOption.value || selectedOption.key || selectedOption.label;
+      }
+
+      resolvePendingEffect(prompt.id, true, response);
       activeEffectPromptId = null;
     },
     onCancel: () => {
@@ -1641,6 +1698,10 @@ function activateFieldEffect(card) {
   });
 }
 
+function hasActivatableCards(cards) {
+  return (cards || []).some(card => canActivateFieldEffect(card, 'self'));
+}
+
 function isItemZoneCard(card) {
   return getCardType(card) === 'ITEM';
 }
@@ -1662,6 +1723,31 @@ function isContinuousItemCard(card) {
 function isEquipmentZoneCard(card) {
   const type = getCardType(card);
   return type === 'VEHICLE' || type === 'WEAPON' || type === 'EQUIPMENT';
+}
+
+function getEquipmentSlotKey(card) {
+  const type = getCardType(card);
+  if (type === 'VEHICLE') return 'vehicle';
+  if (type === 'WEAPON') return 'weapon';
+  if (type === 'EQUIPMENT') return 'equipment';
+  return null;
+}
+
+function getEquipmentSlotCards(slot) {
+  if (!slot) return [];
+  if (Array.isArray(slot.cards)) return slot.cards.filter(Boolean);
+  if (slot.vehicle || slot.weapon || slot.equipment) {
+    return [slot.vehicle, slot.weapon, slot.equipment].filter(Boolean);
+  }
+  return [slot];
+}
+
+function canEquipCardToSlot(card, slot) {
+  const slotKey = getEquipmentSlotKey(card);
+  if (!slotKey) return false;
+  if (!slot) return true;
+  if (slot.vehicle || slot.weapon || slot.equipment) return !slot[slotKey];
+  return getEquipmentSlotKey(slot) !== slotKey;
 }
 
 function isLocationCard(card) {
@@ -1733,25 +1819,34 @@ function updateHpDisplay(el, value) {
   el.classList.toggle('low-hp', hp > 0 && hp < 200);
 }
 
-function renderTableZone(card, side, zoneIndex, equipmentCard = null) {
+function renderTableZone(card, side, zoneIndex, equipmentSlot = null) {
   const zone = document.createElement('div');
   zone.className = 'table-zone';
   zone.dataset.side = side;
   zone.dataset.zoneIndex = String(zoneIndex);
 
-  if (equipmentCard) {
-    const equipment = document.createElement('button');
-    equipment.className = 'table-equipped-card';
-    equipment.type = 'button';
-    equipment.addEventListener('click', (event) => {
-      event.stopPropagation();
-      setDuelPreviewCard(equipmentCard);
-    });
+  const equipmentCards = getEquipmentSlotCards(equipmentSlot);
+  if (equipmentCards.length > 0) {
+    const equipmentStack = document.createElement('div');
+    equipmentStack.className = 'table-equipment-stack';
+    if (equipmentCards.length > 1) equipmentStack.classList.add('multi');
 
-    const equipmentImg = document.createElement('img');
-    setCardThumbImage(equipmentImg, equipmentCard);
-    equipment.appendChild(equipmentImg);
-    zone.appendChild(equipment);
+    for (const equipmentCard of equipmentCards) {
+      const equipment = document.createElement('button');
+      equipment.className = `table-equipped-card ${getEquipmentSlotKey(equipmentCard) || 'equipment'}`;
+      equipment.type = 'button';
+      equipment.addEventListener('click', (event) => {
+        event.stopPropagation();
+        setDuelPreviewCard(equipmentCard);
+      });
+
+      const equipmentImg = document.createElement('img');
+      setCardThumbImage(equipmentImg, equipmentCard);
+      equipment.appendChild(equipmentImg);
+      equipmentStack.appendChild(equipment);
+    }
+
+    zone.appendChild(equipmentStack);
   }
 
   if (!card) {
@@ -1894,6 +1989,9 @@ function closeTableGraveyard() {
 function setDuelPreviewCard(card) {
   tablePreviewCard = card || null;
   renderTablePreview();
+  if (openTableGraveSide) {
+    renderTableGraveyard();
+  }
 }
 
 function renderTablePreview() {
@@ -1963,6 +2061,8 @@ function renderTableGraveyard() {
   const oppGrave = currentDuelState.opponentPlayer?.graveyard || [];
   const selfLastGrave = selfGrave[selfGrave.length - 1] || null;
   const oppLastGrave = oppGrave[oppGrave.length - 1] || null;
+  const selfGraveHasEffect = hasActivatableCards(selfGrave);
+  const oppGraveHasEffect = hasActivatableCards(oppGrave);
 
   tableSelfGraveBtn.textContent = `YOUR CEMETERY ${selfGrave.length}`;
   tableOpponentGraveBtn.textContent = `OPPONENT CEMETERY ${oppGrave.length}`;
@@ -1970,8 +2070,12 @@ function renderTableGraveyard() {
   tableOpponentGraveBtn.classList.toggle('hidden', openTableGraveSide !== 'opponent');
   tableSelfGraveBtn.classList.toggle('active', openTableGraveSide === 'self');
   tableOpponentGraveBtn.classList.toggle('active', openTableGraveSide === 'opponent');
+  tableSelfGraveBtn.classList.toggle('effect-ready', selfGraveHasEffect);
+  tableOpponentGraveBtn.classList.toggle('effect-ready', oppGraveHasEffect);
   tableSelfCemeterySlot?.classList.toggle('active', openTableGraveSide === 'self');
   tableOpponentCemeterySlot?.classList.toggle('active', openTableGraveSide === 'opponent');
+  tableSelfCemeterySlot?.classList.toggle('effect-ready', selfGraveHasEffect);
+  tableOpponentCemeterySlot?.classList.toggle('effect-ready', oppGraveHasEffect);
 
   if (tableSelfCemeteryImage) {
     tableSelfCemeteryImage.src = selfLastGrave ? getCardImagePathFromPayload(selfLastGrave) : '';
@@ -2010,6 +2114,8 @@ function renderTableGraveyard() {
     const row = document.createElement('button');
     row.className = 'table-grave-card';
     row.type = 'button';
+    row.classList.toggle('effect-ready', canActivateFieldEffect(card, 'self'));
+    row.classList.toggle('selected', tablePreviewCard?.uid === card.uid);
 
     const img = document.createElement('img');
     img.src = getCardImagePathFromPayload(card);
@@ -2379,7 +2485,7 @@ function renderTableDuelUi() {
     const zone = renderTableZone(card, 'self', i + 1, selfEquipmentZones[i] || null);
     addTableZoneTransitionClass(zone, 'self', i + 1, card);
 
-    if (card && selectedHandCardUid && canPlayNonFighter && isEquipmentZoneCard(selectedHandCard) && !selfEquipmentZones[i]) {
+    if (card && selectedHandCardUid && canPlayNonFighter && isEquipmentZoneCard(selectedHandCard) && canEquipCardToSlot(selectedHandCard, selfEquipmentZones[i])) {
       zone.classList.add('equip-target');
       zone.addEventListener('click', () => {
         animateTableCardTravel(getTableHandCardElement(selectedHandCardUid), zone, selectedHandCard, {
@@ -2486,9 +2592,14 @@ function renderTableDuelUi() {
     div.className = 'table-hand-card';
     div.dataset.cardUid = card.uid;
     const canSummonCard = canPlayHandCard(card, canNormalSummon, selfZones, canPlayNonFighter);
+    const canActivateCardEffect = canActivateFieldEffect(card, 'self');
 
     if (canSummonCard) {
       div.classList.add('summonable');
+    }
+
+    if (canActivateCardEffect) {
+      div.classList.add('effect-ready');
     }
 
     if (canNormalSummon && isPromotionSummonableFighter(card)) {
@@ -2532,7 +2643,7 @@ function renderTableDuelUi() {
         return;
       }
 
-      if (!canSummonCard) return;
+      if (!canSummonCard && !canActivateCardEffect) return;
 
       selectedAttackerZoneIndex = null;
       selectedHandCardUid = selectedHandCardUid === card.uid ? null : card.uid;
@@ -2946,9 +3057,14 @@ function renderHand() {
     const div = document.createElement('div');
     div.className = 'duel-hand-card';
     const canSummonCard = canPlayHandCard(card, canNormalSummon, selfZones);
+    const canActivateCardEffect = canActivateFieldEffect(card, 'self');
 
     if (canSummonCard) {
       div.classList.add('summonable');
+    }
+
+    if (canActivateCardEffect) {
+      div.classList.add('effect-ready');
     }
 
     if (canNormalSummon && isPromotionSummonableFighter(card)) {
@@ -2983,7 +3099,7 @@ function renderHand() {
         return;
       }
 
-      if (!canSummonCard) return;
+      if (!canSummonCard && !canActivateCardEffect) return;
 
       selectedAttackerZoneIndex = null;
       selectedHandCardUid = selectedHandCardUid === card.uid ? null : card.uid;

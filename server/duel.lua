@@ -8,6 +8,14 @@ local getEffectApi
 local moveFieldCardToGraveyard
 local queueEffectPrompt
 local queueDeckSearch
+local getCardStat
+local getEquipmentSlotKey
+local isEquipmentBundle
+local getEquipmentCardAt
+local setEquipmentCardAt
+local eachEquipmentCard
+local moveEquipmentAtToGraveyard
+local refreshContinuousModifiers
 
 local function makeDuelId()
     duelCounter = duelCounter + 1
@@ -125,7 +133,13 @@ local function findFieldCardByUid(playerState, uid)
     end
 
     for zoneIndex, card in pairs(playerState.equipmentZones or {}) do
-        if card and card.uid == uid then
+        if isEquipmentBundle(card) then
+            for _, key in ipairs({ 'vehicle', 'weapon', 'equipment' }) do
+                if card[key] and card[key].uid == uid then
+                    return card[key], 'equipmentZones', zoneIndex
+                end
+            end
+        elseif card and card.uid == uid then
             return card, 'equipmentZones', zoneIndex
         end
     end
@@ -182,9 +196,84 @@ local function getCardHealthText(def)
     return tostring(raw):gsub('^DEF', 'HP')
 end
 
-local function isCardActivatable(card)
+local function cardActivationZoneAllowed(effect, card)
+    local zone = tostring(card and card.zone or '')
+    local zones = effect and effect.activationZones or nil
+
+    if type(zones) ~= 'table' then
+        return zone == 'fighterZone'
+            or zone == 'itemZone'
+            or zone == 'equipmentZone'
+            or zone == 'locationZone'
+    end
+
+    for _, allowedZone in ipairs(zones) do
+        if tostring(allowedZone) == zone then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function cardActivationConditionMet(duel, playerIndex, card, effect)
+    local condition = effect and effect.condition or nil
+    if type(condition) ~= 'table' then return true end
+
+    if condition.ownControlsNameContains then
+        local player = duel and duel.players and duel.players[playerIndex] or nil
+        local needle = string.lower(tostring(condition.ownControlsNameContains))
+        local found = false
+
+        for i = 1, 3 do
+            local fighter = player and player.fighterZones and player.fighterZones[i] or nil
+            local def = fighter and getCardDefinition(fighter.cardId) or nil
+            local nameText = string.lower(tostring(def and def.name or ''))
+            local cardIdOk = not condition.ownControlsNotCardId or tostring(fighter and fighter.cardId) ~= tostring(condition.ownControlsNotCardId)
+            if cardIdOk and nameText:find(needle, 1, true) ~= nil then
+                found = true
+                break
+            end
+        end
+
+        if not found then return false end
+    end
+
+    return true
+end
+
+local function hasAvailableActivatedEffect(card, duel, playerIndex)
     local def = card and getCardDefinition(card.cardId) or nil
-    return DuelEffects and DuelEffects.HasTrigger and DuelEffects.HasTrigger(def, 'activated') or false
+    if not def or type(def.effects) ~= 'table' then
+        return false
+    end
+
+    for index, effect in ipairs(def.effects) do
+        if tostring(effect.trigger or ''):lower() == 'activated' and cardActivationZoneAllowed(effect, card) then
+            local effectKey = tostring(effect.oncePerTurnKey or index)
+            local usedPerGame = effect.oncePerGame == true
+                and card.usedEffects
+                and card.usedEffects[tostring(index)] == true
+            local usedThisTurn = effect.oncePerTurn == true
+                and duel
+                and card.usedEffectTurns
+                and card.usedEffectTurns[effectKey] == duel.turnNumber
+
+            if not usedPerGame and not usedThisTurn and cardActivationConditionMet(duel, playerIndex, card, effect) then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+local function isCardActivatable(card, duel, playerIndex)
+    local def = card and getCardDefinition(card.cardId) or nil
+    if playerIndex and card and card.owner ~= playerIndex and card.controller ~= playerIndex then
+        return false
+    end
+    return def and hasAvailableActivatedEffect(card, duel, playerIndex) or false
 end
 
 local function ensureFighterHp(card)
@@ -209,8 +298,16 @@ local function resetFighterHp(card)
     card.currentHp = baseHp
 end
 
-local function buildCardPayload(cardInstance)
+local function buildCardPayload(cardInstance, duel, viewerIndex)
     local def = getCardDefinition(cardInstance.cardId)
+    local cardType = string.upper(tostring(def and def.type or ''))
+    local attackText = def and (def.attack or def.atk) or nil
+    local speedText = def and (def.speed or def.spd) or nil
+
+    if cardType == 'FIGHTER' and getCardStat then
+        attackText = ('ATK: %s'):format(getCardStat(cardInstance, 'attack'))
+        speedText = ('SPD: %s'):format(getCardStat(cardInstance, 'speed'))
+    end
 
     return {
         uid = cardInstance.uid,
@@ -226,38 +323,38 @@ local function buildCardPayload(cardInstance)
         type = def and def.type or nil,
         job = def and def.job or nil,
         level = def and def.level or nil,
-        attack = def and (def.attack or def.atk) or nil,
+        attack = attackText,
         defense = def and (def.defense or def.def) or nil,
         hp = cardInstance.currentHp,
         maxHp = cardInstance.maxHp,
         health = getCardHealthText(def),
-        speed = def and (def.speed or def.spd) or nil,
+        speed = speedText,
         effectTitle = def and def.effectTitle or nil,
         effectText = def and def.effectText or nil,
         effectTags = DuelEffects and DuelEffects.GetTags(def) or {},
         continuous = def and (def.continuous == true or def.isContinuous == true) or false,
-        activatableEffect = isCardActivatable(cardInstance),
+        activatableEffect = isCardActivatable(cardInstance, duel, viewerIndex),
         setCode = def and def.setCode or nil,
         edition = def and def.edition or nil
     }
 end
 
-local function buildCardPayloadList(cardList)
+local function buildCardPayloadList(cardList, duel, viewerIndex)
     local payload = {}
 
     for i = 1, #(cardList or {}) do
-        payload[#payload + 1] = buildCardPayload(cardList[i])
+        payload[#payload + 1] = buildCardPayload(cardList[i], duel, viewerIndex)
     end
 
     return payload
 end
 
-local function buildZonePayload(zone)
+local function buildZonePayload(zone, duel, viewerIndex)
     local payload = {}
 
     for i = 1, #(zone or {}) do
         if zone[i] then
-            payload[i] = buildCardPayload(zone[i])
+            payload[i] = buildCardPayload(zone[i], duel, viewerIndex)
         else
             payload[i] = nil
         end
@@ -266,12 +363,38 @@ local function buildZonePayload(zone)
     return payload
 end
 
-local function buildFixedZonePayload(zone, count)
+local function buildFixedZonePayload(zone, count, duel, viewerIndex)
     local payload = {}
 
     for i = 1, count do
         if zone and zone[i] then
-            payload[i] = buildCardPayload(zone[i])
+            payload[i] = buildCardPayload(zone[i], duel, viewerIndex)
+        else
+            payload[i] = nil
+        end
+    end
+
+    return payload
+end
+
+local function buildEquipmentZonePayload(zone, count, duel, viewerIndex)
+    local payload = {}
+
+    for i = 1, count do
+        local slot = zone and zone[i] or nil
+        if isEquipmentBundle(slot) then
+            local entry = { cards = {} }
+
+            for _, key in ipairs({ 'vehicle', 'weapon', 'equipment' }) do
+                if slot[key] then
+                    entry[key] = buildCardPayload(slot[key], duel, viewerIndex)
+                    entry.cards[#entry.cards + 1] = entry[key]
+                end
+            end
+
+            payload[i] = #entry.cards > 0 and entry or nil
+        elseif slot then
+            payload[i] = buildCardPayload(slot, duel, viewerIndex)
         else
             payload[i] = nil
         end
@@ -291,6 +414,66 @@ end
 
 local function isEquipmentZoneCardType(cardType)
     return cardType == 'VEHICLE' or cardType == 'WEAPON' or cardType == 'EQUIPMENT'
+end
+
+getEquipmentSlotKey = function(cardOrType)
+    local cardType = type(cardOrType) == 'table' and getCardTypeValue(cardOrType) or string.upper(tostring(cardOrType or ''))
+    if cardType == 'VEHICLE' then return 'vehicle' end
+    if cardType == 'WEAPON' then return 'weapon' end
+    if cardType == 'EQUIPMENT' then return 'equipment' end
+    return nil
+end
+
+isEquipmentBundle = function(value)
+    return type(value) == 'table' and (value.vehicle ~= nil or value.weapon ~= nil or value.equipment ~= nil)
+end
+
+getEquipmentCardAt = function(playerState, zoneIndex, slotKey)
+    local slot = playerState and playerState.equipmentZones and playerState.equipmentZones[zoneIndex] or nil
+    if not slot then return nil end
+
+    if isEquipmentBundle(slot) then
+        return slot[slotKey]
+    end
+
+    if getEquipmentSlotKey(slot) == slotKey then
+        return slot
+    end
+
+    return nil
+end
+
+setEquipmentCardAt = function(playerState, zoneIndex, slotKey, card)
+    if not playerState or not playerState.equipmentZones or not zoneIndex or not slotKey then return end
+
+    local slot = playerState.equipmentZones[zoneIndex]
+    if slot and not isEquipmentBundle(slot) then
+        local oldKey = getEquipmentSlotKey(slot)
+        slot = oldKey and { [oldKey] = slot } or {}
+    elseif not slot then
+        slot = {}
+    end
+
+    slot[slotKey] = card
+    if slot.vehicle or slot.weapon or slot.equipment then
+        playerState.equipmentZones[zoneIndex] = slot
+    else
+        playerState.equipmentZones[zoneIndex] = nil
+    end
+end
+
+eachEquipmentCard = function(playerState, callback)
+    for zoneIndex, slot in pairs(playerState and playerState.equipmentZones or {}) do
+        if isEquipmentBundle(slot) then
+            for _, key in ipairs({ 'vehicle', 'weapon', 'equipment' }) do
+                if slot[key] then
+                    callback(slot[key], zoneIndex, key)
+                end
+            end
+        elseif slot then
+            callback(slot, zoneIndex, getEquipmentSlotKey(slot))
+        end
+    end
 end
 
 local function cardDefHasTag(cardDef, targetTag)
@@ -368,6 +551,15 @@ local function resetTurnFlags(playerState)
     for _, zoneCard in pairs(playerState.fighterZones) do
         if zoneCard then
             zoneCard.hasAttacked = false
+            if zoneCard.turnStatModifiers and zoneCard.turnStatModifiers.hp then
+                local hpMod = tonumber(zoneCard.turnStatModifiers.hp) or 0
+                zoneCard.maxHp = math.max(0, (tonumber(zoneCard.maxHp) or 0) - hpMod)
+                if (tonumber(zoneCard.currentHp) or 0) > (tonumber(zoneCard.maxHp) or 0) then
+                    zoneCard.currentHp = zoneCard.maxHp
+                end
+            end
+            zoneCard.turnStatModifiers = nil
+            ensureFighterHp(zoneCard)
         end
     end
 end
@@ -404,7 +596,8 @@ local function buildPrivateStateForPlayer(duel, viewerIndex)
             cardName = duel.pendingEffect.cardName,
             title = duel.pendingEffect.title,
             text = duel.pendingEffect.text,
-            effectText = duel.pendingEffect.effectText
+            effectText = duel.pendingEffect.effectText,
+            form = duel.pendingEffect.form
         } or nil,
         pendingSelection = duel.pendingSelection and duel.pendingSelection.playerIndex == viewerIndex and {
             id = duel.pendingSelection.id,
@@ -416,15 +609,15 @@ local function buildPrivateStateForPlayer(duel, viewerIndex)
         selfPlayer = {
             source = selfState.source,
             deckCount = #selfState.deck,
-            hand = buildCardPayloadList(selfState.hand),
+            hand = buildCardPayloadList(selfState.hand, duel, viewerIndex),
             graveyardCount = #selfState.graveyard,
-            fighterZones = buildFixedZonePayload(selfState.fighterZones, 3),
-            itemZones = buildFixedZonePayload(selfState.itemZones, 4),
-            equipmentZones = buildFixedZonePayload(selfState.equipmentZones, 3),
-            locationZone = selfState.locationZone and buildCardPayload(selfState.locationZone) or nil,
+            fighterZones = buildFixedZonePayload(selfState.fighterZones, 3, duel, viewerIndex),
+            itemZones = buildFixedZonePayload(selfState.itemZones, 4, duel, viewerIndex),
+            equipmentZones = buildEquipmentZonePayload(selfState.equipmentZones, 3, duel, viewerIndex),
+            locationZone = selfState.locationZone and buildCardPayload(selfState.locationZone, duel, viewerIndex) or nil,
             hasSummonedThisTurn = selfState.hasSummonedThisTurn,
             lifePoints = selfState.lifePoints,
-            graveyard = buildCardPayloadList(selfState.graveyard)
+            graveyard = buildCardPayloadList(selfState.graveyard, duel, viewerIndex)
         },
 
         opponentPlayer = {
@@ -432,19 +625,22 @@ local function buildPrivateStateForPlayer(duel, viewerIndex)
             deckCount = #oppState.deck,
             handCount = #oppState.hand,
             graveyardCount = #oppState.graveyard,
-            fighterZones = buildFixedZonePayload(oppState.fighterZones, 3),
-            itemZones = buildFixedZonePayload(oppState.itemZones, 4),
-            equipmentZones = buildFixedZonePayload(oppState.equipmentZones, 3),
-            locationZone = oppState.locationZone and buildCardPayload(oppState.locationZone) or nil,
+            fighterZones = buildFixedZonePayload(oppState.fighterZones, 3, duel, viewerIndex),
+            itemZones = buildFixedZonePayload(oppState.itemZones, 4, duel, viewerIndex),
+            equipmentZones = buildEquipmentZonePayload(oppState.equipmentZones, 3, duel, viewerIndex),
+            locationZone = oppState.locationZone and buildCardPayload(oppState.locationZone, duel, viewerIndex) or nil,
             hasSummonedThisTurn = oppState.hasSummonedThisTurn,
             lifePoints = oppState.lifePoints,
-            graveyard = buildCardPayloadList(oppState.graveyard)
+            graveyard = buildCardPayloadList(oppState.graveyard, duel, viewerIndex)
         }
     }
 end
 
 local function sendDuelStateToPlayers(duel)
     local sentToSource = {}
+    if refreshContinuousModifiers then
+        refreshContinuousModifiers(duel)
+    end
 
     for playerIndex, playerState in pairs(duel.players) do
         local src = playerState.source
@@ -491,7 +687,7 @@ local function createPlayerState(src, ownerIndex, deckId, deckName, deckData)
     }
 end
 
-local function getCardStat(card, statName)
+getCardStat = function(card, statName)
     local def = getCardDefinition(card.cardId)
     if not def then return 0 end
 
@@ -505,13 +701,79 @@ local function getCardStat(card, statName)
 
     local value = parseStatValue(raw)
     local modifiers = card.statModifiers or {}
+    local turnModifiers = card.turnStatModifiers or {}
+    local equipmentModifiers = card.equipmentStatModifiers or {}
+    local continuousModifiers = card.continuousStatModifiers or {}
     value = value + (tonumber(modifiers[statName]) or 0)
+    value = value + (tonumber(turnModifiers[statName]) or 0)
+    value = value + (tonumber(equipmentModifiers[statName]) or 0)
+    value = value + (tonumber(continuousModifiers[statName]) or 0)
 
     if statName == 'hp' or statName == 'health' or statName == 'defense' then
         value = value + (tonumber(modifiers.hp) or 0)
+        value = value + (tonumber(turnModifiers.hp) or 0)
+        value = value + (tonumber(equipmentModifiers.hp) or 0)
+        value = value + (tonumber(continuousModifiers.hp) or 0)
     end
 
     return value
+end
+
+local function getEquipmentStatModifier(card, statName)
+    local def = card and getCardDefinition(card.cardId) or nil
+    if not def then return 0 end
+
+    local raw = statName == 'attack' and (def.attack or def.atk) or (def.speed or def.spd)
+    local match = tostring(raw or ''):match('([%+%-]%s*%d+)')
+    if not match then return 0 end
+
+    return tonumber((match:gsub('%s+', ''))) or 0
+end
+
+local function rebuildEquipmentModifiers(playerState, zoneIndex)
+    if not playerState or not zoneIndex then return end
+
+    local fighter = playerState.fighterZones and playerState.fighterZones[zoneIndex] or nil
+    if not fighter then return end
+
+    fighter.equipmentStatModifiers = nil
+
+    local attackMod = 0
+    local speedMod = 0
+    local slot = playerState.equipmentZones and playerState.equipmentZones[zoneIndex] or nil
+
+    local function addEquipmentStats(equipment)
+        attackMod = attackMod + getEquipmentStatModifier(equipment, 'attack')
+        speedMod = speedMod + getEquipmentStatModifier(equipment, 'speed')
+        equipment.equippedToZoneIndex = zoneIndex
+    end
+
+    if isEquipmentBundle(slot) then
+        for _, key in ipairs({ 'vehicle', 'weapon', 'equipment' }) do
+            if slot[key] then
+                addEquipmentStats(slot[key])
+            end
+        end
+    elseif slot then
+        addEquipmentStats(slot)
+    end
+
+    if attackMod ~= 0 or speedMod ~= 0 then
+        fighter.equipmentStatModifiers = {}
+        if attackMod ~= 0 then fighter.equipmentStatModifiers.attack = attackMod end
+        if speedMod ~= 0 then fighter.equipmentStatModifiers.speed = speedMod end
+    end
+end
+
+local function canEquipCardToFighter(playerState, equipmentCard, zoneIndex)
+    if not playerState or not equipmentCard then return false end
+    if not zoneIndex or zoneIndex < 1 or zoneIndex > 3 then return false end
+    if not playerState.fighterZones or not playerState.fighterZones[zoneIndex] then return false end
+
+    local slotKey = getEquipmentSlotKey(equipmentCard)
+    if not slotKey then return false end
+
+    return getEquipmentCardAt(playerState, zoneIndex, slotKey) == nil
 end
 
 local function getCardLevelValue(cardDef)
@@ -533,8 +795,14 @@ getEffectApi = function()
         drawCards = drawCards,
         moveHandCardToGraveyard = moveHandCardToGraveyard,
         moveFieldCardToGraveyard = moveFieldCardToGraveyard,
+        moveEquipmentAtToGraveyard = moveEquipmentAtToGraveyard,
         resetFighterHp = resetFighterHp,
         ensureFighterHp = ensureFighterHp,
+        rebuildEquipmentModifiers = rebuildEquipmentModifiers,
+        getEquipmentSlotKey = getEquipmentSlotKey,
+        getEquipmentCardAt = getEquipmentCardAt,
+        setEquipmentCardAt = setEquipmentCardAt,
+        canEquipCardToFighter = canEquipCardToFighter,
         queueEffectPrompt = queueEffectPrompt,
         queueDeckSearch = queueDeckSearch
     }
@@ -567,19 +835,118 @@ local function getOccupiedFighterCount(playerState)
     return count
 end
 
+local function continuousConditionMet(playerState, condition)
+    if type(condition) ~= 'table' then return true end
+
+    if condition.ownFighterCount and getOccupiedFighterCount(playerState) ~= tonumber(condition.ownFighterCount) then
+        return false
+    end
+
+    if condition.ownFighterCountMin and getOccupiedFighterCount(playerState) < tonumber(condition.ownFighterCountMin) then
+        return false
+    end
+
+    return true
+end
+
+local function clearContinuousModifier(card)
+    if not card or not card.continuousStatModifiers then return end
+
+    local hpMod = tonumber(card.continuousStatModifiers.hp) or 0
+    if hpMod ~= 0 then
+        card.maxHp = math.max(0, (tonumber(card.maxHp) or getCardBaseHp(card)) - hpMod)
+        card.currentHp = math.max(0, (tonumber(card.currentHp) or 0) - hpMod)
+        if (tonumber(card.currentHp) or 0) > card.maxHp then
+            card.currentHp = card.maxHp
+        end
+    end
+
+    card.continuousStatModifiers = nil
+end
+
+local function applyContinuousStatModifier(card, stat, amount)
+    if not card or not stat then return end
+
+    local key = stat
+    if stat == 'defense' or stat == 'health' then
+        key = 'hp'
+    end
+
+    local value = tonumber(amount) or 0
+    if value == 0 then return end
+
+    card.continuousStatModifiers = card.continuousStatModifiers or {}
+    card.continuousStatModifiers[key] = (tonumber(card.continuousStatModifiers[key]) or 0) + value
+
+    if key == 'hp' then
+        card.maxHp = math.max(0, (tonumber(card.maxHp) or getCardBaseHp(card)) + value)
+        if value > 0 then
+            card.currentHp = (tonumber(card.currentHp) or 0) + value
+        elseif (tonumber(card.currentHp) or 0) > card.maxHp then
+            card.currentHp = card.maxHp
+        end
+    end
+end
+
+refreshContinuousModifiers = function(duel)
+    if not duel or not duel.players then return end
+
+    for _, playerState in pairs(duel.players) do
+        for i = 1, 3 do
+            clearContinuousModifier(playerState.fighterZones and playerState.fighterZones[i] or nil)
+        end
+    end
+
+    for _, playerState in pairs(duel.players) do
+        for i = 1, 3 do
+            local card = playerState.fighterZones and playerState.fighterZones[i] or nil
+            local def = card and getCardDefinition(card.cardId) or nil
+
+            for _, effect in ipairs((def and def.effects) or {}) do
+                if effect.continuous == true and continuousConditionMet(playerState, effect.condition) then
+                    for _, action in ipairs(effect.actions or {}) do
+                        if tostring(action.action or '') == 'modify_stats' and tostring(action.target or 'self') == 'self' then
+                            for stat, amount in pairs(action.stats or {}) do
+                                applyContinuousStatModifier(card, stat, amount)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+moveEquipmentAtToGraveyard = function(playerState, zoneIndex)
+    local equipmentSlot = playerState and playerState.equipmentZones and playerState.equipmentZones[zoneIndex] or nil
+    if not equipmentSlot then return end
+
+    if isEquipmentBundle(equipmentSlot) then
+        for _, key in ipairs({ 'vehicle', 'weapon', 'equipment' }) do
+            local equipment = equipmentSlot[key]
+            if equipment then
+                equipment.zone = "graveyard"
+                playerState.graveyard[#playerState.graveyard + 1] = equipment
+            end
+        end
+    else
+        equipmentSlot.zone = "graveyard"
+        playerState.graveyard[#playerState.graveyard + 1] = equipmentSlot
+    end
+
+    playerState.equipmentZones[zoneIndex] = nil
+    rebuildEquipmentModifiers(playerState, zoneIndex)
+end
+
 moveFieldCardToGraveyard = function(playerState, zoneIndex)
     local card = playerState.fighterZones[zoneIndex]
     if not card then return nil end
 
-    local equipment = playerState.equipmentZones and playerState.equipmentZones[zoneIndex] or nil
-    if equipment then
-        playerState.equipmentZones[zoneIndex] = nil
-        equipment.zone = "graveyard"
-        playerState.graveyard[#playerState.graveyard + 1] = equipment
-    end
+    moveEquipmentAtToGraveyard(playerState, zoneIndex)
 
     playerState.fighterZones[zoneIndex] = nil
     card.zone = "graveyard"
+    card.continuousStatModifiers = nil
     playerState.graveyard[#playerState.graveyard + 1] = card
 
     return card
@@ -657,7 +1024,8 @@ queueEffectPrompt = function(duel, playerIndex, sourceCard, triggerName, effectI
         cardName = (prompt and prompt.cardName) or (getCardDefinition(sourceCard.cardId) and getCardDefinition(sourceCard.cardId).name) or sourceCard.cardId,
         title = prompt and prompt.title or 'Effect',
         text = prompt and prompt.text or 'Do you want to activate this effect?',
-        effectText = prompt and prompt.effectText or nil
+        effectText = prompt and prompt.effectText or nil,
+        form = prompt and prompt.form or nil
     }
 
     return true
@@ -705,11 +1073,26 @@ queueDeckSearch = function(duel, playerIndex, sourceCard, filter, prompt)
 
     local choices = {}
     local maxChoices = tonumber(prompt and prompt.maxChoices) or 30
+    local mode = prompt and prompt.mode or 'add_to_hand'
 
     for _, card in ipairs(playerState.deck or {}) do
         if cardMatchesSearchFilter(card, filter) then
-            choices[#choices + 1] = buildCardPayload(card)
-            if #choices >= maxChoices then break end
+            local hasValidTarget = true
+
+            if mode == 'equip_from_deck' then
+                hasValidTarget = false
+                for i = 1, 3 do
+                    if canEquipCardToFighter(playerState, card, i) then
+                        hasValidTarget = true
+                        break
+                    end
+                end
+            end
+
+            if hasValidTarget then
+                choices[#choices + 1] = buildCardPayload(card)
+                if #choices >= maxChoices then break end
+            end
         end
     end
 
@@ -731,6 +1114,8 @@ queueDeckSearch = function(duel, playerIndex, sourceCard, filter, prompt)
         sourceUid = sourceCard and sourceCard.uid or nil,
         zone = 'deck',
         filter = filter or {},
+        mode = mode,
+        action = prompt and prompt.action or nil,
         title = prompt and prompt.title or 'Search Deck',
         text = prompt and prompt.text or 'Choose 1 card to add to your hand.',
         choices = choices
@@ -870,6 +1255,10 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
 
     if duel.phase ~= "battle" then
         return false, 'You can only attack in Battle Phase'
+    end
+
+    if refreshContinuousModifiers then
+        refreshContinuousModifiers(duel)
     end
 
     if duel.turnNumber == 1 and duel.firstTurnPlayer == playerIndex then
@@ -1353,13 +1742,18 @@ function Duel.PromoteFighter(src, duelId, handUid, tributeZoneIndex)
         return false, 'That card cannot promote this fighter'
     end
 
-    moveFieldCardToGraveyard(playerState, tributeZoneIndex)
     table.remove(playerState.hand, handIndex)
+
+    playerState.fighterZones[tributeZoneIndex] = nil
+    tributeCard.zone = "graveyard"
+    tributeCard.equipmentStatModifiers = nil
+    playerState.graveyard[#playerState.graveyard + 1] = tributeCard
 
     promotionCard.zone = "fighterZone"
     promotionCard.hasAttacked = false
     resetFighterHp(promotionCard)
     playerState.fighterZones[tributeZoneIndex] = promotionCard
+    rebuildEquipmentModifiers(playerState, tributeZoneIndex)
     playerState.hasSummonedThisTurn = true
 
     if DuelEffects and getEffectApi then
@@ -1484,18 +1878,23 @@ function Duel.PlayNonFighter(src, duelId, handUid, targetKind, zoneIndex)
         if not zoneIndex or zoneIndex < 1 or zoneIndex > 3 then
             return false, 'Invalid equipment zone'
         end
+        local slotKey = getEquipmentSlotKey(cardType)
+        if not slotKey then
+            return false, 'Invalid equipment card'
+        end
 
         if playerState.fighterZones[zoneIndex] == nil then
             return false, 'Choose a fighter to equip this card to'
         end
 
-        if playerState.equipmentZones[zoneIndex] ~= nil then
-            return false, 'That fighter already has an equipment card'
+        if getEquipmentCardAt(playerState, zoneIndex, slotKey) ~= nil then
+            return false, ('That fighter already has a %s card'):format(cardType:lower())
         end
 
         table.remove(playerState.hand, handIndex)
         card.zone = "equipmentZone"
-        playerState.equipmentZones[zoneIndex] = card
+        setEquipmentCardAt(playerState, zoneIndex, slotKey, card)
+        rebuildEquipmentModifiers(playerState, zoneIndex)
 
         if DuelEffects and getEffectApi then
             DuelEffects.RunTrigger(duel, 'on_play', playerIndex, card, {
@@ -1512,7 +1911,7 @@ function Duel.PlayNonFighter(src, duelId, handUid, targetKind, zoneIndex)
     return false, 'This card type is not playable yet'
 end
 
-function Duel.ResolvePendingEffect(src, duelId, promptId, accepted)
+function Duel.ResolvePendingEffect(src, duelId, promptId, accepted, response)
     local duel = Duel.Active[duelId]
     if not duel then
         return false, 'Duel not found'
@@ -1531,12 +1930,28 @@ function Duel.ResolvePendingEffect(src, duelId, promptId, accepted)
     duel.pendingEffect = nil
 
     if accepted == true then
+        response = type(response) == 'table' and response or {}
+
+        if pending.form and pending.form.number then
+            local numberForm = pending.form.number
+            local key = tostring(numberForm.key or 'amount')
+            local value = tonumber(response[key]) or tonumber(numberForm.default) or 0
+            if numberForm.min ~= nil then value = math.max(tonumber(numberForm.min) or value, value) end
+            if numberForm.max ~= nil then value = math.min(tonumber(numberForm.max) or value, value) end
+            if numberForm.maxLifePoints == true then
+                local player = duel.players[playerIndex]
+                value = math.min(tonumber(player and player.lifePoints) or value, value)
+            end
+            response[key] = value
+        end
+
         local playerState = duel.players[playerIndex]
         local card = findPlayerCardByUid(playerState, pending.sourceUid)
         if card then
             local ok, err = DuelEffects.RunEffectByIndex(duel, playerIndex, card, pending.effectIndex, {
                 trigger = pending.trigger,
-                prompted = true
+                prompted = true,
+                response = response
             }, getEffectApi())
 
             if not ok then
@@ -1571,6 +1986,41 @@ function Duel.ResolvePendingSelection(src, duelId, selectionId, selectedUid)
 
     if selectedUid and selectedUid ~= '' then
         local playerState = duel.players[playerIndex]
+
+        if pending.mode == 'equip_target' then
+            local equipmentCard, deckIndex = findCardInZoneByUid(playerState, 'deck', pending.equipmentUid)
+            if not equipmentCard or not deckIndex then
+                return false, 'Selected equipment card is no longer in your deck'
+            end
+
+            local targetCard, zoneName, zoneIndex = findFieldCardByUid(playerState, selectedUid)
+            if not targetCard or zoneName ~= 'fighterZones' then
+                return false, 'Selected fighter is no longer on your field'
+            end
+
+            if not canEquipCardToFighter(playerState, equipmentCard, zoneIndex) then
+                return false, 'That fighter cannot equip this card'
+            end
+
+            local slotKey = getEquipmentSlotKey(equipmentCard)
+            table.remove(playerState.deck, deckIndex)
+            equipmentCard.zone = 'equipmentZone'
+            setEquipmentCardAt(playerState, zoneIndex, slotKey, equipmentCard)
+            rebuildEquipmentModifiers(playerState, zoneIndex)
+
+            if DuelEffects and getEffectApi then
+                DuelEffects.RunTrigger(duel, 'on_play', playerIndex, equipmentCard, {
+                    zone = 'equipmentZone',
+                    zoneIndex = zoneIndex,
+                    equippedByEffect = true
+                }, getEffectApi())
+                checkWinCondition(duel)
+            end
+
+            sendDuelStateToPlayers(duel)
+            return true
+        end
+
         local card, deckIndex = findCardInZoneByUid(playerState, 'deck', selectedUid)
         if not card or not deckIndex then
             return false, 'Selected card is no longer in your deck'
@@ -1578,6 +2028,37 @@ function Duel.ResolvePendingSelection(src, duelId, selectionId, selectedUid)
 
         if not cardMatchesSearchFilter(card, pending.filter) then
             return false, 'Selected card is not valid for this effect'
+        end
+
+        if pending.mode == 'equip_from_deck' then
+            local choices = {}
+            for i = 1, 3 do
+                local fighter = playerState.fighterZones and playerState.fighterZones[i] or nil
+                if fighter and canEquipCardToFighter(playerState, card, i) then
+                    choices[#choices + 1] = buildCardPayload(fighter)
+                end
+            end
+
+            if #choices == 0 then
+                return false, 'No available fighter can equip that card'
+            end
+
+            duel.selectionCounter = (duel.selectionCounter or 0) + 1
+            local cardDef = getCardDefinition(card.cardId)
+            duel.pendingSelection = {
+                id = tostring(duel.selectionCounter),
+                playerIndex = playerIndex,
+                sourceUid = pending.sourceUid,
+                zone = 'fighterZones',
+                mode = 'equip_target',
+                equipmentUid = card.uid,
+                title = 'Choose Fighter',
+                text = ('Choose a fighter to equip %s to.'):format(cardDef and cardDef.name or card.cardId),
+                choices = choices
+            }
+
+            sendDuelStateToPlayers(duel)
+            return true
         end
 
         table.remove(playerState.deck, deckIndex)
@@ -1617,20 +2098,18 @@ function Duel.ActivateEffect(src, duelId, sourceUid)
     end
 
     local playerState = duel.players[playerIndex]
-    local card = findFieldCardByUid(playerState, sourceUid)
+    local card = findPlayerCardByUid(playerState, sourceUid)
     if not card then
-        return false, 'Card not found on your field'
+        return false, 'Card not found'
     end
 
-    if not isCardActivatable(card) then
+    if not isCardActivatable(card, duel, playerIndex) then
         return false, 'That card has no activatable effect'
     end
 
     local activated = DuelEffects.RunTrigger(duel, 'activated', playerIndex, card, {
         manual = true
-    }, getEffectApi(), {
-        force = true
-    })
+    }, getEffectApi())
 
     if activated <= 0 then
         return false, 'No effect activated'

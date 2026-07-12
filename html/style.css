@@ -884,6 +884,16 @@ button:hover {
   padding: 8px;
 }
 
+.ui-modal-choice.effect-option {
+  grid-template-columns: 1fr;
+}
+
+.ui-modal-choice.selected {
+  border-color: rgba(255, 214, 112, 0.95);
+  background: rgba(255, 214, 112, 0.12);
+  box-shadow: 0 0 0 2px rgba(255, 214, 112, 0.18), 0 0 20px rgba(255, 214, 112, 0.12);
+}
+
 .ui-modal.card-picker .ui-modal-choice {
   width: 150px;
   min-width: 150px;
@@ -1931,6 +1941,12 @@ button:hover {
     0 0 18px rgba(60, 180, 255, 0.32);
 }
 
+.duel-hand-card.effect-ready {
+  box-shadow:
+    0 0 0 2px rgba(255, 228, 90, 0.82),
+    0 0 20px rgba(255, 214, 70, 0.42);
+}
+
 .duel-hand-card.promotion-ready {
   box-shadow:
     0 0 0 2px rgba(255, 220, 120, 0.85),
@@ -2717,6 +2733,21 @@ button.table-card-pile {
     0 0 22px rgba(255, 205, 90, 0.22);
 }
 
+.table-card-pile.cemetery.effect-ready {
+  border-color: rgba(255, 226, 88, 0.86);
+  box-shadow:
+    inset 0 0 20px rgba(255, 220, 90, 0.16),
+    0 0 18px rgba(255, 216, 76, 0.42),
+    0 0 34px rgba(255, 190, 44, 0.22);
+  animation: tableCemeteryEffectPulse 1.15s ease-in-out infinite;
+}
+
+.table-card-pile.cemetery.effect-ready .table-pile-last-card {
+  filter:
+    drop-shadow(0 8px 12px rgba(0,0,0,0.48))
+    drop-shadow(0 0 13px rgba(255, 218, 82, 0.74));
+}
+
 .table-card-pile.draw-ready {
   border-color: rgba(110, 215, 255, 0.88);
   box-shadow:
@@ -2801,6 +2832,7 @@ button.table-card-pile {
 
 
 .table-zone > img {
+  position: relative;
   width: 114%;
   height: 114%;
   object-fit: contain;
@@ -2810,12 +2842,21 @@ button.table-card-pile {
   z-index: 1;
 }
 
-.table-equipped-card {
+.table-equipment-stack {
   position: absolute;
-  width: 100%;
-  aspect-ratio: 5 / 7;
   right: -20%;
   top: -10%;
+  z-index: 0;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  pointer-events: none;
+}
+
+.table-equipped-card {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  aspect-ratio: 5 / 7;
   padding: 0;
   border: 0;
   border-radius: 7px;
@@ -2824,6 +2865,21 @@ button.table-card-pile {
   transform: rotate(0deg);
   cursor: pointer;
   z-index: 0;
+  pointer-events: auto;
+}
+
+.table-equipment-stack.multi .table-equipped-card:first-child {
+  transform: translate(0, 0) rotate(0deg);
+}
+
+.table-equipment-stack.multi .table-equipped-card:nth-child(2) {
+  transform: translate(24%, -16%) rotate(1.5deg);
+  z-index: -1;
+}
+
+.table-equipment-stack.multi .table-equipped-card:nth-child(3) {
+  transform: translate(48%, -32%) rotate(3deg);
+  z-index: -2;
 }
 
 .table-equipped-card img {
@@ -3112,6 +3168,18 @@ button.table-card-pile {
   box-shadow:
     0 0 0 2px rgba(80, 185, 255, 0.78),
     0 0 20px rgba(60, 175, 255, 0.38);
+}
+
+.table-hand-card.effect-ready {
+  filter:
+    drop-shadow(0 12px 16px rgba(0,0,0,0.45))
+    drop-shadow(0 0 17px rgba(255, 220, 80, 0.76));
+}
+
+.table-hand-card.effect-ready img {
+  box-shadow:
+    0 0 0 2px rgba(255, 228, 90, 0.82),
+    0 0 22px rgba(255, 214, 70, 0.44);
 }
 
 .table-hand-card.promotion-ready {
@@ -3423,6 +3491,14 @@ button.table-card-pile {
   box-shadow: 0 0 16px rgba(255, 205, 90, 0.14);
 }
 
+.table-grave-button.effect-ready {
+  border-color: rgba(255, 226, 88, 0.76);
+  box-shadow:
+    0 0 0 1px rgba(255, 226, 88, 0.34),
+    0 0 18px rgba(255, 216, 76, 0.34);
+  animation: tableCemeteryEffectPulse 1.15s ease-in-out infinite;
+}
+
 .table-grave-list {
   max-height: 680px;
   overflow-y: auto;
@@ -3450,6 +3526,30 @@ button.table-card-pile {
   cursor: pointer;
 }
 
+.table-grave-card.effect-ready {
+  border-color: rgba(255, 226, 88, 0.78);
+  background:
+    linear-gradient(90deg, rgba(255, 221, 92, 0.13), rgba(6, 18, 28, 0.80) 56%),
+    rgba(6, 18, 28, 0.76);
+  box-shadow:
+    0 0 0 1px rgba(255, 226, 88, 0.22),
+    0 0 18px rgba(255, 216, 76, 0.24);
+  animation: tableCemeteryEffectPulse 1.15s ease-in-out infinite;
+}
+
+.table-grave-card.effect-ready img {
+  filter:
+    drop-shadow(0 7px 11px rgba(0,0,0,0.48))
+    drop-shadow(0 0 11px rgba(255, 218, 82, 0.68));
+}
+
+.table-grave-card.selected {
+  border-color: rgba(180, 140, 255, 0.72);
+  box-shadow:
+    0 0 0 1px rgba(180, 140, 255, 0.34),
+    0 0 18px rgba(180, 140, 255, 0.26);
+}
+
 .table-grave-card img {
   width: 92px;
   aspect-ratio: 5 / 7;
@@ -3471,6 +3571,15 @@ button.table-card-pile {
   }
   50% {
     filter: brightness(1.35);
+  }
+}
+
+@keyframes tableCemeteryEffectPulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.16);
   }
 }
 
