@@ -2,6 +2,11 @@
 
 ## Latest
 
+## v0.6.1
+- Improved prompt minimise/restore animations and strengthened the restore button glow
+- Kept duel prompt backdrop clear while making the prompt panel subtly purple and transparent
+- Softened duel prompt backdrop and added click-outside minimising with a glowing restore button
+
 ## v0.6.0
 - Added the first server-side keyword/tag effect engine
 - Wired effect triggers into summon, play, draw and end-phase duel actions

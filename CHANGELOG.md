@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.6.1
 - Improved prompt minimise/restore animations and strengthened the restore button glow
 - Kept duel prompt backdrop clear while making the prompt panel subtly purple and transparent
 - Softened duel prompt backdrop and added click-outside minimising with a glowing restore button
