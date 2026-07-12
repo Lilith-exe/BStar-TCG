@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.6.0
 - Added the first server-side keyword/tag effect engine
 - Wired effect triggers into summon, play, draw and end-phase duel actions
 - Added executable effect metadata to starter cards for draw, search, heal, special summon and LP steal effects
@@ -21,7 +23,6 @@
 - Fixed pending duel interaction sync recursion that prevented search pickers from opening
 - Changed Wyatt Rayne to use the deck-search picker for Riley's Performance
 - Enlarged deck-search picker with horizontal card browsing, preview-on-click and confirm selection
-
 
 ## v0.5.3
 - Fixed Clyde Riley Sr card
