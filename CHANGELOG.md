@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.6.3
 - Started card-by-card effect plumbing for ALPH1-EN001 through ALPH1-EN010
 - Added reusable effect actions for stat modifiers, filtered hand discard, graveyard revival, deck equipment and deck swapping
 - Added reusable effect conditions and once-per-turn / once-per-game guards

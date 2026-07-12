@@ -2,6 +2,26 @@
 
 ## Latest
 
+## v0.6.3
+- Started card-by-card effect plumbing for ALPH1-EN001 through ALPH1-EN010
+- Added reusable effect actions for stat modifiers, filtered hand discard, graveyard revival, deck equipment and deck swapping
+- Added reusable effect conditions and once-per-turn / once-per-game guards
+- Added reusable prompted effect forms for pay/choose effects, then wired Layla Hart's Moving Funds effect into it
+- Equipped Vehicle and Weapon cards now apply their printed ATK/SPD modifiers to the fighter in the same equipment slot
+- Balanced Layla Hart's Moving Funds as once per card copy per duel and highlighted selected effect choices
+- Limited field effect glow to just cards on the field
+- Normalized stat values in cards.lua and the master CSV so ATK/DEF/HP/SPD labels do not live inside stat columns
+- Split fighter equipment into Vehicle and Weapon sub-slots so one of each can be attached to the same fighter
+- Changed Brock Lee to search a Vehicle from deck, then let the player choose which available fighter equips it
+- Removed activated-effect glow after once-per-turn or once-per-duel effects have been spent
+- Restored equipped cards to the larger behind-fighter top-right visual treatment
+- Kept equipped cards attached when a fighter is promoted, transferring their bonuses to the promoted fighter
+- Offset the second equipped card farther outward while preserving the single-equipped-card look
+- Made Brock Lee's on-summon Vehicle search/equip effect optional
+- Issued errata on EN005 Xena Miranova 
+- Issued errata on EN008 Alex Ortiz
+- Added glow UI elements to activatable effects in the cemetary and hand
+
 ## v0.6.2
 - Restored Discord update embed layout so Branch appears above Changes
 
