@@ -2,6 +2,9 @@
 
 ## Latest
 
+## v0.6.2
+- Restored Discord update embed layout so Branch appears above Changes
+
 ## v0.6.1
 - Improved prompt minimise/restore animations and strengthened the restore button glow
 - Kept duel prompt backdrop clear while making the prompt panel subtly purple and transparent

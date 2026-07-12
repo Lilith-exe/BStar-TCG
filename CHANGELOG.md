@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.6.2
 - Restored Discord update embed layout so Branch appears above Changes
 
 ## v0.6.1
