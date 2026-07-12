@@ -27,12 +27,14 @@ Cards = {
         attack = 'ATK: 10',
         defense = 'DEF: 20',
         effectTitle = 'EFFECT',
-        effectText = 'Lose 300 LP and draw 2 cards.',
+        effectText = 'On summon, you can lose 300 LP and draw 2 cards.',
         effectTags = { 'on_summon', 'lose_lp', 'draw' },
         effects = {
             {
                 trigger = 'on_summon',
                 tags = { 'lose_lp', 'draw' },
+                optional = true,
+                promptText = 'Do you want to lose 300 LP and draw 2 cards?',
                 actions = {
                     { action = 'lose_lp', target = 'self', amount = 300 },
                     { action = 'draw', target = 'self', amount = 2 }

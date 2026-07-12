@@ -46,6 +46,7 @@ const uiModalChoicePreview = document.getElementById('uiModalChoicePreview');
 const uiModalChoices = document.getElementById('uiModalChoices');
 const uiModalCancelBtn = document.getElementById('uiModalCancelBtn');
 const uiModalConfirmBtn = document.getElementById('uiModalConfirmBtn');
+const uiModalRestoreBtn = document.getElementById('uiModalRestoreBtn');
 const coinFlipWrap = document.getElementById('coinFlipWrap');
 const coinDisc = document.getElementById('coinDisc');
 const coinFlipTitle = document.getElementById('coinFlipTitle');
@@ -131,6 +132,7 @@ const duelResultCloseBtn = document.getElementById('duelResultCloseBtn');
 let activeModalAction = null;
 let activeModalCancelAction = null;
 let activeModalSelectedChoice = null;
+let activeModalCanMinimize = false;
 let activeEffectPromptId = null;
 let activeCardSelectionId = null;
 
@@ -248,6 +250,15 @@ function hideAll() {
   deckBuilderWrap.classList.add('hidden');
   deckHubWrap.classList.add('hidden');
   uiModalWrap.classList.add('hidden');
+  uiModalWrap.classList.remove('minimized', 'card-picker-open');
+  uiModalWrap.querySelector('.ui-modal')?.classList.remove('minimizing');
+  uiModalRestoreBtn?.classList.add('hidden');
+  activeModalAction = null;
+  activeModalCancelAction = null;
+  activeModalSelectedChoice = null;
+  activeModalCanMinimize = false;
+  activeEffectPromptId = null;
+  activeCardSelectionId = null;
   coinFlipWrap.classList.add('hidden');
   duelWrap.classList.add('hidden');
   tableDuelWrap.classList.add('hidden');
@@ -342,14 +353,22 @@ function isDeckCardInvalid(cardId) {
 
 // ---------- Modal ----------
 
-function openModal({ title, text, showInput = false, inputValue = '', confirmText = 'Confirm', cancelText = 'Cancel', choices = null, onConfirm = null, onCancel = null, onChoice = null }) {
+function openModal({ title, text, showInput = false, inputValue = '', confirmText = 'Confirm', cancelText = 'Cancel', choices = null, minimizable = false, restoreText = 'Pending Prompt', onConfirm = null, onCancel = null, onChoice = null }) {
   activeModalAction = onConfirm || null;
   activeModalCancelAction = onCancel || null;
   activeModalSelectedChoice = null;
+  activeModalCanMinimize = minimizable === true;
 
   const modalPanel = uiModalWrap.querySelector('.ui-modal');
   const hasChoices = Array.isArray(choices) && choices.length > 0;
   modalPanel?.classList.toggle('card-picker', hasChoices);
+  uiModalWrap.classList.toggle('card-picker-open', hasChoices);
+  modalPanel?.classList.remove('minimizing', 'restoring');
+  uiModalWrap.classList.remove('minimized');
+  uiModalRestoreBtn?.classList.add('hidden');
+  if (uiModalRestoreBtn) {
+    uiModalRestoreBtn.querySelector('span').textContent = restoreText || title || 'Pending Prompt';
+  }
 
   uiModalTitle.textContent = title || 'Confirm';
   uiModalText.textContent = text || '';
@@ -464,8 +483,39 @@ function openModal({ title, text, showInput = false, inputValue = '', confirmTex
   uiModalWrap.classList.remove('hidden');
 }
 
+function minimizeModal() {
+  if (!activeModalCanMinimize || uiModalWrap.classList.contains('hidden')) return;
+
+  const modalPanel = uiModalWrap.querySelector('.ui-modal');
+  modalPanel?.classList.add('minimizing');
+  uiModalWrap.classList.add('minimized');
+  uiModalRestoreBtn?.classList.remove('hidden');
+
+  window.setTimeout(() => {
+    if (!modalPanel?.classList.contains('minimizing')) return;
+    uiModalWrap.classList.add('hidden');
+    modalPanel.classList.remove('minimizing');
+  }, 220);
+}
+
+function restoreModal() {
+  if (!activeModalCanMinimize) return;
+
+  uiModalRestoreBtn?.classList.add('hidden');
+  const modalPanel = uiModalWrap.querySelector('.ui-modal');
+  modalPanel?.classList.remove('minimizing');
+  modalPanel?.classList.add('restoring');
+  uiModalWrap.classList.remove('hidden', 'minimized');
+
+  window.setTimeout(() => {
+    modalPanel?.classList.remove('restoring');
+  }, 220);
+}
+
 function closeModal() {
   uiModalWrap.classList.add('hidden');
+  uiModalWrap.classList.remove('minimized', 'card-picker-open');
+  uiModalRestoreBtn?.classList.add('hidden');
   uiModalInput.classList.add('hidden');
   uiModalInput.value = '';
   uiModalChoices?.classList.add('hidden');
@@ -474,10 +524,11 @@ function closeModal() {
   if (uiModalChoicePreview) uiModalChoicePreview.innerHTML = '';
   uiModalConfirmBtn.classList.remove('hidden');
   uiModalConfirmBtn.disabled = false;
-  uiModalWrap.querySelector('.ui-modal')?.classList.remove('card-picker');
+  uiModalWrap.querySelector('.ui-modal')?.classList.remove('card-picker', 'minimizing', 'restoring');
   activeModalAction = null;
   activeModalCancelAction = null;
   activeModalSelectedChoice = null;
+  activeModalCanMinimize = false;
 }
 
 function resolvePendingEffect(promptId, accepted) {
@@ -511,6 +562,8 @@ function showPendingEffectPrompt(prompt) {
     text: prompt.text || `Do you want to activate ${prompt.cardName || 'this card'}'s effect?`,
     confirmText: 'Activate',
     cancelText: 'Skip',
+    minimizable: true,
+    restoreText: `${prompt.cardName || 'Card'} Effect`,
     onConfirm: () => {
       resolvePendingEffect(prompt.id, true);
       activeEffectPromptId = null;
@@ -544,6 +597,8 @@ function showPendingCardSelection(selection) {
     confirmText: 'Confirm',
     cancelText: 'Cancel',
     choices: selection.choices || [],
+    minimizable: true,
+    restoreText: selection.title || 'Choose a card',
     onConfirm: (_value, choice) => {
       if (!choice) return;
       resolvePendingSelection(selection.id, choice.uid);
@@ -3283,6 +3338,16 @@ uiModalConfirmBtn.addEventListener('click', () => {
   closeModal();
 });
 
+uiModalWrap.addEventListener('click', (event) => {
+  if (event.target === uiModalWrap) {
+    minimizeModal();
+  }
+});
+
+uiModalRestoreBtn?.addEventListener('click', () => {
+  restoreModal();
+});
+
 coinHeadsBtn?.addEventListener('click', () => sendCoinChoice('heads'));
 coinTailsBtn?.addEventListener('click', () => sendCoinChoice('tails'));
 goFirstBtn?.addEventListener('click', () => chooseTurnOrder('first'));
@@ -3786,7 +3851,11 @@ document.addEventListener('keydown', (e) => {
     }
 
     if (!uiModalWrap.classList.contains('hidden')) {
-      closeModal();
+      if (activeModalCanMinimize) {
+        minimizeModal();
+      } else {
+        closeModal();
+      }
       return;
     }
 

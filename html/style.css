@@ -738,12 +738,25 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.ui-modal-wrap.minimized {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  background: transparent;
+  pointer-events: none;
+  overflow: visible;
 }
 
 .ui-modal {
   width: 380px;
-  background: rgba(12, 12, 18, 0.98);
+  background:
+    linear-gradient(180deg, rgba(34, 22, 48, 0.82), rgba(16, 12, 24, 0.84));
+  border: 1px solid rgba(178, 132, 255, 0.15);
   border-radius: 16px;
   padding: 18px;
   box-sizing: border-box;
@@ -752,6 +765,7 @@ button:hover {
   flex-direction: column;
   gap: 14px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  transform-origin: center center;
 }
 
 .ui-modal.card-picker {
@@ -759,8 +773,20 @@ button:hover {
   max-height: min(860px, calc(100vh - 48px));
   padding: 22px;
   background:
-    linear-gradient(180deg, rgba(12, 16, 22, 0.98), rgba(8, 10, 16, 0.98));
-  border: 1px solid rgba(130, 225, 255, 0.2);
+    linear-gradient(180deg, rgba(34, 22, 50, 0.84), rgba(12, 11, 20, 0.86));
+  border: 1px solid rgba(178, 132, 255, 0.22);
+}
+
+.ui-modal-wrap.card-picker-open {
+  background: transparent;
+}
+
+.ui-modal.minimizing {
+  animation: modalShrinkToButton 0.22s ease-in forwards;
+}
+
+.ui-modal.restoring {
+  animation: modalRestoreFromButton 0.22s ease-out both;
 }
 
 .ui-modal h3,
@@ -927,6 +953,93 @@ button:hover {
   transform: none;
 }
 
+.ui-modal-restore-btn {
+  position: fixed;
+  right: 34px;
+  bottom: 34px;
+  z-index: 1000011;
+  min-width: 210px;
+  min-height: 58px;
+  padding: 0 20px;
+  border: 1px solid rgba(255, 214, 112, 0.72);
+  border-radius: 999px;
+  color: white;
+  font-weight: 900;
+  letter-spacing: 0;
+  background:
+    radial-gradient(circle at 22% 22%, rgba(255, 231, 143, 0.48), transparent 38%),
+    linear-gradient(180deg, rgba(105, 53, 154, 0.98), rgba(35, 20, 62, 0.98));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 24px rgba(255, 214, 112, 0.42),
+    0 0 48px rgba(168, 93, 255, 0.38),
+    0 12px 36px rgba(0, 0, 0, 0.42);
+  cursor: pointer;
+  animation: promptRestorePulse 0.95s ease-in-out infinite;
+}
+
+.ui-modal-restore-btn span {
+  display: block;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-modal-restore-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+@keyframes modalShrinkToButton {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  82% {
+    opacity: 1;
+    transform: translate(calc(50vw - 150px), calc(50vh - 90px)) scale(0.12);
+  }
+  100% {
+    opacity: 0.02;
+    transform: translate(calc(50vw - 150px), calc(50vh - 90px)) scale(0.08);
+  }
+}
+
+@keyframes modalRestoreFromButton {
+  0% {
+    opacity: 0.02;
+    transform: translate(calc(50vw - 150px), calc(50vh - 90px)) scale(0.08);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(calc(50vw - 150px), calc(50vh - 90px)) scale(0.12);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes promptRestorePulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 0 20px rgba(255, 214, 112, 0.42),
+      0 0 46px rgba(168, 93, 255, 0.35),
+      0 12px 36px rgba(0, 0, 0, 0.42);
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.12),
+      0 0 44px rgba(255, 214, 112, 0.84),
+      0 0 76px rgba(168, 93, 255, 0.62),
+      0 12px 36px rgba(0, 0, 0, 0.42);
+    transform: translateY(-2px) scale(1.035);
+  }
+}
+
 @media (max-width: 720px) {
   .ui-modal.card-picker {
     width: calc(100vw - 20px);
@@ -950,6 +1063,12 @@ button:hover {
 
   .ui-modal.card-picker .ui-modal-choice img {
     height: 178px;
+  }
+
+  .ui-modal-restore-btn {
+    right: 14px;
+    bottom: 18px;
+    min-width: 170px;
   }
 }
 
