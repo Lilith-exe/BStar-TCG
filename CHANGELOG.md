@@ -1,6 +1,10 @@
 # BStar Cards Changelog
 
 ## Latest
+- Added general annimation engine for card movement throughout field
+- Adjusted equipped card placement
+- Added deselect logic to clicking outside of a card
+- Added gamewide glow colour language (yellow for activatable effects, blue for normal summonable fighters, green for promotion, purple for anything else)
 
 ## v0.6.3
 - Started card-by-card effect plumbing for ALPH1-EN001 through ALPH1-EN010

@@ -1949,8 +1949,8 @@ button:hover {
 
 .duel-hand-card.promotion-ready {
   box-shadow:
-    0 0 0 2px rgba(255, 220, 120, 0.85),
-    0 0 20px rgba(80, 185, 255, 0.42);
+    0 0 0 2px rgba(92, 235, 150, 0.82),
+    0 0 20px rgba(70, 220, 132, 0.38);
 }
 
 .duel-hand-card.discardable {
@@ -1996,11 +1996,11 @@ button:hover {
 }
 
 .duel-zone.promotion-target {
-  outline: 2px solid rgba(255, 220, 120, 0.94);
+  outline: 2px solid rgba(92, 235, 150, 0.94);
   outline-offset: -2px;
   box-shadow:
-    0 0 20px rgba(255, 210, 90, 0.38),
-    inset 0 0 16px rgba(255, 220, 120, 0.12);
+    0 0 20px rgba(70, 220, 132, 0.38),
+    inset 0 0 16px rgba(70, 220, 132, 0.12);
 }
 
 .duel-zone-used {
@@ -2727,10 +2727,10 @@ button.table-card-pile {
 }
 
 .table-card-pile.active {
-  border-color: rgba(255, 220, 120, 0.74);
+  border-color: rgba(180, 140, 255, 0.74);
   box-shadow:
-    inset 0 0 18px rgba(255, 220, 120, 0.12),
-    0 0 22px rgba(255, 205, 90, 0.22);
+    inset 0 0 18px rgba(180, 140, 255, 0.12),
+    0 0 22px rgba(180, 140, 255, 0.24);
 }
 
 .table-card-pile.cemetery.effect-ready {
@@ -2847,7 +2847,7 @@ button.table-card-pile {
   right: -20%;
   top: -10%;
   z-index: 0;
-  width: 100%;
+  width: 114%;
   aspect-ratio: 5 / 7;
   pointer-events: none;
 }
@@ -2873,12 +2873,12 @@ button.table-card-pile {
 }
 
 .table-equipment-stack.multi .table-equipped-card:nth-child(2) {
-  transform: translate(24%, -16%) rotate(1.5deg);
+  transform: translate(12%, -7%) rotate(0deg);
   z-index: -1;
 }
 
 .table-equipment-stack.multi .table-equipped-card:nth-child(3) {
-  transform: translate(48%, -32%) rotate(3deg);
+  transform: translate(24%, -14%) rotate(0deg);
   z-index: -2;
 }
 
@@ -2989,11 +2989,11 @@ button.table-card-pile {
 }
 
 .table-zone.targetable {
-  outline: 2px solid rgba(255, 86, 118, 0.95);
+  outline: 2px solid rgba(105, 215, 255, 0.95);
   outline-offset: 4px;
   box-shadow:
-    0 0 24px rgba(255, 60, 90, 0.36),
-    inset 0 0 18px rgba(255, 60, 90, 0.12);
+    0 0 24px rgba(80, 200, 255, 0.38),
+    inset 0 0 18px rgba(80, 200, 255, 0.13);
   animation: tableTargetPulse 1s ease-in-out infinite;
 }
 
@@ -3035,7 +3035,7 @@ button.table-card-pile {
   filter:
     drop-shadow(0 16px 20px rgba(0,0,0,0.62))
     drop-shadow(0 0 14px rgba(105, 215, 255, 0.72))
-    drop-shadow(0 0 22px rgba(255, 220, 120, 0.92));
+    drop-shadow(0 0 22px rgba(180, 140, 255, 0.86));
 }
 
 .table-state-label {
@@ -3045,12 +3045,12 @@ button.table-card-pile {
   transform: translateX(-50%);
   padding: 5px 10px;
   border-radius: 999px;
-  color: rgba(255, 246, 210, 0.96);
-  background: linear-gradient(180deg, rgba(32, 24, 8, 0.92), rgba(14, 18, 28, 0.86));
-  border: 1px solid rgba(255, 220, 120, 0.58);
+  color: rgba(238, 228, 255, 0.96);
+  background: linear-gradient(180deg, rgba(31, 22, 52, 0.92), rgba(14, 18, 28, 0.86));
+  border: 1px solid rgba(180, 140, 255, 0.58);
   box-shadow:
-    0 0 16px rgba(255, 210, 90, 0.28),
-    inset 0 0 10px rgba(255, 220, 120, 0.08);
+    0 0 16px rgba(180, 140, 255, 0.28),
+    inset 0 0 10px rgba(180, 140, 255, 0.08);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.6px;
@@ -3076,8 +3076,17 @@ button.table-card-pile {
   transform: translateY(-8px) scale(1.035);
   filter:
     drop-shadow(0 14px 18px rgba(0,0,0,0.6))
-    drop-shadow(0 0 18px rgba(255, 220, 120, 0.86))
-    drop-shadow(0 0 28px rgba(255, 180, 60, 0.28));
+    drop-shadow(0 0 18px rgba(92, 235, 150, 0.82))
+    drop-shadow(0 0 28px rgba(70, 220, 132, 0.28));
+}
+
+.table-zone.promote-target .table-state-label {
+  color: rgba(226, 255, 236, 0.96);
+  background: linear-gradient(180deg, rgba(14, 48, 28, 0.92), rgba(14, 18, 28, 0.86));
+  border-color: rgba(92, 235, 150, 0.62);
+  box-shadow:
+    0 0 16px rgba(70, 220, 132, 0.30),
+    inset 0 0 10px rgba(70, 220, 132, 0.10);
 }
 
 .table-zone.promote-target .table-state-label {
@@ -3085,7 +3094,7 @@ button.table-card-pile {
 }
 
 .table-zone.promote-target .table-state-label::before {
-  content: "TRIBUTE";
+  content: "PROMOTE";
 }
 
 .table-zone.used {
@@ -3185,13 +3194,13 @@ button.table-card-pile {
 .table-hand-card.promotion-ready {
   filter:
     drop-shadow(0 12px 16px rgba(0,0,0,0.45))
-    drop-shadow(0 0 16px rgba(255, 220, 120, 0.72));
+    drop-shadow(0 0 16px rgba(92, 235, 150, 0.72));
 }
 
 .table-hand-card.promotion-ready img {
   box-shadow:
-    0 0 0 2px rgba(255, 220, 120, 0.82),
-    0 0 22px rgba(255, 210, 90, 0.42);
+    0 0 0 2px rgba(92, 235, 150, 0.82),
+    0 0 22px rgba(70, 220, 132, 0.42);
 }
 
 .table-hand-card.discardable {
@@ -3210,7 +3219,7 @@ button.table-card-pile {
   transform: translateY(-22px) scale(1.1);
   filter:
     drop-shadow(0 16px 22px rgba(0,0,0,0.58))
-    drop-shadow(0 0 18px rgba(255,220,120,0.45));
+    drop-shadow(0 0 18px rgba(180,140,255,0.45));
 }
 
 .table-event-activate-pill {
@@ -3487,8 +3496,8 @@ button.table-card-pile {
 }
 
 .table-grave-button.active {
-  border-color: rgba(255, 220, 120, 0.48);
-  box-shadow: 0 0 16px rgba(255, 205, 90, 0.14);
+  border-color: rgba(180, 140, 255, 0.54);
+  box-shadow: 0 0 16px rgba(180, 140, 255, 0.18);
 }
 
 .table-grave-button.effect-ready {
@@ -3632,25 +3641,6 @@ button.table-card-pile {
   }
 }
 
-.table-draw-card-ghost {
-  position: fixed;
-  width: 92px;
-  aspect-ratio: 5 / 7;
-  border-radius: 7px;
-  z-index: 1000001;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  background:
-    linear-gradient(135deg, rgba(255, 224, 130, 0.34), rgba(70, 210, 255, 0.24)),
-    repeating-linear-gradient(45deg, rgba(255,255,255,0.11) 0 4px, rgba(255,255,255,0.025) 4px 8px),
-    rgba(8, 18, 28, 0.88);
-  border: 1px solid rgba(170, 238, 255, 0.42);
-  box-shadow:
-    0 14px 24px rgba(0,0,0,0.48),
-    0 0 22px rgba(70, 200, 255, 0.36);
-  animation: tableDrawCardFly 0.52s ease forwards;
-}
-
 .table-card-travel-ghost {
   position: fixed;
   aspect-ratio: 5 / 7;
@@ -3668,6 +3658,15 @@ button.table-card-pile {
   filter:
     drop-shadow(0 14px 24px rgba(0,0,0,0.54))
     drop-shadow(0 0 18px rgba(255, 90, 110, 0.26));
+}
+
+.table-card-travel-ghost.cardback {
+  border-radius: 7px;
+  background:
+    linear-gradient(135deg, rgba(255, 224, 130, 0.34), rgba(70, 210, 255, 0.24)),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.11) 0 4px, rgba(255,255,255,0.025) 4px 8px),
+    rgba(8, 18, 28, 0.88);
+  border: 1px solid rgba(170, 238, 255, 0.42);
 }
 
 .table-card-travel-ghost img {
@@ -3691,20 +3690,6 @@ button.table-card-pile {
   100% {
     opacity: 0;
     transform: translate(calc(-50% + var(--travel-dx)), calc(-50% + var(--travel-dy))) scale(0.82) rotate(7deg);
-  }
-}
-
-@keyframes tableDrawCardFly {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.7) rotate(-7deg);
-  }
-  18% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(calc(-50% + var(--draw-dx)), calc(-50% + var(--draw-dy))) scale(1.05) rotate(8deg);
   }
 }
 

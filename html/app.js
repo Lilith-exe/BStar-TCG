@@ -171,6 +171,7 @@ let openTableGraveSide = null;
 let tableDrawAnimating = false;
 let tableZoneSnapshot = null;
 let tableGraveSnapshot = null;
+let tableMovementSnapshot = null;
 
 let builderFilters = {
   type: 'all',
@@ -1803,9 +1804,22 @@ function hasOpenFighterZone(zones) {
   return false;
 }
 
-function canPlayHandCard(card, canNormalSummon, selfZones, canPlayNonFighter = false) {
+function hasEquipmentTarget(card, selfZones, selfEquipmentZones) {
+  if (!isEquipmentZoneCard(card)) return false;
+
+  for (let i = 0; i < 3; i++) {
+    if ((selfZones || [])[i] && canEquipCardToSlot(card, (selfEquipmentZones || [])[i])) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function canPlayHandCard(card, canNormalSummon, selfZones, canPlayNonFighter = false, selfEquipmentZones = []) {
   if (!card) return false;
-  if (isItemZoneCard(card) || isEquipmentZoneCard(card) || isLocationCard(card) || isEventCard(card)) return canPlayNonFighter;
+  if (isEquipmentZoneCard(card)) return canPlayNonFighter && hasEquipmentTarget(card, selfZones, selfEquipmentZones);
+  if (isItemZoneCard(card) || isLocationCard(card) || isEventCard(card)) return canPlayNonFighter;
   if (!canNormalSummon) return false;
   if (isPromotionSummonableFighter(card)) return true;
   return isNormalSummonableFighter(card) && hasOpenFighterZone(selfZones);
@@ -1824,6 +1838,7 @@ function renderTableZone(card, side, zoneIndex, equipmentSlot = null) {
   zone.className = 'table-zone';
   zone.dataset.side = side;
   zone.dataset.zoneIndex = String(zoneIndex);
+  if (card?.uid) zone.dataset.cardUid = card.uid;
 
   const equipmentCards = getEquipmentSlotCards(equipmentSlot);
   if (equipmentCards.length > 0) {
@@ -1835,6 +1850,7 @@ function renderTableZone(card, side, zoneIndex, equipmentSlot = null) {
       const equipment = document.createElement('button');
       equipment.className = `table-equipped-card ${getEquipmentSlotKey(equipmentCard) || 'equipment'}`;
       equipment.type = 'button';
+      if (equipmentCard?.uid) equipment.dataset.cardUid = equipmentCard.uid;
       equipment.addEventListener('click', (event) => {
         event.stopPropagation();
         setDuelPreviewCard(equipmentCard);
@@ -1887,6 +1903,7 @@ function renderTableSupportZone(card, side, kind, zoneIndex, targetable = false)
   zone.dataset.side = side;
   zone.dataset.kind = kind;
   zone.dataset.zoneIndex = String(zoneIndex || 0);
+  if (card?.uid) zone.dataset.cardUid = card.uid;
 
   if (!card) {
     zone.classList.add('empty');
@@ -2114,6 +2131,7 @@ function renderTableGraveyard() {
     const row = document.createElement('button');
     row.className = 'table-grave-card';
     row.type = 'button';
+    if (card?.uid) row.dataset.cardUid = card.uid;
     row.classList.toggle('effect-ready', canActivateFieldEffect(card, 'self'));
     row.classList.toggle('selected', tablePreviewCard?.uid === card.uid);
 
@@ -2178,8 +2196,169 @@ function getTableHandCardElement(cardUid) {
   return null;
 }
 
+function escapeSelectorValue(value) {
+  if (window.CSS && typeof window.CSS.escape === 'function') {
+    return window.CSS.escape(String(value));
+  }
+
+  return String(value).replace(/["\\]/g, '\\$&');
+}
+
 function getTableCemeteryElementForSide(side) {
   return side === 'opponent' ? tableOpponentCemeterySlot : tableSelfCemeterySlot;
+}
+
+function getTableDeckElementForSide(side) {
+  return side === 'opponent' ? tableOpponentDeckSlot : tableSelfDeckSlot;
+}
+
+function getTableFieldZoneElement(side, zoneIndex) {
+  return tableBoard?.querySelector(`.table-zone[data-side="${side}"][data-zone-index="${zoneIndex}"]`) || null;
+}
+
+function getTableCardElementByUid(uid) {
+  if (!uid) return null;
+  return tableDuelWrap?.querySelector(`[data-card-uid="${escapeSelectorValue(uid)}"]`) || null;
+}
+
+function getTableGraveCardElement(uid) {
+  if (!uid) return null;
+  return tableGraveList?.querySelector(`.table-grave-card[data-card-uid="${escapeSelectorValue(uid)}"]`) || null;
+}
+
+function getTableZoneAnchor(entry) {
+  if (!entry) return null;
+
+  if (entry.area === 'deck') return getTableDeckElementForSide(entry.side);
+  if (entry.area === 'hand') return entry.side === 'self' ? getTableHandCardElement(entry.uid) || tableHandRow : tableOpponentHandBacks;
+  if (entry.area === 'cemetery') return getTableGraveCardElement(entry.uid) || getTableCemeteryElementForSide(entry.side);
+  if (entry.area === 'fighter') return getTableFieldZoneElement(entry.side, entry.zoneIndex);
+  if (entry.area === 'item') return tableDuelWrap?.querySelector(`.table-support-slot.item[data-side="${entry.side}"][data-zone-index="${entry.zoneIndex}"]`) || null;
+  if (entry.area === 'location') return tableDuelWrap?.querySelector(`.table-support-slot.location[data-side="${entry.side}"]`) || null;
+  if (entry.area === 'equipment') return getTableCardElementByUid(entry.uid) || getTableFieldZoneElement(entry.side, entry.zoneIndex);
+
+  return null;
+}
+
+function getElementCenterRect(el) {
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  return rect;
+}
+
+function addMovementEntry(snapshot, card, side, area, detail = {}) {
+  if (!snapshot || !card?.uid) return;
+  snapshot.cards[card.uid] = {
+    uid: card.uid,
+    card,
+    side,
+    area,
+    zoneIndex: detail.zoneIndex || 0,
+    slotKey: detail.slotKey || '',
+    locKey: `${side}:${area}:${detail.zoneIndex || 0}:${detail.slotKey || ''}`
+  };
+}
+
+function addEquipmentMovementEntries(snapshot, slot, side, zoneIndex) {
+  for (const card of getEquipmentSlotCards(slot)) {
+    addMovementEntry(snapshot, card, side, 'equipment', {
+      zoneIndex,
+      slotKey: getEquipmentSlotKey(card) || 'equipment'
+    });
+  }
+}
+
+function buildTableMovementSnapshot(duelState) {
+  const snapshot = {
+    cards: {},
+    counts: {
+      self: {
+        deck: duelState?.selfPlayer?.deckCount || 0,
+        hand: duelState?.selfPlayer?.hand?.length || 0,
+        cemetery: duelState?.selfPlayer?.graveyardCount || 0,
+        field: 0
+      },
+      opponent: {
+        deck: duelState?.opponentPlayer?.deckCount || 0,
+        hand: duelState?.opponentPlayer?.handCount || 0,
+        cemetery: duelState?.opponentPlayer?.graveyardCount || 0,
+        field: 0
+      }
+    }
+  };
+
+  const addPlayer = (player, side) => {
+    (player?.hand || []).forEach(card => addMovementEntry(snapshot, card, side, 'hand'));
+    (player?.graveyard || []).forEach(card => addMovementEntry(snapshot, card, side, 'cemetery'));
+    (player?.fighterZones || []).forEach((card, index) => addMovementEntry(snapshot, card, side, 'fighter', { zoneIndex: index + 1 }));
+    (player?.itemZones || []).forEach((card, index) => addMovementEntry(snapshot, card, side, 'item', { zoneIndex: index + 1 }));
+    (player?.equipmentZones || []).forEach((slot, index) => addEquipmentMovementEntries(snapshot, slot, side, index + 1));
+    addMovementEntry(snapshot, player?.locationZone, side, 'location', { zoneIndex: 1 });
+  };
+
+  addPlayer(duelState?.selfPlayer, 'self');
+  addPlayer(duelState?.opponentPlayer, 'opponent');
+
+  for (const entry of Object.values(snapshot.cards)) {
+    if (entry.area !== 'hand' && entry.area !== 'cemetery') {
+      snapshot.counts[entry.side].field += 1;
+    }
+  }
+
+  return snapshot;
+}
+
+function hydrateTableMovementSnapshot(snapshot) {
+  if (!snapshot) return snapshot;
+
+  for (const entry of Object.values(snapshot.cards)) {
+    const anchor = getTableZoneAnchor(entry);
+    entry.rect = getElementCenterRect(anchor);
+  }
+
+  return snapshot;
+}
+
+function makeHiddenZoneEntry(side, area) {
+  let anchor = null;
+  if (area === 'deck') {
+    anchor = getTableDeckElementForSide(side);
+  } else if (area === 'cemetery') {
+    anchor = getTableCemeteryElementForSide(side);
+  } else if (area === 'hand') {
+    anchor = side === 'opponent' ? tableOpponentHandBacks : tableHandRow;
+  }
+
+  return {
+    uid: `${side}-${area}`,
+    side,
+    area,
+    locKey: `${side}:${area}:0:`,
+    rect: getElementCenterRect(anchor)
+  };
+}
+
+function inferMissingCardDestination(prevEntry, prevSnapshot, nextSnapshot) {
+  const side = prevEntry?.side || 'self';
+  const prevCounts = prevSnapshot?.counts?.[side] || {};
+  const nextCounts = nextSnapshot?.counts?.[side] || {};
+
+  if ((nextCounts.cemetery || 0) > (prevCounts.cemetery || 0)) return makeHiddenZoneEntry(side, 'cemetery');
+  if ((nextCounts.hand || 0) > (prevCounts.hand || 0)) return makeHiddenZoneEntry(side, 'hand');
+  if ((nextCounts.deck || 0) > (prevCounts.deck || 0)) return makeHiddenZoneEntry(side, 'deck');
+  return null;
+}
+
+function inferNewCardSource(nextEntry, prevSnapshot, nextSnapshot) {
+  const side = nextEntry?.side || 'self';
+  const prevCounts = prevSnapshot?.counts?.[side] || {};
+  const nextCounts = nextSnapshot?.counts?.[side] || {};
+
+  if ((nextCounts.deck || 0) < (prevCounts.deck || 0)) return makeHiddenZoneEntry(side, 'deck');
+  if ((nextCounts.hand || 0) < (prevCounts.hand || 0)) return makeHiddenZoneEntry(side, 'hand');
+  if ((nextCounts.cemetery || 0) < (prevCounts.cemetery || 0)) return makeHiddenZoneEntry(side, 'cemetery');
+  return null;
 }
 
 function getTableGraveSnapshotFromState(duelState) {
@@ -2199,11 +2378,9 @@ function markTableCemeteryReceiving(side, duration = 720) {
   }, duration);
 }
 
-function animateTableCardTravel(fromEl, toEl, card, options = {}) {
-  if (!fromEl || !toEl) return;
+function animateTableCardTravelBetweenRects(fromRect, toRect, card, options = {}) {
+  if (!fromRect || !toRect) return;
 
-  const fromRect = fromEl.getBoundingClientRect();
-  const toRect = toEl.getBoundingClientRect();
   const width = options.width || Math.min(Math.max(fromRect.width, 82), 150);
   const duration = options.duration || 620;
   const ghost = document.createElement('div');
@@ -2215,22 +2392,79 @@ function animateTableCardTravel(fromEl, toEl, card, options = {}) {
   ghost.style.setProperty('--travel-dx', `${(toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2)}px`);
   ghost.style.setProperty('--travel-dy', `${(toRect.top + toRect.height / 2) - (fromRect.top + fromRect.height / 2)}px`);
 
-  if (options.variant === 'cemetery') {
-    toEl.classList.add('receiving-card');
-    setTimeout(() => toEl.classList.remove('receiving-card'), duration);
-  }
-
   const img = document.createElement('img');
-  img.src = card ? getThumbImagePath(card) : '';
-  img.onerror = () => {
-    img.onerror = null;
-    img.src = card ? getCardImagePathFromPayload(card) : '';
-  };
-  img.alt = '';
-  ghost.appendChild(img);
+  if (card) {
+    img.src = getThumbImagePath(card);
+    img.onerror = () => {
+      img.onerror = null;
+      img.src = getCardImagePathFromPayload(card);
+    };
+    img.alt = '';
+    ghost.appendChild(img);
+  } else {
+    ghost.classList.add('cardback');
+  }
 
   document.body.appendChild(ghost);
   setTimeout(() => ghost.remove(), duration);
+}
+
+function playTableMovementAnimations(prevSnapshot, nextSnapshot) {
+  if (!prevSnapshot || !nextSnapshot || !duelTableMode) return;
+
+  const animated = new Set();
+  for (const [uid, nextEntry] of Object.entries(nextSnapshot.cards)) {
+    const prevEntry = prevSnapshot.cards[uid];
+
+    if (prevEntry && prevEntry.locKey !== nextEntry.locKey) {
+      animateTableCardTravelBetweenRects(prevEntry.rect, nextEntry.rect, nextEntry.card || prevEntry.card, {
+        variant: nextEntry.area === 'cemetery' ? 'cemetery' : 'move'
+      });
+      animated.add(uid);
+    } else if (!prevEntry) {
+      const source = inferNewCardSource(nextEntry, prevSnapshot, nextSnapshot);
+      if (source) {
+        animateTableCardTravelBetweenRects(source.rect, nextEntry.rect, nextEntry.card, {
+          variant: nextEntry.area === 'cemetery' ? 'cemetery' : 'move'
+        });
+        animated.add(uid);
+      }
+    }
+  }
+
+  for (const [uid, prevEntry] of Object.entries(prevSnapshot.cards)) {
+    if (nextSnapshot.cards[uid] || animated.has(uid)) continue;
+
+    const destination = inferMissingCardDestination(prevEntry, prevSnapshot, nextSnapshot);
+    if (destination) {
+      animateTableCardTravelBetweenRects(prevEntry.rect, destination.rect, prevEntry.card, {
+        variant: destination.area === 'cemetery' ? 'cemetery' : 'move'
+      });
+    }
+  }
+
+  for (const side of ['opponent']) {
+    const prevCounts = prevSnapshot.counts?.[side] || {};
+    const nextCounts = nextSnapshot.counts?.[side] || {};
+
+    if ((nextCounts.deck || 0) < (prevCounts.deck || 0) && (nextCounts.hand || 0) > (prevCounts.hand || 0)) {
+      animateTableCardTravelBetweenRects(
+        getElementCenterRect(getTableDeckElementForSide(side)),
+        getElementCenterRect(tableOpponentHandBacks),
+        null,
+        { variant: 'cardback', width: 92 }
+      );
+    }
+
+    if ((nextCounts.hand || 0) < (prevCounts.hand || 0) && (nextCounts.deck || 0) > (prevCounts.deck || 0)) {
+      animateTableCardTravelBetweenRects(
+        getElementCenterRect(tableOpponentHandBacks),
+        getElementCenterRect(getTableDeckElementForSide(side)),
+        null,
+        { variant: 'cardback', width: 92 }
+      );
+    }
+  }
 }
 
 function canCurrentViewerDraw() {
@@ -2241,39 +2475,20 @@ function canCurrentViewerDraw() {
     && currentDuelState.hasDrawnThisTurn !== true;
 }
 
-function animateTableDraw() {
-  if (!tableSelfDeckSlot || !tableHandRow) return;
-
-  const deckRect = tableSelfDeckSlot.getBoundingClientRect();
-  const handRect = tableHandRow.getBoundingClientRect();
-  const ghost = document.createElement('div');
-  ghost.className = 'table-draw-card-ghost';
-  ghost.style.left = `${deckRect.left + deckRect.width / 2}px`;
-  ghost.style.top = `${deckRect.top + deckRect.height / 2}px`;
-  ghost.style.setProperty('--draw-dx', `${(handRect.left + handRect.width / 2) - (deckRect.left + deckRect.width / 2)}px`);
-  ghost.style.setProperty('--draw-dy', `${(handRect.top + 30) - (deckRect.top + deckRect.height / 2)}px`);
-
-  document.body.appendChild(ghost);
-  setTimeout(() => ghost.remove(), 520);
-}
-
 function drawCardForTurn() {
   if (!canCurrentViewerDraw() || tableDrawAnimating) return;
 
   tableDrawAnimating = true;
-  animateTableDraw();
+
+  fetch(`https://${GetParentResourceName()}/duelDrawCard`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({})
+  });
 
   setTimeout(() => {
-    fetch(`https://${GetParentResourceName()}/duelDrawCard`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    });
-
-    setTimeout(() => {
-      tableDrawAnimating = false;
-    }, 260);
-  }, 240);
+    tableDrawAnimating = false;
+  }, 620);
 }
 
 function clearDuelSelections() {
@@ -2281,6 +2496,23 @@ function clearDuelSelections() {
   selectedHandCardUid = null;
   selectedAttackerZoneIndex = null;
   return !!hadSelection;
+}
+
+function isInteractableTableClick(target) {
+  if (!target) return false;
+
+  if (target.closest('button, input, select, textarea')) return true;
+  if (target.closest('.table-preview-panel, .table-grave-panel')) return true;
+  if (target.closest('.table-hand-card, .table-opponent-hand-card')) return true;
+  if (target.closest('.table-card-pile')) return true;
+  if (target.closest('.table-equipped-card')) return true;
+  if (target.closest('.table-support-slot.occupied, .table-support-slot.targetable')) return true;
+  if (target.closest('.table-zone.targetable, .table-zone.equip-target, .table-zone.promote-target, .table-zone.attack-ready, .table-zone.selected')) return true;
+
+  const zone = target.closest('.table-zone');
+  if (zone && !zone.classList.contains('empty')) return true;
+
+  return false;
 }
 
 function clearAttackTargetHighlights() {
@@ -2380,6 +2612,7 @@ function renderDuelResultOverlay() {
 function renderTableDuelUi() {
   if (!currentDuelState) return;
 
+  const previousMovementSnapshot = tableMovementSnapshot;
   const nextZoneSnapshot = getTableZoneSnapshotFromState(currentDuelState);
   const nextGraveSnapshot = getTableGraveSnapshotFromState(currentDuelState);
 
@@ -2488,10 +2721,6 @@ function renderTableDuelUi() {
     if (card && selectedHandCardUid && canPlayNonFighter && isEquipmentZoneCard(selectedHandCard) && canEquipCardToSlot(selectedHandCard, selfEquipmentZones[i])) {
       zone.classList.add('equip-target');
       zone.addEventListener('click', () => {
-        animateTableCardTravel(getTableHandCardElement(selectedHandCardUid), zone, selectedHandCard, {
-          variant: 'summon',
-          width: 104
-        });
         playSelectedNonFighter('equipment', i + 1);
       });
     }
@@ -2499,11 +2728,6 @@ function renderTableDuelUi() {
     if (!card && selectedHandCardUid && canNormalSummon && isNormalSummonableFighter(selectedHandCard)) {
       zone.classList.add('targetable');
       zone.addEventListener('click', () => {
-        animateTableCardTravel(getTableHandCardElement(selectedHandCardUid), zone, selectedHandCard, {
-          variant: 'summon',
-          width: 110
-        });
-
         fetch(`https://${GetParentResourceName()}/duelSummonFighter`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2520,15 +2744,6 @@ function renderTableDuelUi() {
     if (card && selectedHandCardUid && canNormalSummon && canPromoteFromTo(card, selectedHandCard)) {
       zone.classList.add('promote-target');
       zone.addEventListener('click', () => {
-        animateTableCardTravel(zone, tableSelfCemeterySlot, card, {
-          variant: 'cemetery',
-          width: 116
-        });
-        animateTableCardTravel(getTableHandCardElement(selectedHandCardUid), zone, selectedHandCard, {
-          variant: 'summon',
-          width: 110
-        });
-
         fetch(`https://${GetParentResourceName()}/duelPromoteFighter`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2591,7 +2806,7 @@ function renderTableDuelUi() {
     const div = document.createElement('div');
     div.className = 'table-hand-card';
     div.dataset.cardUid = card.uid;
-    const canSummonCard = canPlayHandCard(card, canNormalSummon, selfZones, canPlayNonFighter);
+    const canSummonCard = canPlayHandCard(card, canNormalSummon, selfZones, canPlayNonFighter, selfEquipmentZones);
     const canActivateCardEffect = canActivateFieldEffect(card, 'self');
 
     if (canSummonCard) {
@@ -2655,6 +2870,9 @@ function renderTableDuelUi() {
 
   tableZoneSnapshot = nextZoneSnapshot;
   tableGraveSnapshot = nextGraveSnapshot;
+  const nextMovementSnapshot = hydrateTableMovementSnapshot(buildTableMovementSnapshot(currentDuelState));
+  playTableMovementAnimations(previousMovementSnapshot, nextMovementSnapshot);
+  tableMovementSnapshot = nextMovementSnapshot;
 }
 
 function hideCard() {
@@ -2744,6 +2962,7 @@ function openDuelUi(duel, tableMode = false) {
   openTableGraveSide = null;
   tableZoneSnapshot = null;
   tableGraveSnapshot = null;
+  tableMovementSnapshot = null;
 
   console.log('[BStar NUI] openDuelUi tableMode:', tableMode);
 
@@ -2790,6 +3009,7 @@ function closeDuelUi(notifyLua = true) {
   tableDrawAnimating = false;
   tableZoneSnapshot = null;
   tableGraveSnapshot = null;
+  tableMovementSnapshot = null;
   tableResultOverlay?.classList.add('hidden');
   duelResultOverlay?.classList.add('hidden');
 
@@ -3051,12 +3271,14 @@ function renderHand() {
   const isMainPhase = isDuelMainPhase(currentDuelState?.phase);
   const isDiscardPhase = currentDuelState?.phase === 'discard';
   const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
+  const canPlayNonFighter = isMyTurn && isMainPhase;
   const selfZones = currentDuelState?.selfPlayer?.fighterZones || [null, null, null];
+  const selfEquipmentZones = currentDuelState?.selfPlayer?.equipmentZones || [null, null, null];
 
   for (const card of hand) {
     const div = document.createElement('div');
     div.className = 'duel-hand-card';
-    const canSummonCard = canPlayHandCard(card, canNormalSummon, selfZones);
+    const canSummonCard = canPlayHandCard(card, canNormalSummon, selfZones, canPlayNonFighter, selfEquipmentZones);
     const canActivateCardEffect = canActivateFieldEffect(card, 'self');
 
     if (canSummonCard) {
@@ -3272,21 +3494,6 @@ function pulseResolved(targetEl) {
   }, 350);
 }
 
-function animateDestroyedCardToCemetery(fromEl, side, card) {
-  if (!duelTableMode || !fromEl || !card) return;
-
-  const cemeteryEl = getTableCemeteryElementForSide(side);
-  if (!cemeteryEl) return;
-
-  setTimeout(() => {
-    animateTableCardTravel(fromEl, cemeteryEl, card, {
-      variant: 'cemetery',
-      width: 116,
-      duration: 680
-    });
-  }, 180);
-}
-
 function handleBattleEvent(result) {
   if (!result) return;
 
@@ -3341,14 +3548,12 @@ function handleBattleEvent(result) {
   }
 
   if (result.attackerDestroyed) {
-    animateDestroyedCardToCemetery(attackerEl, attackerSide, result.attackerCard);
     setTimeout(() => {
       flashDestroyed(attackerEl);
     }, 180);
   }
 
   if (result.defenderDestroyed) {
-    animateDestroyedCardToCemetery(targetEl, defenderSide, result.defenderCard);
     setTimeout(() => {
       flashDestroyed(targetEl);
     }, 180);
@@ -3765,10 +3970,15 @@ if (tablePreviewPanel) {
 
 if (tableDuelWrap) {
   tableDuelWrap.addEventListener('click', (event) => {
-    if (event.target.closest('.table-preview-panel')) return;
-    if (event.target.closest('.table-grave-panel')) return;
-    if (event.target.closest('.table-card-pile.cemetery')) return;
-    closeTableGraveyard();
+    if (isInteractableTableClick(event.target)) return;
+
+    const hadOpenGrave = !!openTableGraveSide;
+    const hadSelection = clearDuelSelections();
+    openTableGraveSide = null;
+
+    if (hadSelection || hadOpenGrave) {
+      renderDuelUi();
+    }
   });
 }
 
