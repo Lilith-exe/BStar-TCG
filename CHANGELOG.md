@@ -1,6 +1,27 @@
 # BStar Cards Changelog
 
 ## Latest
+- Added the first server-side keyword/tag effect engine
+- Wired effect triggers into summon, play, draw and end-phase duel actions
+- Added executable effect metadata to starter cards for draw, search, heal, special summon and LP steal effects
+- Added optional effect prompts and field-activated effect support
+- Added yellow table glow and preview activation button for cards with activatable effects
+- Added a second Main Phase after Battle Phase
+- Allowed Location cards to replace the currently active Location, sending the old one to the cemetery
+- Changed one-shot Item cards to resolve to the cemetery instead of staying in item zones
+- Moved equipped cards to the cemetery when their equipped fighter leaves the field
+- Hid legacy table EQP support rows and cleared attack targeting highlights immediately after attacks
+- Fixed Wyatt Rayne searching `Rileys Performance` instead of `Riley's Performance`
+- Fixed stale attack target highlights persisting into later phases or new turns
+- Fixed optional `you can` effect prompts not queuing because of Lua helper scoping
+- Updated Kiri Riley to prompt before special summoning Terrance Redfield Riley from deck or cemetery
+- Added deck-search card selection UI and changed Nikolas Haaja Level 2 to choose a Location card instead of auto-picking
+- Sent deck-search pickers directly from server to client so Wyatt Rayne and Nikolas Haaja searches open immediately
+- Raised deck-search modal above the table UI and added search result notifications for troubleshooting
+- Fixed pending duel interaction sync recursion that prevented search pickers from opening
+- Changed Wyatt Rayne to use the deck-search picker for Riley's Performance
+- Enlarged deck-search picker with horizontal card browsing, preview-on-click and confirm selection
+
 
 ## v0.5.3
 - Fixed Clyde Riley Sr card

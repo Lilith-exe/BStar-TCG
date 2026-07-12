@@ -4,6 +4,10 @@ Duel = Duel or {}
 Duel.Active = Duel.Active or {}
 
 local duelCounter = 0
+local getEffectApi
+local moveFieldCardToGraveyard
+local queueEffectPrompt
+local queueDeckSearch
 
 local function makeDuelId()
     duelCounter = duelCounter + 1
@@ -107,6 +111,46 @@ local function findCardInZoneByUid(playerState, zoneName, uid)
     return nil, nil
 end
 
+local function findFieldCardByUid(playerState, uid)
+    for zoneIndex, card in pairs(playerState.fighterZones or {}) do
+        if card and card.uid == uid then
+            return card, 'fighterZones', zoneIndex
+        end
+    end
+
+    for zoneIndex, card in pairs(playerState.itemZones or {}) do
+        if card and card.uid == uid then
+            return card, 'itemZones', zoneIndex
+        end
+    end
+
+    for zoneIndex, card in pairs(playerState.equipmentZones or {}) do
+        if card and card.uid == uid then
+            return card, 'equipmentZones', zoneIndex
+        end
+    end
+
+    if playerState.locationZone and playerState.locationZone.uid == uid then
+        return playerState.locationZone, 'locationZone', 1
+    end
+
+    return nil, nil, nil
+end
+
+local function findPlayerCardByUid(playerState, uid)
+    local card, zoneName, zoneIndex = findFieldCardByUid(playerState, uid)
+    if card then return card, zoneName, zoneIndex end
+
+    for _, listZoneName in ipairs({ 'hand', 'graveyard', 'banished', 'deck' }) do
+        card, zoneIndex = findCardInZoneByUid(playerState, listZoneName, uid)
+        if card then
+            return card, listZoneName, zoneIndex
+        end
+    end
+
+    return nil, nil, nil
+end
+
 local function getCardDefinition(cardId)
     return Cards and Cards[cardId] or nil
 end
@@ -136,6 +180,11 @@ local function getCardHealthText(def)
     if not raw then return nil end
 
     return tostring(raw):gsub('^DEF', 'HP')
+end
+
+local function isCardActivatable(card)
+    local def = card and getCardDefinition(card.cardId) or nil
+    return DuelEffects and DuelEffects.HasTrigger and DuelEffects.HasTrigger(def, 'activated') or false
 end
 
 local function ensureFighterHp(card)
@@ -185,6 +234,9 @@ local function buildCardPayload(cardInstance)
         speed = def and (def.speed or def.spd) or nil,
         effectTitle = def and def.effectTitle or nil,
         effectText = def and def.effectText or nil,
+        effectTags = DuelEffects and DuelEffects.GetTags(def) or {},
+        continuous = def and (def.continuous == true or def.isContinuous == true) or false,
+        activatableEffect = isCardActivatable(cardInstance),
         setCode = def and def.setCode or nil,
         edition = def and def.edition or nil
     }
@@ -241,6 +293,32 @@ local function isEquipmentZoneCardType(cardType)
     return cardType == 'VEHICLE' or cardType == 'WEAPON' or cardType == 'EQUIPMENT'
 end
 
+local function cardDefHasTag(cardDef, targetTag)
+    targetTag = tostring(targetTag or ''):lower()
+
+    for _, tag in ipairs(cardDef and cardDef.effectTags or {}) do
+        if tostring(tag or ''):lower() == targetTag then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function isContinuousItemCard(card)
+    local def = card and getCardDefinition(card.cardId) or nil
+    if not def then return false end
+    local text = tostring(def.effectText or ''):lower()
+
+    return def.continuous == true
+        or def.isContinuous == true
+        or cardDefHasTag(def, 'continuous')
+        or cardDefHasTag(def, 'continuous_item')
+        or text:find('once per turn', 1, true) ~= nil
+        or text:find('while this card is on the field', 1, true) ~= nil
+        or text:find('each turn', 1, true) ~= nil
+end
+
 local function loseByDeckOut(duel, playerIndex)
     duel.status = "finished"
     duel.winner = getOpponentIndex(playerIndex)
@@ -264,6 +342,12 @@ local function drawCards(duel, playerIndex, amount)
         card.zone = "hand"
         player.hand[#player.hand + 1] = card
         drawn = drawn + 1
+
+        if DuelEffects and getEffectApi then
+            DuelEffects.RunFieldTrigger(duel, 'on_draw', playerIndex, {
+                drawnCard = card
+            }, getEffectApi())
+        end
     end
 
     return drawn
@@ -314,6 +398,20 @@ local function buildPrivateStateForPlayer(duel, viewerIndex)
         winReason = duel.winReason,
         hasDrawnThisTurn = duel.hasDrawnThisTurn == true,
         firstTurnPlayer = duel.firstTurnPlayer,
+        pendingEffect = duel.pendingEffect and duel.pendingEffect.playerIndex == viewerIndex and {
+            id = duel.pendingEffect.id,
+            sourceUid = duel.pendingEffect.sourceUid,
+            cardName = duel.pendingEffect.cardName,
+            title = duel.pendingEffect.title,
+            text = duel.pendingEffect.text,
+            effectText = duel.pendingEffect.effectText
+        } or nil,
+        pendingSelection = duel.pendingSelection and duel.pendingSelection.playerIndex == viewerIndex and {
+            id = duel.pendingSelection.id,
+            title = duel.pendingSelection.title,
+            text = duel.pendingSelection.text,
+            choices = duel.pendingSelection.choices
+        } or nil,
 
         selfPlayer = {
             source = selfState.source,
@@ -405,7 +503,15 @@ local function getCardStat(card, statName)
         if statName == 'speed' then raw = def.spd end
     end
 
-    return parseStatValue(raw)
+    local value = parseStatValue(raw)
+    local modifiers = card.statModifiers or {}
+    value = value + (tonumber(modifiers[statName]) or 0)
+
+    if statName == 'hp' or statName == 'health' or statName == 'defense' then
+        value = value + (tonumber(modifiers.hp) or 0)
+    end
+
+    return value
 end
 
 local function getCardLevelValue(cardDef)
@@ -417,6 +523,21 @@ local function getCardLevelValue(cardDef)
 
     local match = string.match(tostring(cardDef.level or ''), "%d+")
     return match and tonumber(match) or 0
+end
+
+getEffectApi = function()
+    return {
+        getOpponentIndex = getOpponentIndex,
+        getCardDefinition = getCardDefinition,
+        getCardLevelValue = getCardLevelValue,
+        drawCards = drawCards,
+        moveHandCardToGraveyard = moveHandCardToGraveyard,
+        moveFieldCardToGraveyard = moveFieldCardToGraveyard,
+        resetFighterHp = resetFighterHp,
+        ensureFighterHp = ensureFighterHp,
+        queueEffectPrompt = queueEffectPrompt,
+        queueDeckSearch = queueDeckSearch
+    }
 end
 
 local function normalizePromotionName(cardDef)
@@ -446,9 +567,16 @@ local function getOccupiedFighterCount(playerState)
     return count
 end
 
-local function moveFieldCardToGraveyard(playerState, zoneIndex)
+moveFieldCardToGraveyard = function(playerState, zoneIndex)
     local card = playerState.fighterZones[zoneIndex]
     if not card then return nil end
+
+    local equipment = playerState.equipmentZones and playerState.equipmentZones[zoneIndex] or nil
+    if equipment then
+        playerState.equipmentZones[zoneIndex] = nil
+        equipment.zone = "graveyard"
+        playerState.graveyard[#playerState.graveyard + 1] = equipment
+    end
 
     playerState.fighterZones[zoneIndex] = nil
     card.zone = "graveyard"
@@ -511,6 +639,132 @@ local function checkWinCondition(duel)
     return false
 end
 
+local function isMainPhase(phase)
+    return phase == "main" or phase == "main2"
+end
+
+queueEffectPrompt = function(duel, playerIndex, sourceCard, triggerName, effectIndex, prompt)
+    if not duel or duel.pendingEffect or not sourceCard then return false end
+
+    duel.effectPromptCounter = (duel.effectPromptCounter or 0) + 1
+    duel.pendingEffect = {
+        id = tostring(duel.effectPromptCounter),
+        playerIndex = playerIndex,
+        sourceUid = sourceCard.uid,
+        sourceCardId = sourceCard.cardId,
+        trigger = triggerName,
+        effectIndex = effectIndex,
+        cardName = (prompt and prompt.cardName) or (getCardDefinition(sourceCard.cardId) and getCardDefinition(sourceCard.cardId).name) or sourceCard.cardId,
+        title = prompt and prompt.title or 'Effect',
+        text = prompt and prompt.text or 'Do you want to activate this effect?',
+        effectText = prompt and prompt.effectText or nil
+    }
+
+    return true
+end
+
+local function cardMatchesSearchFilter(card, filter)
+    local def = card and getCardDefinition(card.cardId) or nil
+    filter = filter or {}
+
+    if not def then return false end
+
+    if filter.type and string.upper(tostring(def.type or '')) ~= string.upper(tostring(filter.type)) then
+        return false
+    end
+
+    if filter.nameContains then
+        local nameText = string.lower(tostring(def.name or ''))
+        if not nameText:find(string.lower(tostring(filter.nameContains)), 1, true) then
+            return false
+        end
+    end
+
+    if filter.jobContains then
+        local jobText = string.lower(tostring(def.job or ''))
+        if not jobText:find(string.lower(tostring(filter.jobContains)), 1, true) then
+            return false
+        end
+    end
+
+    local level = getCardLevelValue(def)
+    if filter.level and level ~= tonumber(filter.level) then return false end
+    if filter.levelMin and level < tonumber(filter.levelMin) then return false end
+    if filter.levelMax and level > tonumber(filter.levelMax) then return false end
+
+    return true
+end
+
+queueDeckSearch = function(duel, playerIndex, sourceCard, filter, prompt)
+    if not duel or duel.pendingSelection then return false end
+
+    local playerState = duel.players[playerIndex]
+    if not playerState then return false end
+
+    local sourceDef = sourceCard and getCardDefinition(sourceCard.cardId) or nil
+
+    local choices = {}
+    local maxChoices = tonumber(prompt and prompt.maxChoices) or 30
+
+    for _, card in ipairs(playerState.deck or {}) do
+        if cardMatchesSearchFilter(card, filter) then
+            choices[#choices + 1] = buildCardPayload(card)
+            if #choices >= maxChoices then break end
+        end
+    end
+
+    if #choices == 0 then
+        duel.log = duel.log or {}
+        duel.log[#duel.log + 1] = {
+            turn = duel.turnNumber,
+            phase = duel.phase,
+            message = 'No matching cards found for deck search.'
+        }
+        TriggerClientEvent('QBCore:Notify', playerState.source, ('No matching cards found in deck for %s.'):format(sourceDef and sourceDef.name or 'this effect'), 'error')
+        return false
+    end
+
+    duel.selectionCounter = (duel.selectionCounter or 0) + 1
+    duel.pendingSelection = {
+        id = tostring(duel.selectionCounter),
+        playerIndex = playerIndex,
+        sourceUid = sourceCard and sourceCard.uid or nil,
+        zone = 'deck',
+        filter = filter or {},
+        title = prompt and prompt.title or 'Search Deck',
+        text = prompt and prompt.text or 'Choose 1 card to add to your hand.',
+        choices = choices
+    }
+
+    TriggerClientEvent('QBCore:Notify', playerState.source, ('Choose from %s matching card(s).'):format(#choices), 'primary')
+    TriggerClientEvent('bstar_cards:client:PendingCardSelection', playerState.source, {
+        duelId = duel.id,
+        selection = {
+            id = duel.pendingSelection.id,
+            title = duel.pendingSelection.title,
+            text = duel.pendingSelection.text,
+            choices = duel.pendingSelection.choices
+        }
+    })
+    return true
+end
+
+local function runEndPhaseEffects(duel, playerIndex)
+    local key = tostring(playerIndex) .. ':' .. tostring(duel.turnNumber)
+    if duel.endPhaseEffectsResolvedForTurn == key then
+        return
+    end
+
+    duel.endPhaseEffectsResolvedForTurn = key
+
+    if DuelEffects and getEffectApi then
+        DuelEffects.RunFieldTrigger(duel, 'end_phase', playerIndex, {
+            playerIndex = playerIndex
+        }, getEffectApi())
+        checkWinCondition(duel)
+    end
+end
+
 local function completeEndTurn(duel, playerIndex)
     resetBattleFlags(duel.players[playerIndex])
 
@@ -518,6 +772,7 @@ local function completeEndTurn(duel, playerIndex)
     duel.turnNumber = duel.turnNumber + 1
     duel.phase = "draw"
     duel.hasDrawnThisTurn = false
+    duel.endPhaseEffectsResolvedForTurn = nil
 
     resetTurnFlags(duel.players[duel.turnPlayer])
 end
@@ -581,6 +836,14 @@ function Duel.DebugSpawnFighter(duelId, playerIndex, cardId, zoneIndex)
 
     resetFighterHp(card)
     playerState.fighterZones[zoneIndex] = card
+
+    if DuelEffects and getEffectApi then
+        DuelEffects.RunTrigger(duel, 'on_summon', playerIndex, card, {
+            zoneIndex = zoneIndex,
+            summonType = 'debug'
+        }, getEffectApi())
+        checkWinCondition(duel)
+    end
 
     sendDuelStateToPlayers(duel)
     return true
@@ -851,8 +1114,11 @@ function Duel.AdvancePhase(src, duelId)
     elseif duel.phase == "main" then
         duel.phase = "battle"
     elseif duel.phase == "battle" then
-        duel.phase = "end"
+        duel.phase = "main2"
         resetBattleFlags(duel.players[playerIndex])
+    elseif duel.phase == "main2" then
+        duel.phase = "end"
+        runEndPhaseEffects(duel, playerIndex)
     elseif duel.phase == "discard" then
         return false, 'Discard down to 9 cards before ending your turn'
     else
@@ -884,6 +1150,8 @@ function Duel.EndTurn(src, duelId)
         sendDuelStateToPlayers(duel)
         return true
     end
+
+    runEndPhaseEffects(duel, playerIndex)
 
     completeEndTurn(duel, playerIndex)
 
@@ -987,8 +1255,8 @@ function Duel.SummonFighter(src, duelId, handUid, zoneIndex)
         return false, 'Not your turn'
     end
 
-    if duel.phase ~= "main" then
-        return false, 'You can only summon in Main Phase'
+    if not isMainPhase(duel.phase) then
+        return false, 'You can only summon in a Main Phase'
     end
 
     local playerState = duel.players[playerIndex]
@@ -1026,6 +1294,14 @@ function Duel.SummonFighter(src, duelId, handUid, zoneIndex)
     playerState.fighterZones[zoneIndex] = card
     playerState.hasSummonedThisTurn = true
 
+    if DuelEffects and getEffectApi then
+        DuelEffects.RunTrigger(duel, 'on_summon', playerIndex, card, {
+            zoneIndex = zoneIndex,
+            summonType = 'normal'
+        }, getEffectApi())
+        checkWinCondition(duel)
+    end
+
     sendDuelStateToPlayers(duel)
     return true
 end
@@ -1045,8 +1321,8 @@ function Duel.PromoteFighter(src, duelId, handUid, tributeZoneIndex)
         return false, 'Not your turn'
     end
 
-    if duel.phase ~= "main" then
-        return false, 'You can only promote in Main Phase'
+    if not isMainPhase(duel.phase) then
+        return false, 'You can only promote in a Main Phase'
     end
 
     local playerState = duel.players[playerIndex]
@@ -1086,6 +1362,14 @@ function Duel.PromoteFighter(src, duelId, handUid, tributeZoneIndex)
     playerState.fighterZones[tributeZoneIndex] = promotionCard
     playerState.hasSummonedThisTurn = true
 
+    if DuelEffects and getEffectApi then
+        DuelEffects.RunTrigger(duel, 'on_summon', playerIndex, promotionCard, {
+            zoneIndex = tributeZoneIndex,
+            summonType = 'promotion'
+        }, getEffectApi())
+        checkWinCondition(duel)
+    end
+
     sendDuelStateToPlayers(duel)
     return true
 end
@@ -1105,8 +1389,8 @@ function Duel.PlayNonFighter(src, duelId, handUid, targetKind, zoneIndex)
         return false, 'Not your turn'
     end
 
-    if duel.phase ~= "main" then
-        return false, 'You can only play non-fighter cards in Main Phase'
+    if not isMainPhase(duel.phase) then
+        return false, 'You can only play non-fighter cards in a Main Phase'
     end
 
     local playerState = duel.players[playerIndex]
@@ -1123,36 +1407,74 @@ function Duel.PlayNonFighter(src, duelId, handUid, targetKind, zoneIndex)
     targetKind = tostring(targetKind or ''):lower()
 
     if cardType == 'LOCATION' then
-        if playerState.locationZone then
-            return false, 'Your location zone is occupied'
-        end
+        local replacedLocation = playerState.locationZone
 
         table.remove(playerState.hand, handIndex)
+
+        if replacedLocation then
+            replacedLocation.zone = "graveyard"
+            playerState.graveyard[#playerState.graveyard + 1] = replacedLocation
+        end
+
         card.zone = "locationZone"
         playerState.locationZone = card
+
+        if DuelEffects and getEffectApi then
+            DuelEffects.RunTrigger(duel, 'on_play', playerIndex, card, {
+                zone = 'locationZone',
+                replacedCard = replacedLocation
+            }, getEffectApi())
+            checkWinCondition(duel)
+        end
+
         sendDuelStateToPlayers(duel)
         return true
     end
 
     if cardType == 'EVENT' then
         moveHandCardToGraveyard(playerState, handIndex)
+
+        if DuelEffects and getEffectApi then
+            DuelEffects.RunTrigger(duel, 'on_play', playerIndex, card, {
+                zone = 'graveyard'
+            }, getEffectApi())
+            checkWinCondition(duel)
+        end
+
         sendDuelStateToPlayers(duel)
         return true
     end
 
     if isItemZoneCardType(cardType) then
-        zoneIndex = tonumber(zoneIndex)
-        if not zoneIndex or zoneIndex < 1 or zoneIndex > 4 then
-            return false, 'Invalid item zone'
+        local isContinuous = isContinuousItemCard(card)
+
+        if isContinuous then
+            zoneIndex = tonumber(zoneIndex)
+            if not zoneIndex or zoneIndex < 1 or zoneIndex > 4 then
+                return false, 'Invalid item zone'
+            end
+
+            if playerState.itemZones[zoneIndex] ~= nil then
+                return false, 'That item zone is occupied'
+            end
+
+            table.remove(playerState.hand, handIndex)
+            card.zone = "itemZone"
+            playerState.itemZones[zoneIndex] = card
+        else
+            moveHandCardToGraveyard(playerState, handIndex)
+            zoneIndex = 0
         end
 
-        if playerState.itemZones[zoneIndex] ~= nil then
-            return false, 'That item zone is occupied'
+        if DuelEffects and getEffectApi then
+            DuelEffects.RunTrigger(duel, 'on_play', playerIndex, card, {
+                zone = isContinuous and 'itemZone' or 'graveyard',
+                zoneIndex = zoneIndex,
+                continuous = isContinuous
+            }, getEffectApi())
+            checkWinCondition(duel)
         end
 
-        table.remove(playerState.hand, handIndex)
-        card.zone = "itemZone"
-        playerState.itemZones[zoneIndex] = card
         sendDuelStateToPlayers(duel)
         return true
     end
@@ -1174,11 +1496,149 @@ function Duel.PlayNonFighter(src, duelId, handUid, targetKind, zoneIndex)
         table.remove(playerState.hand, handIndex)
         card.zone = "equipmentZone"
         playerState.equipmentZones[zoneIndex] = card
+
+        if DuelEffects and getEffectApi then
+            DuelEffects.RunTrigger(duel, 'on_play', playerIndex, card, {
+                zone = 'equipmentZone',
+                zoneIndex = zoneIndex
+            }, getEffectApi())
+            checkWinCondition(duel)
+        end
+
         sendDuelStateToPlayers(duel)
         return true
     end
 
     return false, 'This card type is not playable yet'
+end
+
+function Duel.ResolvePendingEffect(src, duelId, promptId, accepted)
+    local duel = Duel.Active[duelId]
+    if not duel then
+        return false, 'Duel not found'
+    end
+
+    local pending = duel.pendingEffect
+    if not pending or tostring(pending.id) ~= tostring(promptId) then
+        return false, 'Effect prompt not found'
+    end
+
+    local playerIndex = getControllingPlayerIndex(duel, src)
+    if playerIndex ~= pending.playerIndex then
+        return false, 'That effect prompt is not yours'
+    end
+
+    duel.pendingEffect = nil
+
+    if accepted == true then
+        local playerState = duel.players[playerIndex]
+        local card = findPlayerCardByUid(playerState, pending.sourceUid)
+        if card then
+            local ok, err = DuelEffects.RunEffectByIndex(duel, playerIndex, card, pending.effectIndex, {
+                trigger = pending.trigger,
+                prompted = true
+            }, getEffectApi())
+
+            if not ok then
+                return false, err
+            end
+
+            checkWinCondition(duel)
+        end
+    end
+
+    sendDuelStateToPlayers(duel)
+    return true
+end
+
+function Duel.ResolvePendingSelection(src, duelId, selectionId, selectedUid)
+    local duel = Duel.Active[duelId]
+    if not duel then
+        return false, 'Duel not found'
+    end
+
+    local pending = duel.pendingSelection
+    if not pending or tostring(pending.id) ~= tostring(selectionId) then
+        return false, 'Selection prompt not found'
+    end
+
+    local playerIndex = getControllingPlayerIndex(duel, src)
+    if playerIndex ~= pending.playerIndex then
+        return false, 'That selection prompt is not yours'
+    end
+
+    duel.pendingSelection = nil
+
+    if selectedUid and selectedUid ~= '' then
+        local playerState = duel.players[playerIndex]
+        local card, deckIndex = findCardInZoneByUid(playerState, 'deck', selectedUid)
+        if not card or not deckIndex then
+            return false, 'Selected card is no longer in your deck'
+        end
+
+        if not cardMatchesSearchFilter(card, pending.filter) then
+            return false, 'Selected card is not valid for this effect'
+        end
+
+        table.remove(playerState.deck, deckIndex)
+        card.zone = 'hand'
+        playerState.hand[#playerState.hand + 1] = card
+    end
+
+    sendDuelStateToPlayers(duel)
+    return true
+end
+
+function Duel.ActivateEffect(src, duelId, sourceUid)
+    local duel = Duel.Active[duelId]
+    if not duel then
+        return false, 'Duel not found'
+    end
+
+    if duel.status ~= "active" then
+        return false, 'Duel is not active'
+    end
+
+    if duel.pendingEffect then
+        return false, 'Resolve the pending effect first'
+    end
+
+    local playerIndex = getControllingPlayerIndex(duel, src)
+    if not playerIndex then
+        return false, 'Player not in duel'
+    end
+
+    if duel.turnPlayer ~= playerIndex then
+        return false, 'Not your turn'
+    end
+
+    if not isMainPhase(duel.phase) then
+        return false, 'You can only activate effects in a Main Phase'
+    end
+
+    local playerState = duel.players[playerIndex]
+    local card = findFieldCardByUid(playerState, sourceUid)
+    if not card then
+        return false, 'Card not found on your field'
+    end
+
+    if not isCardActivatable(card) then
+        return false, 'That card has no activatable effect'
+    end
+
+    local activated = DuelEffects.RunTrigger(duel, 'activated', playerIndex, card, {
+        manual = true
+    }, getEffectApi(), {
+        force = true
+    })
+
+    if activated <= 0 then
+        return false, 'No effect activated'
+    end
+
+    checkWinCondition(duel)
+    sendDuelStateToPlayers(duel)
+    return true
 end
 
 function Duel.GetById(duelId)

@@ -42,6 +42,8 @@ const uiModalWrap = document.getElementById('uiModalWrap');
 const uiModalTitle = document.getElementById('uiModalTitle');
 const uiModalText = document.getElementById('uiModalText');
 const uiModalInput = document.getElementById('uiModalInput');
+const uiModalChoicePreview = document.getElementById('uiModalChoicePreview');
+const uiModalChoices = document.getElementById('uiModalChoices');
 const uiModalCancelBtn = document.getElementById('uiModalCancelBtn');
 const uiModalConfirmBtn = document.getElementById('uiModalConfirmBtn');
 const coinFlipWrap = document.getElementById('coinFlipWrap');
@@ -127,6 +129,10 @@ const duelResultCloseBtn = document.getElementById('duelResultCloseBtn');
 
 // General state
 let activeModalAction = null;
+let activeModalCancelAction = null;
+let activeModalSelectedChoice = null;
+let activeEffectPromptId = null;
+let activeCardSelectionId = null;
 
 let isZoomed = false;
 let targetRotateX = 0;
@@ -336,12 +342,20 @@ function isDeckCardInvalid(cardId) {
 
 // ---------- Modal ----------
 
-function openModal({ title, text, showInput = false, inputValue = '', confirmText = 'Confirm', onConfirm = null }) {
+function openModal({ title, text, showInput = false, inputValue = '', confirmText = 'Confirm', cancelText = 'Cancel', choices = null, onConfirm = null, onCancel = null, onChoice = null }) {
   activeModalAction = onConfirm || null;
+  activeModalCancelAction = onCancel || null;
+  activeModalSelectedChoice = null;
+
+  const modalPanel = uiModalWrap.querySelector('.ui-modal');
+  const hasChoices = Array.isArray(choices) && choices.length > 0;
+  modalPanel?.classList.toggle('card-picker', hasChoices);
 
   uiModalTitle.textContent = title || 'Confirm';
   uiModalText.textContent = text || '';
   uiModalConfirmBtn.textContent = confirmText;
+  uiModalCancelBtn.textContent = cancelText;
+  uiModalConfirmBtn.disabled = hasChoices;
 
   if (showInput) {
     uiModalInput.classList.remove('hidden');
@@ -352,6 +366,101 @@ function openModal({ title, text, showInput = false, inputValue = '', confirmTex
     uiModalInput.value = '';
   }
 
+  if (uiModalChoices) {
+    uiModalChoices.innerHTML = '';
+
+    if (hasChoices) {
+      uiModalChoices.classList.remove('hidden');
+      uiModalConfirmBtn.classList.remove('hidden');
+      if (uiModalChoicePreview) {
+        uiModalChoicePreview.classList.remove('hidden');
+        uiModalChoicePreview.innerHTML = '';
+      }
+
+      const renderChoicePreview = (choice) => {
+        if (!uiModalChoicePreview || !choice) return;
+
+        uiModalChoicePreview.innerHTML = '';
+
+        const img = document.createElement('img');
+        img.src = getCardImagePathFromPayload(choice);
+        img.alt = choice.name || choice.cardId || 'Card';
+        uiModalChoicePreview.appendChild(img);
+
+        const body = document.createElement('div');
+        body.className = 'ui-modal-choice-preview-body';
+
+        const name = document.createElement('div');
+        name.className = 'ui-modal-choice-preview-name';
+        name.textContent = choice.name || choice.cardId || 'Card';
+
+        const meta = document.createElement('div');
+        meta.className = 'ui-modal-choice-preview-meta';
+        meta.textContent = [choice.rarity, choice.type, choice.level, choice.job].filter(Boolean).join(' / ');
+
+        const effectTitle = document.createElement('div');
+        effectTitle.className = 'ui-modal-choice-preview-effect-title';
+        effectTitle.textContent = choice.effectTitle || 'Effect';
+
+        const effectText = document.createElement('div');
+        effectText.className = 'ui-modal-choice-preview-effect-text';
+        effectText.textContent = choice.effectText || 'No effect text.';
+
+        body.appendChild(name);
+        body.appendChild(meta);
+        body.appendChild(effectTitle);
+        body.appendChild(effectText);
+        uiModalChoicePreview.appendChild(body);
+      };
+
+      const selectChoice = (choice, btn) => {
+        activeModalSelectedChoice = choice;
+        uiModalChoices.querySelectorAll('.ui-modal-choice.selected').forEach(el => el.classList.remove('selected'));
+        btn.classList.add('selected');
+        uiModalConfirmBtn.disabled = false;
+        renderChoicePreview(choice);
+        if (onChoice) onChoice(choice);
+      };
+
+      for (const choice of choices) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ui-modal-choice';
+
+        const img = document.createElement('img');
+        img.src = getCardImagePathFromPayload(choice);
+        img.alt = choice.name || choice.cardId || 'Card';
+        btn.appendChild(img);
+
+        const body = document.createElement('div');
+        const name = document.createElement('div');
+        name.className = 'ui-modal-choice-name';
+        name.textContent = choice.name || choice.cardId || 'Card';
+
+        const meta = document.createElement('div');
+        meta.className = 'ui-modal-choice-meta';
+        meta.textContent = [choice.type, choice.level, choice.rarity].filter(Boolean).join(' / ');
+
+        body.appendChild(name);
+        body.appendChild(meta);
+        btn.appendChild(body);
+
+        btn.addEventListener('click', () => selectChoice(choice, btn));
+
+        uiModalChoices.appendChild(btn);
+      }
+
+      renderChoicePreview(choices[0]);
+    } else {
+      uiModalChoices.classList.add('hidden');
+      uiModalConfirmBtn.classList.remove('hidden');
+      if (uiModalChoicePreview) {
+        uiModalChoicePreview.classList.add('hidden');
+        uiModalChoicePreview.innerHTML = '';
+      }
+    }
+  }
+
   uiModalWrap.classList.remove('hidden');
 }
 
@@ -359,7 +468,107 @@ function closeModal() {
   uiModalWrap.classList.add('hidden');
   uiModalInput.classList.add('hidden');
   uiModalInput.value = '';
+  uiModalChoices?.classList.add('hidden');
+  if (uiModalChoices) uiModalChoices.innerHTML = '';
+  uiModalChoicePreview?.classList.add('hidden');
+  if (uiModalChoicePreview) uiModalChoicePreview.innerHTML = '';
+  uiModalConfirmBtn.classList.remove('hidden');
+  uiModalConfirmBtn.disabled = false;
+  uiModalWrap.querySelector('.ui-modal')?.classList.remove('card-picker');
   activeModalAction = null;
+  activeModalCancelAction = null;
+  activeModalSelectedChoice = null;
+}
+
+function resolvePendingEffect(promptId, accepted) {
+  fetch(`https://${GetParentResourceName()}/duelResolvePendingEffect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      promptId,
+      accepted
+    })
+  });
+}
+
+function resolvePendingSelection(selectionId, selectedUid) {
+  fetch(`https://${GetParentResourceName()}/duelResolvePendingSelection`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      selectionId,
+      selectedUid
+    })
+  });
+}
+
+function showPendingEffectPrompt(prompt) {
+  if (!prompt || !prompt.id || activeEffectPromptId === prompt.id) return;
+
+  activeEffectPromptId = prompt.id;
+  openModal({
+    title: prompt.title || `${prompt.cardName || 'Card'} Effect`,
+    text: prompt.text || `Do you want to activate ${prompt.cardName || 'this card'}'s effect?`,
+    confirmText: 'Activate',
+    cancelText: 'Skip',
+    onConfirm: () => {
+      resolvePendingEffect(prompt.id, true);
+      activeEffectPromptId = null;
+    },
+    onCancel: () => {
+      resolvePendingEffect(prompt.id, false);
+      activeEffectPromptId = null;
+    }
+  });
+}
+
+function syncPendingEffectPrompt() {
+  const prompt = currentDuelState?.pendingEffect || null;
+  if (!prompt) {
+    activeEffectPromptId = null;
+    return;
+  }
+
+  showPendingEffectPrompt(prompt);
+}
+
+function showPendingCardSelection(selection) {
+  if (!selection || !selection.id || activeCardSelectionId === selection.id) return;
+
+  activeCardSelectionId = selection.id;
+  console.log('[BStar Duel] Showing card selection:', selection.id, selection.choices?.length || 0);
+
+  openModal({
+    title: selection.title || 'Choose a card',
+    text: selection.text || 'Choose 1 card.',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    choices: selection.choices || [],
+    onConfirm: (_value, choice) => {
+      if (!choice) return;
+      resolvePendingSelection(selection.id, choice.uid);
+      activeCardSelectionId = null;
+    },
+    onCancel: () => {
+      resolvePendingSelection(selection.id, null);
+      activeCardSelectionId = null;
+    }
+  });
+}
+
+function syncPendingCardSelection() {
+  const selection = currentDuelState?.pendingSelection || null;
+  if (!selection) {
+    activeCardSelectionId = null;
+    return;
+  }
+
+  showPendingCardSelection(selection);
+}
+
+function syncPendingDuelInteractions() {
+  syncPendingEffectPrompt();
+  syncPendingCardSelection();
 }
 
 function clearCoinResultTimer() {
@@ -1336,8 +1545,63 @@ function getCardType(card) {
   return String(card?.type || '').trim().toUpperCase();
 }
 
+function isDuelMainPhase(phase) {
+  return phase === 'main' || phase === 'main2';
+}
+
+function getDuelPhaseLabel(phase) {
+  const phaseKey = String(phase || 'draw').toLowerCase();
+  const labels = {
+    draw: 'DRAW PHASE',
+    main: 'MAIN PHASE',
+    battle: 'BATTLE PHASE',
+    main2: 'MAIN 2 PHASE',
+    end: 'END PHASE',
+    discard: 'DISCARD PHASE'
+  };
+  return labels[phaseKey] || `${phaseKey.toUpperCase()} PHASE`;
+}
+
+function canActivateFieldEffect(card, side = 'self') {
+  return !!card
+    && side === 'self'
+    && card.activatableEffect === true
+    && currentDuelState?.status === 'active'
+    && currentDuelState.turnPlayer === currentDuelState.viewerIndex
+    && isDuelMainPhase(currentDuelState.phase);
+}
+
+function activateFieldEffect(card) {
+  if (!card || !canActivateFieldEffect(card, 'self')) return;
+
+  selectedHandCardUid = null;
+  selectedAttackerZoneIndex = null;
+
+  fetch(`https://${GetParentResourceName()}/duelActivateEffect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sourceUid: card.uid
+    })
+  });
+}
+
 function isItemZoneCard(card) {
   return getCardType(card) === 'ITEM';
+}
+
+function hasEffectTag(card, tag) {
+  const tags = Array.isArray(card?.effectTags) ? card.effectTags : [];
+  return tags.some(value => String(value || '').toLowerCase() === tag);
+}
+
+function isContinuousItemCard(card) {
+  return isItemZoneCard(card)
+    && (card?.continuous === true
+      || hasEffectTag(card, 'continuous')
+      || hasEffectTag(card, 'continuous_item')
+      || hasEffectTag(card, 'once_per_turn')
+      || hasEffectTag(card, 'end_phase'));
 }
 
 function isEquipmentZoneCard(card) {
@@ -1441,6 +1705,7 @@ function renderTableZone(card, side, zoneIndex, equipmentCard = null) {
   }
 
   if (card.hasAttacked) zone.classList.add('used');
+  if (canActivateFieldEffect(card, side)) zone.classList.add('effect-ready');
 
   const img = document.createElement('img');
   img.src = getCardImagePathFromPayload(card);
@@ -1481,6 +1746,7 @@ function renderTableSupportZone(card, side, kind, zoneIndex, targetable = false)
     zone.appendChild(label);
   } else {
     zone.classList.add('occupied');
+    if (canActivateFieldEffect(card, side)) zone.classList.add('effect-ready');
     const img = document.createElement('img');
     setCardThumbImage(img, card);
     zone.appendChild(img);
@@ -1504,7 +1770,7 @@ function renderTableSupportRow(rowEl, cards, side, kind, selectedCard, canPlayNo
   rowEl.innerHTML = '';
   const count = kind === 'equipment' ? 3 : 4;
   const hasCards = (cards || []).some(Boolean);
-  const hasSelectedTarget = kind === 'item' ? isItemZoneCard(selectedCard) : isEquipmentZoneCard(selectedCard);
+  const hasSelectedTarget = kind === 'item' ? isContinuousItemCard(selectedCard) : isEquipmentZoneCard(selectedCard);
 
   rowEl.classList.toggle('has-cards', hasCards);
   rowEl.classList.toggle('selecting', side === 'self' && canPlayNonFighter && hasSelectedTarget);
@@ -1514,7 +1780,7 @@ function renderTableSupportRow(rowEl, cards, side, kind, selectedCard, canPlayNo
     const canTarget = side === 'self'
       && canPlayNonFighter
       && !card
-      && ((kind === 'item' && isItemZoneCard(selectedCard)) || (kind === 'equipment' && isEquipmentZoneCard(selectedCard)));
+      && ((kind === 'item' && isContinuousItemCard(selectedCard)) || (kind === 'equipment' && isEquipmentZoneCard(selectedCard)));
 
     const slot = renderTableSupportZone(card, side, kind, i + 1, canTarget);
 
@@ -1533,7 +1799,7 @@ function renderTableLocationSlot(slotEl, card, side, selectedCard, canPlayNonFig
   if (!slotEl) return;
 
   slotEl.innerHTML = '';
-  const canTarget = side === 'self' && canPlayNonFighter && !card && isLocationCard(selectedCard);
+  const canTarget = side === 'self' && canPlayNonFighter && isLocationCard(selectedCard);
   const slot = renderTableSupportZone(card, side, 'location', 1, canTarget);
 
   if (canTarget) {
@@ -1561,6 +1827,7 @@ function playSelectedNonFighter(targetKind, zoneIndex = 0) {
   });
 
   selectedHandCardUid = null;
+  renderDuelUi();
 }
 
 function closeTableGraveyard() {
@@ -1619,6 +1886,18 @@ function renderTablePreview() {
       <div class="table-preview-effect-title">${title}</div>
       <div class="table-preview-effect-text">${text}</div>
     `;
+
+    if (canActivateFieldEffect(card, 'self')) {
+      const button = document.createElement('button');
+      button.className = 'table-preview-activate-btn';
+      button.type = 'button';
+      button.textContent = 'Activate Effect';
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        activateFieldEffect(card);
+      });
+      tablePreviewEffect.appendChild(button);
+    }
   }
 }
 
@@ -1843,6 +2122,19 @@ function clearDuelSelections() {
   return !!hadSelection;
 }
 
+function clearAttackTargetHighlights() {
+  document.querySelectorAll('.table-zone.targetable, .duel-zone.summon-target, .duel-zone-selected').forEach(el => {
+    el.classList.remove('targetable', 'summon-target', 'duel-zone-selected');
+  });
+}
+
+function canAttackWithSelectedAttacker(canAttackThisTurn) {
+  if (!canAttackThisTurn || !selectedAttackerZoneIndex) return false;
+
+  const attacker = currentDuelState?.selfPlayer?.fighterZones?.[selectedAttackerZoneIndex - 1];
+  return !!attacker && attacker.hasAttacked !== true;
+}
+
 function reconcileDuelSelections() {
   if (!currentDuelState || currentDuelState.status !== 'active') {
     clearDuelSelections();
@@ -1850,7 +2142,7 @@ function reconcileDuelSelections() {
   }
 
   const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
-  const isMainPhase = currentDuelState.phase === 'main';
+  const isMainPhase = isDuelMainPhase(currentDuelState.phase);
   const isBattlePhase = currentDuelState.phase === 'battle';
   const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState.turnNumber === 1 && currentDuelState.firstTurnPlayer === currentDuelState.viewerIndex);
 
@@ -1862,14 +2154,10 @@ function reconcileDuelSelections() {
     selectedHandCardUid = null;
   }
 
-  if (!canAttackThisTurn) {
+  if (!canAttackWithSelectedAttacker(canAttackThisTurn)) {
     selectedAttackerZoneIndex = null;
+    clearAttackTargetHighlights();
     return;
-  }
-
-  const attacker = currentDuelState.selfPlayer?.fighterZones?.[selectedAttackerZoneIndex - 1];
-  if (!attacker || attacker.hasAttacked) {
-    selectedAttackerZoneIndex = null;
   }
 }
 
@@ -1935,19 +2223,29 @@ function renderTableDuelUi() {
   const nextGraveSnapshot = getTableGraveSnapshotFromState(currentDuelState);
 
   const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
-  const isMainPhase = currentDuelState.phase === 'main';
+  const isMainPhase = isDuelMainPhase(currentDuelState.phase);
   const isBattlePhase = currentDuelState.phase === 'battle';
   const isDiscardPhase = currentDuelState.phase === 'discard';
   const canAttackThisTurn = isMyTurn
     && isBattlePhase
     && !(currentDuelState.turnNumber === 1 && currentDuelState.firstTurnPlayer === currentDuelState.viewerIndex);
+  const hasValidSelectedAttacker = canAttackWithSelectedAttacker(canAttackThisTurn);
+  if (selectedAttackerZoneIndex && !hasValidSelectedAttacker) {
+    selectedAttackerZoneIndex = null;
+  }
+  if (!hasValidSelectedAttacker) {
+    clearAttackTargetHighlights();
+  }
+  if (!hasValidSelectedAttacker) {
+    clearAttackTargetHighlights();
+  }
   const handSize = currentDuelState.selfPlayer?.hand?.length || 0;
   const discardCount = Math.max(0, handSize - 9);
   const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
   const canPlayNonFighter = isMyTurn && isMainPhase;
   const canDraw = canCurrentViewerDraw();
 
-  tablePhaseBadge.textContent = `${String(currentDuelState.phase || 'draw').toUpperCase()} PHASE`;
+  tablePhaseBadge.textContent = getDuelPhaseLabel(currentDuelState.phase);
   if (tableDrawPrompt) {
     tableDrawPrompt.textContent = isDiscardPhase && discardCount > 0 ? `Discard ${discardCount} card${discardCount === 1 ? '' : 's'}` : 'Draw a card!';
     tableDrawPrompt.classList.toggle('hidden', !canDraw && !(isDiscardPhase && discardCount > 0));
@@ -1990,8 +2288,8 @@ function renderTableDuelUi() {
 
   renderTableSupportRow(tableOpponentItemRow, currentDuelState.opponentPlayer?.itemZones || [], 'opponent', 'item', null, false);
   renderTableSupportRow(tableSelfItemRow, currentDuelState.selfPlayer?.itemZones || [], 'self', 'item', selectedHandCard, canPlayNonFighter);
-  renderTableSupportRow(tableOpponentEquipRow, [], 'opponent', 'equipment', null, false);
-  renderTableSupportRow(tableSelfEquipRow, [], 'self', 'equipment', null, false);
+  if (tableOpponentEquipRow) tableOpponentEquipRow.innerHTML = '';
+  if (tableSelfEquipRow) tableSelfEquipRow.innerHTML = '';
   renderTableLocationSlot(tableOpponentLocationSlot, currentDuelState.opponentPlayer?.locationZone || null, 'opponent', null, false);
   renderTableLocationSlot(tableSelfLocationSlot, currentDuelState.selfPlayer?.locationZone || null, 'self', selectedHandCard, canPlayNonFighter);
 
@@ -2000,7 +2298,7 @@ function renderTableDuelUi() {
     const zone = renderTableZone(card, 'opponent', i + 1, oppEquipmentZones[i] || null);
     addTableZoneTransitionClass(zone, 'opponent', i + 1, card);
 
-    if (selectedAttackerZoneIndex && canAttackThisTurn && card) {
+    if (hasValidSelectedAttacker && card) {
       zone.classList.add('targetable');
       zone.addEventListener('click', () => {
         fetch(`https://${GetParentResourceName()}/duelAttack`, {
@@ -2014,6 +2312,7 @@ function renderTableDuelUi() {
         });
 
         selectedAttackerZoneIndex = null;
+        renderDuelUi();
       });
     }
 
@@ -2100,7 +2399,7 @@ function renderTableDuelUi() {
 
   const opponentHasFighters = oppZones.some(Boolean);
 
-  if (selectedAttackerZoneIndex && canAttackThisTurn && !opponentHasFighters) {
+  if (hasValidSelectedAttacker && !opponentHasFighters) {
     const direct = document.createElement('div');
     direct.className = 'table-zone targetable table-direct-target';
     direct.textContent = 'DIRECT';
@@ -2119,6 +2418,7 @@ function renderTableDuelUi() {
       });
 
       selectedAttackerZoneIndex = null;
+      renderDuelUi();
     });
 
     tableOpponentZones.appendChild(direct);
@@ -2148,7 +2448,7 @@ function renderTableDuelUi() {
       div.classList.add('selected');
     }
 
-    if (selectedHandCardUid === card.uid && isEventCard(card) && canPlayNonFighter) {
+    if (selectedHandCardUid === card.uid && (isEventCard(card) || (isItemZoneCard(card) && !isContinuousItemCard(card))) && canPlayNonFighter) {
       div.classList.add('event-selected');
       const activate = document.createElement('button');
       activate.className = 'table-event-activate-pill';
@@ -2156,7 +2456,7 @@ function renderTableDuelUi() {
       activate.textContent = 'ACTIVATE';
       activate.addEventListener('click', (event) => {
         event.stopPropagation();
-        playSelectedNonFighter('event', 0);
+        playSelectedNonFighter(isEventCard(card) ? 'event' : 'item', 0);
       });
       div.appendChild(activate);
     }
@@ -2293,6 +2593,7 @@ function openDuelUi(duel, tableMode = false) {
   }
 
   renderDuelUi();
+  syncPendingDuelInteractions();
 }
 
 function updateDuelUi(duel, tableMode = duelTableMode) {
@@ -2310,6 +2611,7 @@ function updateDuelUi(duel, tableMode = duelTableMode) {
   }
 
   renderDuelUi();
+  syncPendingDuelInteractions();
 }
 
 function closeDuelUi(notifyLua = true) {
@@ -2366,12 +2668,19 @@ function renderOpponentZones() {
   const isMyTurn = currentDuelState?.turnPlayer === currentDuelState?.viewerIndex;
   const isBattlePhase = currentDuelState?.phase === 'battle';
   const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState?.turnNumber === 1 && currentDuelState?.firstTurnPlayer === currentDuelState?.viewerIndex);
+  const hasValidSelectedAttacker = canAttackWithSelectedAttacker(canAttackThisTurn);
+  if (selectedAttackerZoneIndex && !hasValidSelectedAttacker) {
+    selectedAttackerZoneIndex = null;
+  }
+  if (!hasValidSelectedAttacker) {
+    clearAttackTargetHighlights();
+  }
 
   for (let i = 0; i < 3; i++) {
     const zoneCard = zones[i] || null;
     const zoneEl = renderZoneCard(zoneCard, 'opponent', i + 1);
 
-    if (selectedAttackerZoneIndex && canAttackThisTurn && zoneCard) {
+    if (hasValidSelectedAttacker && zoneCard) {
       zoneEl.classList.add('summon-target');
       zoneEl.addEventListener('click', () => {
         fetch(`https://${GetParentResourceName()}/duelAttack`, {
@@ -2385,6 +2694,7 @@ function renderOpponentZones() {
         });
 
         selectedAttackerZoneIndex = null;
+        renderDuelUi();
       });
     }
 
@@ -2392,7 +2702,7 @@ function renderOpponentZones() {
   }
 
   const occupiedOpponent = zones.some(z => !!z);
-  if (selectedAttackerZoneIndex && canAttackThisTurn && !occupiedOpponent) {
+  if (hasValidSelectedAttacker && !occupiedOpponent) {
     const directZone = document.createElement('div');
     directZone.className = 'duel-zone summon-target duel-direct-target';
     directZone.dataset.side = 'opponent';
@@ -2411,6 +2721,7 @@ function renderOpponentZones() {
       });
 
       selectedAttackerZoneIndex = null;
+      renderDuelUi();
     });
 
     duelOpponentFighterZones.appendChild(directZone);
@@ -2422,9 +2733,13 @@ function renderSelfZones() {
 
   const zones = currentDuelState?.selfPlayer?.fighterZones || [null, null, null];
   const isMyTurn = currentDuelState?.turnPlayer === currentDuelState?.viewerIndex;
-  const isMainPhase = currentDuelState?.phase === 'main';
+  const isMainPhase = isDuelMainPhase(currentDuelState?.phase);
   const isBattlePhase = currentDuelState?.phase === 'battle';
   const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState?.turnNumber === 1 && currentDuelState?.firstTurnPlayer === currentDuelState?.viewerIndex);
+  const hasValidSelectedAttacker = canAttackWithSelectedAttacker(canAttackThisTurn);
+  if (selectedAttackerZoneIndex && !hasValidSelectedAttacker) {
+    selectedAttackerZoneIndex = null;
+  }
   const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
   const selectedHandCard = getSelfHandCardByUid(selectedHandCardUid);
 
@@ -2476,7 +2791,7 @@ function renderSelfZones() {
         });
       }
 
-      if (selectedAttackerZoneIndex === (i + 1)) {
+      if (hasValidSelectedAttacker && selectedAttackerZoneIndex === (i + 1)) {
         zoneEl.classList.add('duel-zone-selected');
       }
     }
@@ -2567,7 +2882,7 @@ function renderHand() {
 
   const hand = currentDuelState?.selfPlayer?.hand || [];
   const isMyTurn = currentDuelState?.turnPlayer === currentDuelState?.viewerIndex;
-  const isMainPhase = currentDuelState?.phase === 'main';
+  const isMainPhase = isDuelMainPhase(currentDuelState?.phase);
   const isDiscardPhase = currentDuelState?.phase === 'discard';
   const canNormalSummon = isMyTurn && isMainPhase && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
   const selfZones = currentDuelState?.selfPlayer?.fighterZones || [null, null, null];
@@ -2632,7 +2947,7 @@ function renderDuelUi() {
   if (!currentDuelState) return;
 
   duelTurnText.textContent = `Turn ${currentDuelState.turnNumber || 1}`;
-  duelPhaseText.textContent = `${String(currentDuelState.phase || 'draw').toUpperCase()} PHASE`;
+  duelPhaseText.textContent = getDuelPhaseLabel(currentDuelState.phase);
   if (duelAdvancePhaseBtn) {
     duelAdvancePhaseBtn.textContent = currentDuelState.phase === 'draw' ? 'Draw Card' : 'Next Phase';
   }
@@ -2898,6 +3213,10 @@ window.addEventListener('message', (event) => {
     updateDuelUi(data.duel, !!data.tableMode);
   }
 
+  if (data.action === 'pendingCardSelection') {
+    showPendingCardSelection(data.selection);
+  }
+
   if (data.action === 'closeDuelUi') {
     closeDuelUi(false);
   }
@@ -2950,11 +3269,16 @@ document.addEventListener('contextmenu', (e) => {
   e.preventDefault();
 });
 
-uiModalCancelBtn.addEventListener('click', closeModal);
+uiModalCancelBtn.addEventListener('click', () => {
+  if (activeModalCancelAction) {
+    activeModalCancelAction();
+  }
+  closeModal();
+});
 
 uiModalConfirmBtn.addEventListener('click', () => {
   if (activeModalAction) {
-    activeModalAction(uiModalInput.value.trim());
+    activeModalAction(uiModalInput.value.trim(), activeModalSelectedChoice);
   }
   closeModal();
 });

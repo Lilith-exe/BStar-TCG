@@ -28,6 +28,17 @@ Cards = {
         defense = 'DEF: 20',
         effectTitle = 'EFFECT',
         effectText = 'Lose 300 LP and draw 2 cards.',
+        effectTags = { 'on_summon', 'lose_lp', 'draw' },
+        effects = {
+            {
+                trigger = 'on_summon',
+                tags = { 'lose_lp', 'draw' },
+                actions = {
+                    { action = 'lose_lp', target = 'self', amount = 300 },
+                    { action = 'draw', target = 'self', amount = 2 }
+                }
+            }
+        },
         setCode = 'ALPH1-EN002',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN002_MR_BSTAR.png'
@@ -61,7 +72,22 @@ Cards = {
         attack = 'ATK: 30',
         defense = 'DEF: 50',
         effectTitle = 'EFFECT',
-        effectText = 'Add 1 \'Mirror Park Auto\' card from your deck.',
+        effectText = "Add 1 'Riley's Performance' card from your deck.",
+        effectTags = { 'on_summon', 'search_deck' },
+        effects = {
+            {
+                trigger = 'on_summon',
+                tags = { 'search_deck' },
+                actions = {
+                    {
+                        action = 'search_deck_to_hand',
+                        choose = true,
+                        promptText = "Choose 1 Riley's Performance card to add to your hand.",
+                        filter = { nameContains = "Riley's Performance" }
+                    }
+                }
+            }
+        },
         setCode = 'ALPH1-EN004',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN004_WYATT_RAYNE.png'
@@ -164,6 +190,21 @@ Cards = {
         defense = 'DEF: 40',
         effectTitle = 'WHERE CAN I TAKE YA?',
         effectText = 'Add any Location card from your deck.',
+        effectTags = { 'on_summon', 'search_deck' },
+        effects = {
+            {
+                trigger = 'on_summon',
+                tags = { 'search_deck' },
+                actions = {
+                    {
+                        action = 'search_deck_to_hand',
+                        choose = true,
+                        promptText = 'Choose 1 Location card to add to your hand.',
+                        filter = { type = 'Location' }
+                    }
+                }
+            }
+        },
         setCode = 'ALPH1-EN010',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN010_NIKOLAS_HAAJA.png'
@@ -402,6 +443,16 @@ Cards = {
         defense = 'DEF: ',
         effectTitle = 'EFFECT',
         effectText = 'Heal 1 of your fighters for +30 HP. Also flip a coin, if tails, remove any \'bleed\' effect.',
+        effectTags = { 'on_play', 'heal', 'coin_flip' },
+        effects = {
+            {
+                trigger = 'on_play',
+                tags = { 'heal' },
+                actions = {
+                    { action = 'heal_all_fighters', target = 'self', amount = 30 }
+                }
+            }
+        },
         setCode = 'ALPH1-EN024',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN024_BANDAGE.png'
@@ -1541,6 +1592,17 @@ Cards = {
         defense = 'DEF: ',
         effectTitle = 'Caryard',
         effectText = 'If you draw a \'Vehicle\' card. You can draw 1 more card.',
+        effectTags = { 'on_draw', 'draw' },
+        effects = {
+            {
+                trigger = 'on_draw',
+                tags = { 'draw' },
+                condition = { drawnType = 'Vehicle' },
+                actions = {
+                    { action = 'draw', target = 'self', amount = 1 }
+                }
+            }
+        },
         setCode = 'ALPH1-EN091',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN091_LARRYS_CAR_LOT.png'
@@ -2476,6 +2538,18 @@ Cards = {
         defense = 'DEF: 50',
         effectTitle = 'EFFECT',
         effectText = 'On summon you can also special summon 1 \'Terrance Redfield Riley\' from your deck or cemetary.',
+        effectTags = { 'on_summon', 'special_summon' },
+        effects = {
+            {
+                trigger = 'on_summon',
+                optional = true,
+                promptText = 'Do you want to special summon 1 Terrance Redfield Riley from your deck or cemetery?',
+                tags = { 'special_summon' },
+                actions = {
+                    { action = 'special_summon_from_deck_or_graveyard', filter = { type = 'Fighter', nameContains = 'Terrance Redfield Riley' } }
+                }
+            }
+        },
         setCode = 'ALPH1-EN146',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN146_KIRI_RILEY.png'
@@ -2527,6 +2601,16 @@ Cards = {
         defense = 'DEF: ',
         effectTitle = 'EFFECT',
         effectText = 'Steal 30 LP from your opponent.',
+        effectTags = { 'on_play', 'steal_lp', 'damage_lp', 'gain_lp' },
+        effects = {
+            {
+                trigger = 'on_play',
+                tags = { 'steal_lp' },
+                actions = {
+                    { action = 'steal_lp', amount = 30 }
+                }
+            }
+        },
         setCode = 'ALPH1-EN149',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN149_BLOOD_DONATION.png'

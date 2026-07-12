@@ -732,9 +732,9 @@ button:hover {
    ========================= */
 
 .ui-modal-wrap {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 1000010;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -754,6 +754,15 @@ button:hover {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
 }
 
+.ui-modal.card-picker {
+  width: min(1040px, calc(100vw - 48px));
+  max-height: min(860px, calc(100vh - 48px));
+  padding: 22px;
+  background:
+    linear-gradient(180deg, rgba(12, 16, 22, 0.98), rgba(8, 10, 16, 0.98));
+  border: 1px solid rgba(130, 225, 255, 0.2);
+}
+
 .ui-modal h3,
 .ui-modal p {
   margin: 0;
@@ -767,10 +776,181 @@ button:hover {
   box-sizing: border-box;
 }
 
+.ui-modal-choices {
+  max-height: 360px;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+}
+
+.ui-modal.card-picker .ui-modal-choices {
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  gap: 14px;
+  padding: 6px 2px 12px;
+  scroll-snap-type: x proximity;
+}
+
+.ui-modal-choice-preview {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  min-height: 320px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(18, 35, 42, 0.94), rgba(20, 18, 28, 0.94));
+}
+
+.ui-modal-choice-preview img {
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  align-self: center;
+}
+
+.ui-modal-choice-preview-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+.ui-modal-choice-preview-name {
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.ui-modal-choice-preview-meta {
+  color: rgba(255,255,255,0.68);
+  font-size: 13px;
+}
+
+.ui-modal-choice-preview-effect-title {
+  margin-top: 8px;
+  color: #8ee7ff;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ui-modal-choice-preview-effect-text {
+  max-width: 560px;
+  color: rgba(255,255,255,0.88);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.ui-modal-choice {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.ui-modal.card-picker .ui-modal-choice {
+  width: 150px;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  scroll-snap-align: start;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.045);
+  transition: border-color 0.12s ease, transform 0.12s ease, background 0.12s ease;
+}
+
+.ui-modal.card-picker .ui-modal-choice:hover {
+  transform: translateY(-2px);
+  border-color: rgba(142, 231, 255, 0.45);
+  background: rgba(142, 231, 255, 0.08);
+}
+
+.ui-modal.card-picker .ui-modal-choice.selected {
+  border-color: rgba(255, 214, 112, 0.95);
+  background: rgba(255, 214, 112, 0.12);
+  box-shadow: 0 0 0 2px rgba(255, 214, 112, 0.18);
+}
+
+.ui-modal-choice img {
+  width: 48px;
+  aspect-ratio: 5 / 7;
+  object-fit: contain;
+}
+
+.ui-modal.card-picker .ui-modal-choice img {
+  width: 100%;
+  height: 210px;
+  object-fit: contain;
+}
+
+.ui-modal-choice-name {
+  font-weight: 800;
+}
+
+.ui-modal.card-picker .ui-modal-choice-name {
+  margin-top: 7px;
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.ui-modal-choice-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.64);
+}
+
+.ui-modal.card-picker .ui-modal-choice-meta {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
 .ui-modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.ui-modal-actions button:disabled {
+  cursor: default;
+  opacity: 0.42;
+  transform: none;
+}
+
+@media (max-width: 720px) {
+  .ui-modal.card-picker {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+    padding: 14px;
+  }
+
+  .ui-modal-choice-preview {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .ui-modal-choice-preview img {
+    max-height: 260px;
+  }
+
+  .ui-modal.card-picker .ui-modal-choice {
+    width: 128px;
+    min-width: 128px;
+  }
+
+  .ui-modal.card-picker .ui-modal-choice img {
+    height: 178px;
+  }
 }
 
 /* =========================
@@ -2193,10 +2373,10 @@ button:hover {
   left: auto;
   right: auto;
   transform: none;
-  display: grid;
+  display: none;
   grid-template-columns: repeat(3, clamp(122px, 7.8vw, 148px));
   gap: clamp(72px, 8.4vw, 140px);
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .table-equip-row.has-cards,
@@ -3024,6 +3204,31 @@ button.table-card-pile {
   background: linear-gradient(180deg, rgba(55, 180, 255, 0.22), rgba(18, 58, 100, 0.22));
 }
 
+.table-zone.effect-ready > img,
+.table-support-slot.effect-ready img {
+  filter:
+    drop-shadow(0 12px 16px rgba(0,0,0,0.55))
+    drop-shadow(0 0 14px rgba(255, 220, 90, 0.78))
+    drop-shadow(0 0 28px rgba(255, 190, 50, 0.34));
+}
+
+.table-zone.effect-ready::after,
+.table-support-slot.effect-ready::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 2px solid rgba(255, 220, 90, 0.78);
+  border-radius: 10px;
+  box-shadow: 0 0 18px rgba(255, 210, 70, 0.32);
+  pointer-events: none;
+  animation: tableEffectReadyPulse 1.25s ease-in-out infinite;
+}
+
+@keyframes tableEffectReadyPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
 .table-preview-stat.spd {
   background: linear-gradient(180deg, rgba(80, 235, 145, 0.20), rgba(18, 96, 48, 0.22));
 }
@@ -3048,6 +3253,15 @@ button.table-card-pile {
   max-height: 240px;
   overflow-y: auto;
   white-space: pre-line;
+}
+
+.table-preview-activate-btn {
+  margin-top: 10px;
+  width: 100%;
+  border-color: rgba(255, 220, 90, 0.58);
+  background: linear-gradient(180deg, rgba(255, 220, 90, 0.22), rgba(30, 26, 10, 0.78));
+  color: rgba(255, 246, 210, 0.96);
+  box-shadow: 0 0 18px rgba(255, 205, 70, 0.18);
 }
 
 .table-grave-panel {

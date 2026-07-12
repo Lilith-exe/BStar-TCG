@@ -30,6 +30,8 @@ local function BuildCardItemInfo(cardId)
         label = card.name,
         rarity = card.rarity,
         type = card.type,
+        effectTags = DuelEffects and DuelEffects.GetTags(card) or {},
+        continuous = card.continuous == true or card.isContinuous == true,
         setCode = card.setCode,
         edition = card.edition
     }
@@ -64,6 +66,8 @@ local function getPlayerCardCounts(Player)
                     speed = card and (card.speed or card.spd) or nil,
                     effectTitle = card and card.effectTitle or nil,
                     effectText = card and card.effectText or nil,
+                    effectTags = DuelEffects and DuelEffects.GetTags(card) or {},
+                    continuous = card and (card.continuous == true or card.isContinuous == true) or false,
                     job = card and card.job or nil,
                     setCode = card and card.setCode or nil,
                     edition = card and card.edition or nil
@@ -99,6 +103,8 @@ local function BuildCardCatalog()
             health = GetCardHealthText(card),
             effectTitle = card.effectTitle,
             effectText = card.effectText,
+            effectTags = DuelEffects and DuelEffects.GetTags(card) or {},
+            continuous = card.continuous == true or card.isContinuous == true,
             setCode = card.setCode,
             edition = card.edition,
             inventoryImage = card.inventoryImage
@@ -228,6 +234,8 @@ function DeckBox.GetStoredCards(source, deckBoxId, cb)
                 speed = card and (card.speed or card.spd) or nil,
                 effectTitle = card and card.effectTitle or nil,
                 effectText = card and card.effectText or nil,
+                effectTags = DuelEffects and DuelEffects.GetTags(card) or {},
+                continuous = card and (card.continuous == true or card.isContinuous == true) or false,
                 job = card and card.job or nil,
                 setCode = card and card.setCode or nil,
                 edition = card and card.edition or nil
@@ -1022,6 +1030,33 @@ end)
 RegisterNetEvent('bstar_cards:server:DuelPlayNonFighter', function(duelId, handUid, targetKind, zoneIndex)
     local src = source
     local ok, err = Duel.PlayNonFighter(src, duelId, handUid, targetKind, zoneIndex)
+
+    if not ok and err then
+        TriggerClientEvent('QBCore:Notify', src, err, 'error')
+    end
+end)
+
+RegisterNetEvent('bstar_cards:server:DuelResolvePendingEffect', function(duelId, promptId, accepted)
+    local src = source
+    local ok, err = Duel.ResolvePendingEffect(src, duelId, promptId, accepted == true)
+
+    if not ok and err then
+        TriggerClientEvent('QBCore:Notify', src, err, 'error')
+    end
+end)
+
+RegisterNetEvent('bstar_cards:server:DuelResolvePendingSelection', function(duelId, selectionId, selectedUid)
+    local src = source
+    local ok, err = Duel.ResolvePendingSelection(src, duelId, selectionId, selectedUid)
+
+    if not ok and err then
+        TriggerClientEvent('QBCore:Notify', src, err, 'error')
+    end
+end)
+
+RegisterNetEvent('bstar_cards:server:DuelActivateEffect', function(duelId, sourceUid)
+    local src = source
+    local ok, err = Duel.ActivateEffect(src, duelId, sourceUid)
 
     if not ok and err then
         TriggerClientEvent('QBCore:Notify', src, err, 'error')

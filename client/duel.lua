@@ -108,6 +108,19 @@ RegisterNetEvent('bstar_cards:client:BattleEvent', function(data)
     })
 end)
 
+RegisterNetEvent('bstar_cards:client:PendingCardSelection', function(data)
+    if data and data.duelId then
+        currentDuelId = data.duelId
+    end
+
+    SendNUIMessage({
+        action = 'pendingCardSelection',
+        selection = data and data.selection or nil
+    })
+
+    ForceDuelFocus()
+end)
+
 RegisterNUICallback('duelAdvancePhase', function(data, cb)
     if currentDuelId then
         TriggerServerEvent('bstar_cards:server:DuelAdvancePhase', currentDuelId)
@@ -180,6 +193,27 @@ RegisterNUICallback('duelPlayNonFighter', function(data, cb)
             data.targetKind,
             data.zoneIndex
         )
+    end
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('duelResolvePendingEffect', function(data, cb)
+    if currentDuelId and data and data.promptId then
+        TriggerServerEvent('bstar_cards:server:DuelResolvePendingEffect', currentDuelId, data.promptId, data.accepted == true)
+    end
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('duelResolvePendingSelection', function(data, cb)
+    if currentDuelId and data and data.selectionId then
+        TriggerServerEvent('bstar_cards:server:DuelResolvePendingSelection', currentDuelId, data.selectionId, data.selectedUid)
+    end
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('duelActivateEffect', function(data, cb)
+    if currentDuelId and data and data.sourceUid then
+        TriggerServerEvent('bstar_cards:server:DuelActivateEffect', currentDuelId, data.sourceUid)
     end
     cb({ ok = true })
 end)
