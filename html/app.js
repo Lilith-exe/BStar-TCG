@@ -1,4 +1,5 @@
 const app = document.getElementById('app');
+const CARD_BACK_IMAGE_PATH = 'images/assets/card_back_default.png';
 
 // Viewer refs
 const viewerWrap = document.getElementById('viewerWrap');
@@ -2170,6 +2171,27 @@ function setDuelPreviewCard(card) {
   }
 }
 
+function getPreviewStatTrend(card, statName) {
+  if (!card) return '';
+
+  let current = 0;
+  let base = 0;
+
+  if (statName === 'atk') {
+    current = parseCardStat(card.attack ?? card.atk);
+    base = parseCardStat(card.baseAttack);
+  } else if (statName === 'hp') {
+    current = parseCardStat(card.maxHp ?? card.health ?? card.hp ?? card.defense ?? card.def);
+    base = parseCardStat(card.baseHp);
+  } else if (statName === 'spd') {
+    current = parseCardStat(card.speed ?? card.spd);
+    base = parseCardStat(card.baseSpeed);
+  }
+
+  if (!base || current === base) return '';
+  return current > base ? ' boosted' : ' reduced';
+}
+
 function renderTablePreview() {
   if (!tablePreviewPanel) return;
 
@@ -2202,9 +2224,9 @@ function renderTablePreview() {
 
   if (tablePreviewStats) {
     tablePreviewStats.innerHTML = `
-      <div class="table-preview-stat atk"><strong>${card.attack ?? '-'}</strong></div>
-      <div class="table-preview-stat hp"><strong>${getCardHpDisplay(card)}</strong></div>
-      <div class="table-preview-stat spd"><strong>${card.speed ?? '-'}</strong></div>
+      <div class="table-preview-stat atk${getPreviewStatTrend(card, 'atk')}"><strong>${card.attack ?? '-'}</strong></div>
+      <div class="table-preview-stat hp${getPreviewStatTrend(card, 'hp')}"><strong>${getCardHpDisplay(card)}</strong></div>
+      <div class="table-preview-stat spd${getPreviewStatTrend(card, 'spd')}"><strong>${card.speed ?? '-'}</strong></div>
     `;
   }
 
@@ -2316,6 +2338,10 @@ function renderTableOpponentHandBacks() {
   for (let i = 0; i < count; i++) {
     const back = document.createElement('div');
     back.className = 'table-opponent-hand-card';
+    const img = document.createElement('img');
+    img.src = CARD_BACK_IMAGE_PATH;
+    img.alt = '';
+    back.appendChild(img);
     tableOpponentHandBacks.appendChild(back);
   }
 }
@@ -2551,8 +2577,8 @@ function animateTableCardTravelBetweenRects(fromRect, toRect, card, options = {}
   ghost.style.setProperty('--travel-dx', `${(toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2)}px`);
   ghost.style.setProperty('--travel-dy', `${(toRect.top + toRect.height / 2) - (fromRect.top + fromRect.height / 2)}px`);
 
-  const img = document.createElement('img');
   if (card) {
+    const img = document.createElement('img');
     img.src = getThumbImagePath(card);
     img.onerror = () => {
       img.onerror = null;
@@ -2562,6 +2588,10 @@ function animateTableCardTravelBetweenRects(fromRect, toRect, card, options = {}
     ghost.appendChild(img);
   } else {
     ghost.classList.add('cardback');
+    const img = document.createElement('img');
+    img.src = CARD_BACK_IMAGE_PATH;
+    img.alt = '';
+    ghost.appendChild(img);
   }
 
   document.body.appendChild(ghost);

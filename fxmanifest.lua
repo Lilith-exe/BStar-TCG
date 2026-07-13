@@ -33,6 +33,8 @@ files {
     'html/index.html',
     'html/style.css',
     'html/app.js',
+    'html/images/assets/card_back_default.png',
+    'html/images/assets/*.png',
     'html/images/thumbs/*.png'
 }
 

@@ -124,7 +124,9 @@ local function getEffectPrompt(cardDef, effect)
         return effect.promptText
     end
 
-    local label = cardDef and (cardDef.effectTitle or cardDef.name) or 'this effect'
+    local cardName = cardDef and cardDef.name or 'Card'
+    local effectName = cardDef and (cardDef.effectTitle or cardDef.name) or 'this effect'
+    local label = ('%s : %s'):format(tostring(cardName), tostring(effectName))
     return ('Do you want to activate %s?'):format(tostring(label))
 end
 

@@ -303,6 +303,9 @@ local function buildCardPayload(cardInstance, duel, viewerIndex)
     local cardType = string.upper(tostring(def and def.type or ''))
     local attackText = def and (def.attack or def.atk) or nil
     local speedText = def and (def.speed or def.spd) or nil
+    local baseAttack = parseStatValue(def and (def.attack or def.atk) or nil)
+    local baseHp = def and getCardBaseHp(cardInstance) or 0
+    local baseSpeed = parseStatValue(def and (def.speed or def.spd) or nil)
 
     if cardType == 'FIGHTER' and getCardStat then
         attackText = ('ATK: %s'):format(getCardStat(cardInstance, 'attack'))
@@ -324,11 +327,14 @@ local function buildCardPayload(cardInstance, duel, viewerIndex)
         job = def and def.job or nil,
         level = def and def.level or nil,
         attack = attackText,
+        baseAttack = baseAttack,
         defense = def and (def.defense or def.def) or nil,
         hp = cardInstance.currentHp,
         maxHp = cardInstance.maxHp,
+        baseHp = baseHp,
         health = getCardHealthText(def),
         speed = speedText,
+        baseSpeed = baseSpeed,
         effectTitle = def and def.effectTitle or nil,
         effectText = def and def.effectText or nil,
         effectTags = DuelEffects and DuelEffects.GetTags(def) or {},

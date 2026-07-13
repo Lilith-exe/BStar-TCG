@@ -1,6 +1,9 @@
 # BStar Cards Changelog
 
 ## Latest
+- Added default card backs 
+- Boosted stats now show green and decreased stats show red in the preview panel
+- Opponents card stat panel moved below the card from above
 
 ## v0.6.5
 - Added new game mechanic: Tribute Promotion
