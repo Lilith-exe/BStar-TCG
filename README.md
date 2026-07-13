@@ -2,6 +2,11 @@
 
 ## Latest
 
+## v0.6.5
+- Added new game mechanic: Tribute Promotion
+    - Tribute promotion allows a player to summon a level 2 fighter without the correct named level 1 fighter, instead sacraficing 2 generic level 1 fighters and their equipment to summon the level 2 instead.
+    - True promotion still exists and is the more efficient route.
+
 ## v0.6.4
 - Added general annimation engine for card movement throughout field
 - Adjusted equipped card placement
