@@ -2,6 +2,11 @@
 
 ## Latest
 
+## v0.6.6
+- Added default card backs 
+- Boosted stats now show green and decreased stats show red in the preview panel
+- Opponents card stat panel moved below the card from above
+
 ## v0.6.5
 - Added new game mechanic: Tribute Promotion
     - Tribute promotion allows a player to summon a level 2 fighter without the correct named level 1 fighter, instead sacraficing 2 generic level 1 fighters and their equipment to summon the level 2 instead.

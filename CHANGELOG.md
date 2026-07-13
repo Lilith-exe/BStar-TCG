@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.6.6
 - Added default card backs 
 - Boosted stats now show green and decreased stats show red in the preview panel
 - Opponents card stat panel moved below the card from above
