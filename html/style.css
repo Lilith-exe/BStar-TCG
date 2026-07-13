@@ -1900,6 +1900,14 @@ button:hover {
   box-shadow: 0 0 16px rgba(180,140,255,0.18);
 }
 
+.duel-zone.generic-promote-target {
+  outline: 2px solid rgba(255, 100, 125, 0.56);
+  outline-offset: -2px;
+  box-shadow:
+    0 0 16px rgba(255, 70, 100, 0.20),
+    inset 0 0 14px rgba(255, 70, 100, 0.08);
+}
+
 .duel-zone img {
   width: 100%;
   height: 100%;
@@ -2001,6 +2009,15 @@ button:hover {
   box-shadow:
     0 0 20px rgba(70, 220, 132, 0.38),
     inset 0 0 16px rgba(70, 220, 132, 0.12);
+}
+
+.duel-zone.generic-tribute-selected,
+.duel-zone.generic-tribute-target {
+  outline: 2px solid rgba(255, 90, 118, 0.92);
+  outline-offset: -2px;
+  box-shadow:
+    0 0 20px rgba(255, 70, 100, 0.38),
+    inset 0 0 16px rgba(255, 70, 100, 0.12);
 }
 
 .duel-zone-used {
@@ -2376,6 +2393,26 @@ button:hover {
     inset 0 0 14px rgba(70, 200, 255, 0.08);
   text-shadow: 0 0 14px rgba(70, 200, 255, 0.65);
   animation: tableDrawPromptPulse 1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.table-action-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 178px;
+  transform: translateX(-50%);
+  z-index: 96;
+  padding: 7px 16px;
+  border-radius: 999px;
+  color: rgba(255, 232, 236, 0.96);
+  font-size: 14px;
+  font-weight: 900;
+  background: linear-gradient(180deg, rgba(48, 16, 28, 0.82), rgba(10, 12, 18, 0.72));
+  border: 1px solid rgba(255, 110, 135, 0.34);
+  box-shadow:
+    0 0 18px rgba(255, 70, 100, 0.24),
+    inset 0 0 12px rgba(255, 70, 100, 0.08);
+  text-shadow: 0 0 12px rgba(255, 80, 110, 0.52);
   pointer-events: none;
 }
 
@@ -3019,6 +3056,27 @@ button.table-card-pile {
     drop-shadow(0 0 16px rgba(80, 210, 255, 0.62));
 }
 
+.table-zone.generic-promote-target > img {
+  transform: translateY(-6px) scale(1.025);
+  filter:
+    drop-shadow(0 14px 18px rgba(0,0,0,0.6))
+    drop-shadow(0 0 14px rgba(255, 90, 118, 0.48));
+}
+
+.table-zone.generic-promote-target .table-state-label {
+  opacity: 1;
+  color: rgba(255, 232, 236, 0.92);
+  background: linear-gradient(180deg, rgba(42, 16, 26, 0.88), rgba(14, 18, 28, 0.82));
+  border-color: rgba(255, 110, 135, 0.42);
+  box-shadow:
+    0 0 14px rgba(255, 70, 100, 0.18),
+    inset 0 0 10px rgba(255, 70, 100, 0.08);
+}
+
+.table-zone.generic-promote-target .table-state-label::before {
+  content: "TRIBUTE";
+}
+
 .table-zone.attack-ready {
   outline: none;
   box-shadow: none;
@@ -3095,6 +3153,34 @@ button.table-card-pile {
 
 .table-zone.promote-target .table-state-label::before {
   content: "PROMOTE";
+}
+
+.table-zone.generic-tribute-selected > img,
+.table-zone.generic-tribute-target > img {
+  transform: translateY(-8px) scale(1.035);
+  filter:
+    drop-shadow(0 14px 18px rgba(0,0,0,0.6))
+    drop-shadow(0 0 18px rgba(255, 90, 118, 0.82))
+    drop-shadow(0 0 28px rgba(255, 60, 90, 0.28));
+}
+
+.table-zone.generic-tribute-selected .table-state-label,
+.table-zone.generic-tribute-target .table-state-label {
+  opacity: 1;
+  color: rgba(255, 232, 236, 0.96);
+  background: linear-gradient(180deg, rgba(52, 18, 28, 0.92), rgba(14, 18, 28, 0.86));
+  border-color: rgba(255, 90, 118, 0.62);
+  box-shadow:
+    0 0 16px rgba(255, 70, 100, 0.30),
+    inset 0 0 10px rgba(255, 70, 100, 0.10);
+}
+
+.table-zone.generic-tribute-selected .table-state-label::before {
+  content: "TRIBUTE 1";
+}
+
+.table-zone.generic-tribute-target .table-state-label::before {
+  content: "TRIBUTE 2";
 }
 
 .table-zone.used {

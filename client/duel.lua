@@ -178,8 +178,13 @@ RegisterNUICallback('duelSummonFighter', function(data, cb)
 end)
 
 RegisterNUICallback('duelPromoteFighter', function(data, cb)
-    if currentDuelId and data and data.handUid and data.tributeZoneIndex then
-        TriggerServerEvent('bstar_cards:server:DuelPromoteFighter', currentDuelId, data.handUid, data.tributeZoneIndex)
+    if currentDuelId and data and data.handUid and (data.tributeZoneIndex or data.tributeZoneIndexes) then
+        TriggerServerEvent(
+            'bstar_cards:server:DuelPromoteFighter',
+            currentDuelId,
+            data.handUid,
+            data.tributeZoneIndexes or data.tributeZoneIndex
+        )
     end
     cb({ ok = true })
 end)

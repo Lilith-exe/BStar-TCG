@@ -104,6 +104,7 @@ const tableOpponentLocationSlot = document.querySelector('.table-location-slot.o
 const tableSelfLocationSlot = document.querySelector('.table-location-slot.self');
 const tableHandRow = document.getElementById('tableHandRow');
 const tableDrawPrompt = document.getElementById('tableDrawPrompt');
+const tableActionHint = document.getElementById('tableActionHint');
 const tablePreviewPanel = document.getElementById('tablePreviewPanel');
 const tablePreviewImage = document.getElementById('tablePreviewImage');
 const tablePreviewName = document.getElementById('tablePreviewName');
@@ -172,6 +173,7 @@ let tableDrawAnimating = false;
 let tableZoneSnapshot = null;
 let tableGraveSnapshot = null;
 let tableMovementSnapshot = null;
+let pendingGenericPromotion = null;
 
 let builderFilters = {
   type: 'all',
@@ -1775,23 +1777,127 @@ function canPromoteFromTo(tributeCard, promotionCard) {
     && normalizePromotionName(tributeCard) === normalizePromotionName(promotionCard);
 }
 
+function canGenericPromoteFromPair(firstTributeCard, secondTributeCard, promotionCard) {
+  if (!firstTributeCard || !secondTributeCard || !promotionCard) return false;
+
+  const firstType = String(firstTributeCard.type || '').trim().toUpperCase();
+  const secondType = String(secondTributeCard.type || '').trim().toUpperCase();
+  const promotionType = String(promotionCard.type || '').trim().toUpperCase();
+  if (firstType !== 'FIGHTER' || secondType !== 'FIGHTER' || promotionType !== 'FIGHTER') return false;
+
+  const firstLevel = getCardLevelNumber(firstTributeCard);
+  const secondLevel = getCardLevelNumber(secondTributeCard);
+  const promotionLevel = getCardLevelNumber(promotionCard);
+
+  return (firstLevel === 1 || firstLevel === 2)
+    && secondLevel === firstLevel
+    && promotionLevel === firstLevel + 1;
+}
+
 function getSelfHandCardByUid(uid) {
   const hand = currentDuelState?.selfPlayer?.hand || [];
   return hand.find(card => card.uid === uid) || null;
 }
 
-function getPromotionTributeZoneIndex(promotionCard) {
+function getPromotionTributeZoneIndexes(promotionCard, primaryZoneIndex = null) {
   const zones = currentDuelState?.selfPlayer?.fighterZones || [];
-  for (let i = 0; i < zones.length; i++) {
-    if (canPromoteFromTo(zones[i], promotionCard)) {
-      return i + 1;
+  const primaryIndex = primaryZoneIndex ? Number(primaryZoneIndex) - 1 : null;
+
+  if (primaryIndex !== null && zones[primaryIndex] && canPromoteFromTo(zones[primaryIndex], promotionCard)) {
+    return [primaryIndex + 1];
+  }
+
+  if (primaryIndex === null) {
+    for (let i = 0; i < zones.length; i++) {
+      if (canPromoteFromTo(zones[i], promotionCard)) {
+        return [i + 1];
+      }
     }
   }
-  return null;
+
+  const primaryIndexes = primaryIndex !== null ? [primaryIndex] : [0, 1, 2];
+  for (const i of primaryIndexes) {
+    const primaryCard = zones[i];
+    if (!primaryCard) continue;
+
+    for (let j = 0; j < zones.length; j++) {
+      if (i === j || !zones[j]) continue;
+
+      if (canGenericPromoteFromPair(primaryCard, zones[j], promotionCard)) {
+        return [i + 1, j + 1];
+      }
+    }
+  }
+
+  return [];
+}
+
+function getNamedPromotionTributeZoneIndexes(promotionCard, primaryZoneIndex = null) {
+  const zones = currentDuelState?.selfPlayer?.fighterZones || [];
+  const primaryIndex = primaryZoneIndex ? Number(primaryZoneIndex) - 1 : null;
+
+  if (primaryIndex !== null) {
+    return zones[primaryIndex] && canPromoteFromTo(zones[primaryIndex], promotionCard) ? [primaryIndex + 1] : [];
+  }
+
+  for (let i = 0; i < zones.length; i++) {
+    if (canPromoteFromTo(zones[i], promotionCard)) {
+      return [i + 1];
+    }
+  }
+
+  return [];
+}
+
+function getGenericPromotionSecondZoneIndexes(promotionCard, firstZoneIndex) {
+  const zones = currentDuelState?.selfPlayer?.fighterZones || [];
+  const firstIndex = Number(firstZoneIndex) - 1;
+  const firstCard = zones[firstIndex];
+  const indexes = [];
+
+  if (!firstCard) return indexes;
+
+  for (let i = 0; i < zones.length; i++) {
+    if (i === firstIndex || !zones[i]) continue;
+
+    if (canGenericPromoteFromPair(firstCard, zones[i], promotionCard)) {
+      indexes.push(i + 1);
+    }
+  }
+
+  return indexes;
+}
+
+function getGenericPromotionFirstZoneIndexes(promotionCard, primaryZoneIndex = null) {
+  const zones = currentDuelState?.selfPlayer?.fighterZones || [];
+  const primaryIndex = primaryZoneIndex ? Number(primaryZoneIndex) - 1 : null;
+  const indexes = [];
+  const candidates = primaryIndex !== null ? [primaryIndex] : [0, 1, 2];
+
+  for (const i of candidates) {
+    if (!zones[i]) continue;
+    if (getGenericPromotionSecondZoneIndexes(promotionCard, i + 1).length > 0) {
+      indexes.push(i + 1);
+    }
+  }
+
+  return indexes;
+}
+
+function isNamedPromotionSummonableFighter(card) {
+  return getNamedPromotionTributeZoneIndexes(card).length > 0;
+}
+
+function isGenericPromotionSummonableFighter(card) {
+  return getGenericPromotionFirstZoneIndexes(card).length > 0;
+}
+
+function getPromotionTributeZoneIndex(promotionCard) {
+  return getPromotionTributeZoneIndexes(promotionCard)[0] || null;
 }
 
 function isPromotionSummonableFighter(card) {
-  return !!getPromotionTributeZoneIndex(card);
+  return isNamedPromotionSummonableFighter(card) || isGenericPromotionSummonableFighter(card);
 }
 
 function hasOpenFighterZone(zones) {
@@ -1995,6 +2101,59 @@ function playSelectedNonFighter(targetKind, zoneIndex = 0) {
 
   selectedHandCardUid = null;
   renderDuelUi();
+}
+
+function completePromotion(handUid, tributeZoneIndexes) {
+  if (!handUid || !Array.isArray(tributeZoneIndexes) || tributeZoneIndexes.length === 0) return;
+
+  fetch(`https://${GetParentResourceName()}/duelPromoteFighter`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      handUid,
+      tributeZoneIndex: tributeZoneIndexes[0],
+      tributeZoneIndexes
+    })
+  });
+
+  selectedHandCardUid = null;
+  pendingGenericPromotion = null;
+}
+
+function promptGenericPromotionFirstTribute(promotionCard, firstZoneIndex) {
+  if (!promotionCard || !firstZoneIndex) return;
+
+  openModal({
+    title: 'Generic Promotion',
+    text: `Are you sure you want to tribute 2 fighters for this ${promotionCard.name || promotionCard.cardId || 'card'}?`,
+    confirmText: 'Yes',
+    cancelText: 'Cancel',
+    onConfirm: () => {
+      pendingGenericPromotion = {
+        handUid: promotionCard.uid,
+        firstZoneIndex,
+        cardName: promotionCard.name || promotionCard.cardId || 'card'
+      };
+      selectedHandCardUid = promotionCard.uid;
+      renderDuelUi();
+    },
+    onCancel: () => {
+      pendingGenericPromotion = null;
+      renderDuelUi();
+    }
+  });
+}
+
+function getGenericPromotionHintText(promotionCard) {
+  if (!promotionCard) return '';
+  if (pendingGenericPromotion && pendingGenericPromotion.handUid === promotionCard.uid) {
+    return 'select 1 more fighter to tribute';
+  }
+
+  if (getGenericPromotionFirstZoneIndexes(promotionCard).length === 0) return '';
+
+  const tributeLevel = Math.max(1, getCardLevelNumber(promotionCard) - 1);
+  return `select 2 level ${tributeLevel} fighters as tribute`;
 }
 
 function closeTableGraveyard() {
@@ -2492,9 +2651,10 @@ function drawCardForTurn() {
 }
 
 function clearDuelSelections() {
-  const hadSelection = selectedHandCardUid || selectedAttackerZoneIndex;
+  const hadSelection = selectedHandCardUid || selectedAttackerZoneIndex || pendingGenericPromotion;
   selectedHandCardUid = null;
   selectedAttackerZoneIndex = null;
+  pendingGenericPromotion = null;
   return !!hadSelection;
 }
 
@@ -2507,7 +2667,7 @@ function isInteractableTableClick(target) {
   if (target.closest('.table-card-pile')) return true;
   if (target.closest('.table-equipped-card')) return true;
   if (target.closest('.table-support-slot.occupied, .table-support-slot.targetable')) return true;
-  if (target.closest('.table-zone.targetable, .table-zone.equip-target, .table-zone.promote-target, .table-zone.attack-ready, .table-zone.selected')) return true;
+  if (target.closest('.table-zone.targetable, .table-zone.equip-target, .table-zone.promote-target, .table-zone.generic-promote-target, .table-zone.generic-tribute-target, .table-zone.generic-tribute-selected, .table-zone.attack-ready, .table-zone.selected')) return true;
 
   const zone = target.closest('.table-zone');
   if (zone && !zone.classList.contains('empty')) return true;
@@ -2545,6 +2705,7 @@ function reconcileDuelSelections() {
 
   if (!isMyTurn || !isMainPhase || (currentDuelState.selfPlayer?.hasSummonedThisTurn && !selectedNonFighter)) {
     selectedHandCardUid = null;
+    pendingGenericPromotion = null;
   }
 
   if (!canAttackWithSelectedAttacker(canAttackThisTurn)) {
@@ -2679,6 +2840,12 @@ function renderTableDuelUi() {
   const oppEquipmentZones = currentDuelState.opponentPlayer?.equipmentZones || [null, null, null];
   const selfEquipmentZones = currentDuelState.selfPlayer?.equipmentZones || [null, null, null];
   const selectedHandCard = getSelfHandCardByUid(selectedHandCardUid);
+  const genericPromotionHint = canNormalSummon ? getGenericPromotionHintText(selectedHandCard) : '';
+
+  if (tableActionHint) {
+    tableActionHint.textContent = genericPromotionHint;
+    tableActionHint.classList.toggle('hidden', !genericPromotionHint);
+  }
 
   renderTableSupportRow(tableOpponentItemRow, currentDuelState.opponentPlayer?.itemZones || [], 'opponent', 'item', null, false);
   renderTableSupportRow(tableSelfItemRow, currentDuelState.selfPlayer?.itemZones || [], 'self', 'item', selectedHandCard, canPlayNonFighter);
@@ -2741,19 +2908,34 @@ function renderTableDuelUi() {
       });
     }
 
-    if (card && selectedHandCardUid && canNormalSummon && canPromoteFromTo(card, selectedHandCard)) {
-      zone.classList.add('promote-target');
-      zone.addEventListener('click', () => {
-        fetch(`https://${GetParentResourceName()}/duelPromoteFighter`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            handUid: selectedHandCardUid,
-            tributeZoneIndex: i + 1
-          })
-        });
+    const namedPromotionZones = card && selectedHandCardUid && canNormalSummon
+      ? getNamedPromotionTributeZoneIndexes(selectedHandCard, i + 1)
+      : [];
+    const genericFirstZones = card && selectedHandCardUid && canNormalSummon
+      ? getGenericPromotionFirstZoneIndexes(selectedHandCard, i + 1)
+      : [];
+    const pendingGenericMatches = pendingGenericPromotion
+      && pendingGenericPromotion.handUid === selectedHandCardUid;
+    const genericSecondZones = pendingGenericMatches
+      ? getGenericPromotionSecondZoneIndexes(selectedHandCard, pendingGenericPromotion.firstZoneIndex)
+      : [];
 
-        selectedHandCardUid = null;
+    if (pendingGenericMatches && pendingGenericPromotion.firstZoneIndex === i + 1) {
+      zone.classList.add('generic-tribute-selected');
+    } else if (pendingGenericMatches && genericSecondZones.includes(i + 1)) {
+      zone.classList.add('generic-tribute-target');
+      zone.addEventListener('click', () => {
+        completePromotion(selectedHandCardUid, [pendingGenericPromotion.firstZoneIndex, i + 1]);
+      });
+    } else if (namedPromotionZones.length > 0) {
+      zone.classList.add('promote-target', 'named-promote-target');
+      zone.addEventListener('click', () => {
+        completePromotion(selectedHandCardUid, namedPromotionZones);
+      });
+    } else if (genericFirstZones.length > 0) {
+      zone.classList.add('generic-promote-target');
+      zone.addEventListener('click', () => {
+        promptGenericPromotionFirstTribute(selectedHandCard, i + 1);
       });
     }
 
@@ -2817,7 +2999,7 @@ function renderTableDuelUi() {
       div.classList.add('effect-ready');
     }
 
-    if (canNormalSummon && isPromotionSummonableFighter(card)) {
+    if (canNormalSummon && isNamedPromotionSummonableFighter(card)) {
       div.classList.add('promotion-ready');
     }
 
@@ -2963,6 +3145,7 @@ function openDuelUi(duel, tableMode = false) {
   tableZoneSnapshot = null;
   tableGraveSnapshot = null;
   tableMovementSnapshot = null;
+  pendingGenericPromotion = null;
 
   console.log('[BStar NUI] openDuelUi tableMode:', tableMode);
 
@@ -3010,6 +3193,7 @@ function closeDuelUi(notifyLua = true) {
   tableZoneSnapshot = null;
   tableGraveSnapshot = null;
   tableMovementSnapshot = null;
+  pendingGenericPromotion = null;
   tableResultOverlay?.classList.add('hidden');
   duelResultOverlay?.classList.add('hidden');
 
@@ -3149,19 +3333,34 @@ function renderSelfZones() {
       });
     }
 
-    if (zoneCard && selectedHandCardUid && canNormalSummon && canPromoteFromTo(zoneCard, selectedHandCard)) {
+    const namedPromotionZones = zoneCard && selectedHandCardUid && canNormalSummon
+      ? getNamedPromotionTributeZoneIndexes(selectedHandCard, i + 1)
+      : [];
+    const genericFirstZones = zoneCard && selectedHandCardUid && canNormalSummon
+      ? getGenericPromotionFirstZoneIndexes(selectedHandCard, i + 1)
+      : [];
+    const pendingGenericMatches = pendingGenericPromotion
+      && pendingGenericPromotion.handUid === selectedHandCardUid;
+    const genericSecondZones = pendingGenericMatches
+      ? getGenericPromotionSecondZoneIndexes(selectedHandCard, pendingGenericPromotion.firstZoneIndex)
+      : [];
+
+    if (pendingGenericMatches && pendingGenericPromotion.firstZoneIndex === i + 1) {
+      zoneEl.classList.add('generic-tribute-selected');
+    } else if (pendingGenericMatches && genericSecondZones.includes(i + 1)) {
+      zoneEl.classList.add('generic-tribute-target');
+      zoneEl.addEventListener('click', () => {
+        completePromotion(selectedHandCardUid, [pendingGenericPromotion.firstZoneIndex, i + 1]);
+      });
+    } else if (namedPromotionZones.length > 0) {
       zoneEl.classList.add('promotion-target');
       zoneEl.addEventListener('click', () => {
-        fetch(`https://${GetParentResourceName()}/duelPromoteFighter`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            handUid: selectedHandCardUid,
-            tributeZoneIndex: i + 1
-          })
-        });
-
-        selectedHandCardUid = null;
+        completePromotion(selectedHandCardUid, namedPromotionZones);
+      });
+    } else if (genericFirstZones.length > 0) {
+      zoneEl.classList.add('generic-promote-target');
+      zoneEl.addEventListener('click', () => {
+        promptGenericPromotionFirstTribute(selectedHandCard, i + 1);
       });
     }
 
@@ -3289,7 +3488,7 @@ function renderHand() {
       div.classList.add('effect-ready');
     }
 
-    if (canNormalSummon && isPromotionSummonableFighter(card)) {
+    if (canNormalSummon && isNamedPromotionSummonableFighter(card)) {
       div.classList.add('promotion-ready');
     }
 
@@ -3366,6 +3565,16 @@ function renderDuelUi() {
   } else {
     const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
     duelStatusText.textContent = isMyTurn ? 'Your turn' : 'Opponent turn';
+  }
+
+  const selectedHandCard = getSelfHandCardByUid(selectedHandCardUid);
+  const canShowGenericPromotionHint = currentDuelState.status === 'active'
+    && currentDuelState.turnPlayer === currentDuelState.viewerIndex
+    && isDuelMainPhase(currentDuelState.phase)
+    && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
+  const genericPromotionHint = canShowGenericPromotionHint ? getGenericPromotionHintText(selectedHandCard) : '';
+  if (genericPromotionHint) {
+    duelStatusText.textContent = genericPromotionHint;
   }
 
   updateLifePointsDisplay();

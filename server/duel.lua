@@ -825,6 +825,44 @@ local function canPromoteFromTo(tributeDef, promotionDef)
         and normalizePromotionName(tributeDef) == normalizePromotionName(promotionDef)
 end
 
+local function canGenericPromoteFromPair(firstDef, secondDef, promotionDef)
+    if not firstDef or not secondDef or not promotionDef then return false end
+    if string.upper(firstDef.type or '') ~= 'FIGHTER' then return false end
+    if string.upper(secondDef.type or '') ~= 'FIGHTER' then return false end
+    if string.upper(promotionDef.type or '') ~= 'FIGHTER' then return false end
+
+    local firstLevel = getCardLevelValue(firstDef)
+    local secondLevel = getCardLevelValue(secondDef)
+    local promotionLevel = getCardLevelValue(promotionDef)
+
+    return (firstLevel == 1 or firstLevel == 2)
+        and secondLevel == firstLevel
+        and promotionLevel == firstLevel + 1
+end
+
+local function normalizeTributeZoneIndexes(input)
+    local indexes = {}
+    local seen = {}
+
+    local function add(value)
+        local index = tonumber(value)
+        if index and index >= 1 and index <= 3 and not seen[index] then
+            indexes[#indexes + 1] = index
+            seen[index] = true
+        end
+    end
+
+    if type(input) == 'table' then
+        for _, value in ipairs(input) do
+            add(value)
+        end
+    else
+        add(input)
+    end
+
+    return indexes
+end
+
 local function getOccupiedFighterCount(playerState)
     local count = 0
     for i = 1, 3 do
@@ -1720,12 +1758,13 @@ function Duel.PromoteFighter(src, duelId, handUid, tributeZoneIndex)
         return false, 'You already summoned this turn'
     end
 
-    tributeZoneIndex = tonumber(tributeZoneIndex)
-    if not tributeZoneIndex or tributeZoneIndex < 1 or tributeZoneIndex > 3 then
+    local tributeZoneIndexes = normalizeTributeZoneIndexes(tributeZoneIndex)
+    if #tributeZoneIndexes == 0 then
         return false, 'Invalid tribute zone'
     end
 
-    local tributeCard = playerState.fighterZones[tributeZoneIndex]
+    local primaryTributeZoneIndex = tributeZoneIndexes[1]
+    local tributeCard = playerState.fighterZones[primaryTributeZoneIndex]
     if not tributeCard then
         return false, 'No fighter to promote from in that zone'
     end
@@ -1737,29 +1776,49 @@ function Duel.PromoteFighter(src, duelId, handUid, tributeZoneIndex)
 
     local tributeDef = getCardDefinition(tributeCard.cardId)
     local promotionDef = getCardDefinition(promotionCard.cardId)
+    local promotionType = nil
+    local extraTributeZoneIndex = nil
 
-    if not canPromoteFromTo(tributeDef, promotionDef) then
+    if #tributeZoneIndexes == 1 and canPromoteFromTo(tributeDef, promotionDef) then
+        promotionType = 'named'
+    elseif #tributeZoneIndexes >= 2 then
+        extraTributeZoneIndex = tributeZoneIndexes[2]
+        local extraTributeCard = playerState.fighterZones[extraTributeZoneIndex]
+        local extraTributeDef = extraTributeCard and getCardDefinition(extraTributeCard.cardId) or nil
+
+        if extraTributeCard and canGenericPromoteFromPair(tributeDef, extraTributeDef, promotionDef) then
+            promotionType = 'generic'
+        end
+    end
+
+    if not promotionType then
         return false, 'That card cannot promote this fighter'
     end
 
     table.remove(playerState.hand, handIndex)
 
-    playerState.fighterZones[tributeZoneIndex] = nil
+    if promotionType == 'generic' and extraTributeZoneIndex then
+        moveFieldCardToGraveyard(playerState, extraTributeZoneIndex)
+        moveEquipmentAtToGraveyard(playerState, primaryTributeZoneIndex)
+    end
+
+    playerState.fighterZones[primaryTributeZoneIndex] = nil
     tributeCard.zone = "graveyard"
     tributeCard.equipmentStatModifiers = nil
+    tributeCard.continuousStatModifiers = nil
     playerState.graveyard[#playerState.graveyard + 1] = tributeCard
 
     promotionCard.zone = "fighterZone"
     promotionCard.hasAttacked = false
     resetFighterHp(promotionCard)
-    playerState.fighterZones[tributeZoneIndex] = promotionCard
-    rebuildEquipmentModifiers(playerState, tributeZoneIndex)
+    playerState.fighterZones[primaryTributeZoneIndex] = promotionCard
+    rebuildEquipmentModifiers(playerState, primaryTributeZoneIndex)
     playerState.hasSummonedThisTurn = true
 
     if DuelEffects and getEffectApi then
         DuelEffects.RunTrigger(duel, 'on_summon', playerIndex, promotionCard, {
-            zoneIndex = tributeZoneIndex,
-            summonType = 'promotion'
+            zoneIndex = primaryTributeZoneIndex,
+            summonType = promotionType == 'generic' and 'generic_promotion' or 'promotion'
         }, getEffectApi())
         checkWinCondition(duel)
     end
