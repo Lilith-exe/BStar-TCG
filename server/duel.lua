@@ -996,6 +996,19 @@ moveFieldCardToGraveyard = function(playerState, zoneIndex)
     return card
 end
 
+local function moveItemZoneCardToGraveyard(playerState, zoneIndex)
+    zoneIndex = tonumber(zoneIndex)
+    local card = playerState and playerState.itemZones and playerState.itemZones[zoneIndex] or nil
+    if not card then return nil end
+
+    playerState.itemZones[zoneIndex] = nil
+    card.zone = "graveyard"
+    card.temporaryItemZoneIndex = nil
+    playerState.graveyard[#playerState.graveyard + 1] = card
+
+    return card
+end
+
 local function calculateDodgeChance(attackerCard, defenderCard)
     -- Temporary dodge test override. Uncomment with DEBUG_DODGE_TEST in shared/cards.lua when needed.
     -- if defenderCard and defenderCard.cardId == 'DEBUG_DODGE_TEST' then
@@ -1907,31 +1920,35 @@ function Duel.PlayNonFighter(src, duelId, handUid, targetKind, zoneIndex)
     if isItemZoneCardType(cardType) then
         local isContinuous = isContinuousItemCard(card)
 
-        if isContinuous then
-            zoneIndex = tonumber(zoneIndex)
-            if not zoneIndex or zoneIndex < 1 or zoneIndex > 4 then
-                return false, 'Invalid item zone'
-            end
+        zoneIndex = tonumber(zoneIndex)
+        if not zoneIndex or zoneIndex < 1 or zoneIndex > 4 then
+            return false, 'Invalid item zone'
+        end
 
-            if playerState.itemZones[zoneIndex] ~= nil then
-                return false, 'That item zone is occupied'
-            end
+        if playerState.itemZones[zoneIndex] ~= nil then
+            return false, 'That item zone is occupied'
+        end
 
-            table.remove(playerState.hand, handIndex)
-            card.zone = "itemZone"
-            playerState.itemZones[zoneIndex] = card
-        else
-            moveHandCardToGraveyard(playerState, handIndex)
-            zoneIndex = 0
+        table.remove(playerState.hand, handIndex)
+        card.zone = "itemZone"
+        card.temporaryItemZoneIndex = isContinuous and nil or zoneIndex
+        playerState.itemZones[zoneIndex] = card
+
+        if not isContinuous then
+            sendDuelStateToPlayers(duel)
         end
 
         if DuelEffects and getEffectApi then
             DuelEffects.RunTrigger(duel, 'on_play', playerIndex, card, {
-                zone = isContinuous and 'itemZone' or 'graveyard',
+                zone = 'itemZone',
                 zoneIndex = zoneIndex,
                 continuous = isContinuous
             }, getEffectApi())
             checkWinCondition(duel)
+        end
+
+        if not isContinuous and not duel.pendingEffect and not duel.pendingSelection then
+            moveItemZoneCardToGraveyard(playerState, zoneIndex)
         end
 
         sendDuelStateToPlayers(duel)
@@ -2027,6 +2044,15 @@ function Duel.ResolvePendingEffect(src, duelId, promptId, accepted, response)
         end
     end
 
+    local playerState = duel.players[playerIndex]
+    if playerState and not duel.pendingSelection then
+        for zoneIndex, card in pairs(playerState.itemZones or {}) do
+            if card and card.temporaryItemZoneIndex then
+                moveItemZoneCardToGraveyard(playerState, zoneIndex)
+            end
+        end
+    end
+
     sendDuelStateToPlayers(duel)
     return true
 end
@@ -2082,6 +2108,12 @@ function Duel.ResolvePendingSelection(src, duelId, selectionId, selectedUid)
                 checkWinCondition(duel)
             end
 
+            for itemZoneIndex, itemCard in pairs(playerState.itemZones or {}) do
+                if itemCard and itemCard.temporaryItemZoneIndex then
+                    moveItemZoneCardToGraveyard(playerState, itemZoneIndex)
+                end
+            end
+
             sendDuelStateToPlayers(duel)
             return true
         end
@@ -2129,6 +2161,17 @@ function Duel.ResolvePendingSelection(src, duelId, selectionId, selectedUid)
         table.remove(playerState.deck, deckIndex)
         card.zone = 'hand'
         playerState.hand[#playerState.hand + 1] = card
+    end
+
+    if not duel.pendingSelection then
+        local playerState = duel.players[playerIndex]
+        if playerState then
+            for zoneIndex, card in pairs(playerState.itemZones or {}) do
+                if card and card.temporaryItemZoneIndex then
+                    moveItemZoneCardToGraveyard(playerState, zoneIndex)
+                end
+            end
+        end
     end
 
     sendDuelStateToPlayers(duel)

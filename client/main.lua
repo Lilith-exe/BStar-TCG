@@ -6,6 +6,22 @@ local CurrentDeckBox = nil
 
 CurrentDeckBoxId = CurrentDeckBoxId or nil
 
+AddEventHandler('onClientResourceStart', function(resourceName)
+    if resourceName ~= GetCurrentResourceName() then return end
+
+    cardOpen = false
+    CurrentDeckBox = nil
+    CurrentDeckBoxId = nil
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+    SendNUIMessage({ action = 'forceCloseAll' })
+
+    CreateThread(function()
+        Wait(1500)
+        QBCore.Functions.Notify('BStar client reloaded. Use your deck box or /bstaropenbox.', 'primary')
+    end)
+end)
+
 RegisterCommand('teststash', function()
     local stashId = 'bstar_test_stash'
     print('[BStar] Opening test stash:', stashId)

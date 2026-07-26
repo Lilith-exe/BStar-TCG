@@ -7,6 +7,7 @@ DeckBox = {}
 local MIN_DECK_CARDS = 30
 local MAX_DECK_CARDS = 50
 local MAX_COPIES_PER_CARD = 3
+local PendingTableDuels = {}
 
 local function GetCardHealthText(card)
     local raw = card and (card.health or card.hp or card.defense or card.def) or nil
@@ -471,17 +472,6 @@ local function DeleteDeckForBox(source, deckBoxId, deckId, cb)
     end)
 end
 
-CreateThread(function()
-    Wait(1000)
-
-    QBCore.Functions.CreateUseableItem('deck_box', function(source, item)
-        print('[BStar] deck_box used by source:', source)
-        TriggerClientEvent('bstar_cards:client:UseDeckBox', source, item)
-    end)
-
-    print('[BStar] deck_box usable item registered')
-end)
-
 QBCore.Functions.CreateUseableItem('bstar_card', function(source, item)
     local Player = QBCore.Functions.GetPlayer(source)
     if not Player then return end
@@ -699,6 +689,31 @@ RegisterCommand('givedeckbox', function(source)
     end
 end, false)
 
+local function FindFirstDeckBoxItem(src)
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return nil end
+
+    for _, item in pairs(Player.PlayerData.items or {}) do
+        if item and item.name == 'deck_box' and item.info and item.info.id then
+            return item
+        end
+    end
+
+    return nil
+end
+
+RegisterCommand('bstaropenbox', function(source)
+    local src = source
+    local item = FindFirstDeckBoxItem(src)
+
+    if not item then
+        TriggerClientEvent('QBCore:Notify', src, 'No deck box found in your inventory.', 'error')
+        return
+    end
+
+    TriggerClientEvent('bstar_cards:client:UseDeckBox', src, item)
+end, false)
+
 RegisterNetEvent('bstar_cards:server:SaveDeckBox', function(stashId, items)
     if not stashId or not items then return end
 
@@ -746,6 +761,8 @@ QBCore.Functions.CreateUseableItem('deck_box', function(source, item)
     TriggerClientEvent('bstar_cards:client:UseDeckBox', source, item)
 end)
 
+print('[BStar] deck_box usable item registered')
+
 local function GetDeckByIdForPlayer(source, deckBoxId, deckId, cb)
     local Player = QBCore.Functions.GetPlayer(source)
     if not Player then
@@ -789,6 +806,39 @@ local function GetDeckByIdForPlayer(source, deckBoxId, deckId, cb)
     end)
 end
 
+local function notifyDuelPlayers(duel, message, notifyType)
+    local sentToSource = {}
+
+    for _, playerState in pairs(duel and duel.players or {}) do
+        local targetSrc = playerState.source
+        if targetSrc and not sentToSource[targetSrc] then
+            TriggerClientEvent('QBCore:Notify', targetSrc, message, notifyType or 'primary')
+            sentToSource[targetSrc] = true
+        end
+    end
+end
+
+local function sendTableViewToDuelPlayers(duel)
+    if not duel or not duel.tableId then return end
+
+    local sentToSource = {}
+    for _, playerState in pairs(duel.players or {}) do
+        local targetSrc = playerState.source
+        if targetSrc and not sentToSource[targetSrc] then
+            TriggerClientEvent('bstar_cards:client:EnterDuelTableView', targetSrc, duel.tableId)
+            sentToSource[targetSrc] = true
+        end
+    end
+end
+
+local function clearPendingTableDuelForSource(src)
+    for tableId, pending in pairs(PendingTableDuels) do
+        if pending.source == src then
+            PendingTableDuels[tableId] = nil
+        end
+    end
+end
+
 local function startDuelAfterCoin(duelId, firstPlayer, src, successMessage)
     local ok, startErr = Duel.Start(duelId, firstPlayer)
     print('[BStar Duel] Duel.Start after coin result:', ok, startErr)
@@ -798,7 +848,8 @@ local function startDuelAfterCoin(duelId, firstPlayer, src, successMessage)
         return false
     end
 
-    TriggerClientEvent('QBCore:Notify', src, successMessage or 'Duel started.', 'success')
+    local duel = Duel.GetById(duelId)
+    notifyDuelPlayers(duel, successMessage or 'Duel started.', 'success')
     return true
 end
 
@@ -808,11 +859,29 @@ local function openCoinFlipForDuel(src, duel, tableMode)
         starterSource = src
     }
 
+    local sentToSource = {}
     TriggerClientEvent('bstar_cards:client:OpenCoinFlip', src, {
         duelId = duel.id,
         tableMode = tableMode == true,
-        tableId = duel.tableId
+        tableId = duel.tableId,
+        canChooseCoin = true
     })
+    sentToSource[src] = true
+
+    for _, playerState in pairs(duel.players or {}) do
+        local targetSrc = playerState.source
+        if targetSrc and not sentToSource[targetSrc] then
+            TriggerClientEvent('bstar_cards:client:OpenCoinFlip', targetSrc, {
+                duelId = duel.id,
+                tableMode = tableMode == true,
+                tableId = duel.tableId,
+                canChooseCoin = false
+            })
+            sentToSource[targetSrc] = true
+        end
+    end
+
+    notifyDuelPlayers(duel, 'Duel matched. Player 1 is calling the coin toss.', 'primary')
 end
 
 RegisterNetEvent('bstar_cards:server:DuelChooseCoin', function(duelId, choice)
@@ -824,6 +893,12 @@ RegisterNetEvent('bstar_cards:server:DuelChooseCoin', function(duelId, choice)
     end
 
     if duel.started then
+        return
+    end
+
+    local chooserIndex = duel.coinFlip and duel.coinFlip.chooser or 1
+    if not duel.players[chooserIndex] or duel.players[chooserIndex].source ~= src then
+        TriggerClientEvent('QBCore:Notify', src, 'Waiting for the coin toss caller.', 'error')
         return
     end
 
@@ -867,6 +942,12 @@ RegisterNetEvent('bstar_cards:server:DuelChooseTurnOrder', function(duelId, choi
     end
 
     if duel.started then
+        return
+    end
+
+    local chooserIndex = duel.coinFlip and duel.coinFlip.chooser or 1
+    if not duel.players[chooserIndex] or duel.players[chooserIndex].source ~= src then
+        TriggerClientEvent('QBCore:Notify', src, 'Waiting for the coin toss caller.', 'error')
         return
     end
 
@@ -944,10 +1025,77 @@ RegisterNetEvent('bstar_cards:server:StartTableTestDuel', function(tableId, deck
                 return
             end
 
-            local deckB = deckA
+            local pending = PendingTableDuels[tableId]
+            if pending and pending.source == src then
+                TriggerClientEvent('QBCore:Notify', src, 'You are already waiting at this duel table.', 'primary')
+                return
+            end
 
-            local duel, err = Duel.Create(src, src, deckA, deckB)
-            print('[BStar Table Duel] Duel.Create result:', duel and duel.id or nil, err)
+            clearPendingTableDuelForSource(src)
+
+            if pending then
+                PendingTableDuels[tableId] = nil
+
+                local duel, err = Duel.Create(pending.source, src, pending.deck, deckA)
+                print('[BStar Table Duel] Duel.Create result:', duel and duel.id or nil, err)
+
+                if not duel then
+                    TriggerClientEvent('QBCore:Notify', src, err or 'Failed to create duel.', 'error')
+                    TriggerClientEvent('QBCore:Notify', pending.source, err or 'Failed to create duel.', 'error')
+                    return
+                end
+
+                duel.tableId = tableId
+
+                print('[BStar Table Duel] Matched players:', pending.source, src, 'table:', tableId)
+                sendTableViewToDuelPlayers(duel)
+                openCoinFlipForDuel(pending.source, duel, true)
+                return
+            end
+
+            PendingTableDuels[tableId] = {
+                tableId = tableId,
+                source = src,
+                deckBoxId = deckBoxId,
+                deckId = myDeckId,
+                deck = deckA,
+                createdAt = os.time()
+            }
+
+            print('[BStar Table Duel] Player waiting at table:', src, tableId)
+            TriggerClientEvent('QBCore:Notify', src, 'Waiting for another player to join this duel table.', 'primary')
+        end)
+    end)
+end)
+
+RegisterNetEvent('bstar_cards:server:StartTableSoloTestDuel', function(tableId, deckBoxId, myDeckId)
+    local src = source
+
+    print('[BStar Table Solo Duel] StartTableSoloTestDuel fired')
+    print('[BStar Table Solo Duel] src:', src)
+    print('[BStar Table Solo Duel] tableId:', tableId)
+    print('[BStar Table Solo Duel] deckBoxId:', deckBoxId)
+    print('[BStar Table Solo Duel] myDeckId:', myDeckId)
+
+    GetDeckByIdForPlayer(src, deckBoxId, myDeckId, function(deckA)
+        print('[BStar Table Solo Duel] GetDeckByIdForPlayer callback, deckA exists:', deckA ~= nil)
+
+        if not deckA then
+            TriggerClientEvent('QBCore:Notify', src, 'Could not load your deck.', 'error')
+            return
+        end
+
+        DeckBox.GetStoredCards(src, deckBoxId, function(storedCards)
+            local valid, message = validateDeckDataForPlay(deckA.deck_data, storedCards)
+            if not valid then
+                TriggerClientEvent('QBCore:Notify', src, 'Deck is invalid: ' .. tostring(message), 'error')
+                return
+            end
+
+            clearPendingTableDuelForSource(src)
+
+            local duel, err = Duel.Create(src, src, deckA, deckA)
+            print('[BStar Table Solo Duel] Duel.Create result:', duel and duel.id or nil, err)
 
             if not duel then
                 TriggerClientEvent('QBCore:Notify', src, err or 'Failed to create duel.', 'error')
@@ -956,12 +1104,14 @@ RegisterNetEvent('bstar_cards:server:StartTableTestDuel', function(tableId, deck
 
             duel.tableId = tableId
 
-            print('[BStar Table Duel] Sending camera event:', tableId)
             TriggerClientEvent('bstar_cards:client:EnterDuelTableView', src, tableId)
-
             openCoinFlipForDuel(src, duel, true)
         end)
     end)
+end)
+
+AddEventHandler('playerDropped', function()
+    clearPendingTableDuelForSource(source)
 end)
 
 RegisterNetEvent('bstar_cards:server:DuelAdvancePhase', function(duelId)

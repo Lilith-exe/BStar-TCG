@@ -8,6 +8,7 @@ print('[BStar Tables] client/tables.lua loaded')
 CurrentDuelTableId = nil
 local DuelCam = nil
 local PendingDeckSelectTableId = nil
+local PendingTableDuelMode = 'multiplayer'
 
 local function FindDuelTable(tableId)
     if not Config or not Config.DuelTables then
@@ -24,7 +25,9 @@ local function FindDuelTable(tableId)
     return nil
 end
 
-local function UseDuelTable(tableId)
+local function UseDuelTable(tableId, mode)
+    mode = mode == 'solo' and 'solo' or 'multiplayer'
+
     print('[BStar Tables] UseDuelTable fired with tableId:', tableId)
     print('[BStar Tables] CurrentDeckBoxId:', CurrentDeckBoxId)
 
@@ -43,6 +46,7 @@ local function UseDuelTable(tableId)
         end
 
         PendingDeckSelectTableId = tableId
+        PendingTableDuelMode = mode
         SetNuiFocus(true, true)
         SetNuiFocusKeepInput(false)
 
@@ -50,6 +54,7 @@ local function UseDuelTable(tableId)
             action = 'openTableDeckSelect',
             deckBoxId = CurrentDeckBoxId,
             tableId = tableId,
+            tableDuelMode = mode,
             storedCards = result.storedCards or {},
             decks = decks,
             cardCatalog = result.cardCatalog or {}
@@ -68,14 +73,23 @@ RegisterNUICallback('selectTableDuelDeck', function(data, cb)
     end
 
     PendingDeckSelectTableId = nil
+    local mode = data and data.mode or PendingTableDuelMode
+    PendingTableDuelMode = 'multiplayer'
     SetNuiFocus(false, false)
     SetNuiFocusKeepInput(false)
-    TriggerServerEvent('bstar_cards:server:StartTableTestDuel', tableId, CurrentDeckBoxId, deckId)
+
+    if mode == 'solo' then
+        TriggerServerEvent('bstar_cards:server:StartTableSoloTestDuel', tableId, CurrentDeckBoxId, deckId)
+    else
+        TriggerServerEvent('bstar_cards:server:StartTableTestDuel', tableId, CurrentDeckBoxId, deckId)
+    end
+
     cb('ok')
 end)
 
 RegisterNUICallback('closeTableDeckSelect', function(_, cb)
     PendingDeckSelectTableId = nil
+    PendingTableDuelMode = 'multiplayer'
     SetNuiFocus(false, false)
     SetNuiFocusKeepInput(false)
     cb('ok')
@@ -158,10 +172,18 @@ CreateThread(function()
             options = {
                 {
                 icon = "fas fa-chess-board",
-                label = "Start Test Duel",
+                label = "Join 2 Player Duel",
                 action = function()
-                    print('[BStar Tables] qb-target action fired for table:', tableId)
-                    UseDuelTable(tableId)
+                    print('[BStar Tables] multiplayer qb-target action fired for table:', tableId)
+                    UseDuelTable(tableId, 'multiplayer')
+                end
+                },
+                {
+                icon = "fas fa-chess-board",
+                label = "Start Solo Test Duel",
+                action = function()
+                    print('[BStar Tables] solo qb-target action fired for table:', tableId)
+                    UseDuelTable(tableId, 'solo')
                 end
                 }
             },

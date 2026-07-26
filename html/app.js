@@ -159,6 +159,7 @@ let builderSearchTerm = '';
 let selectedHubDeckId = null;
 let deckHubMode = 'manage';
 let pendingTableDuelId = null;
+let pendingTableDuelMode = 'multiplayer';
 let pendingCoinDuelId = null;
 let pendingCoinChoice = null;
 let coinResultTimer = null;
@@ -712,13 +713,14 @@ function resetCoinDisc() {
 function openCoinFlip(data) {
   hideAll();
   pendingCoinDuelId = data?.duelId || null;
+  const canChooseCoin = data?.canChooseCoin !== false;
 
   app.classList.remove('hidden');
   coinFlipWrap.classList.remove('hidden');
   resetCoinDisc();
-  coinFlipTitle.textContent = 'Call the Toss';
-  coinFlipText.textContent = 'Choose heads or tails.';
-  coinChoiceActions.classList.remove('hidden');
+  coinFlipTitle.textContent = canChooseCoin ? 'Call the Toss' : 'Waiting for Toss';
+  coinFlipText.textContent = canChooseCoin ? 'Choose heads or tails.' : 'Player 1 is calling the coin toss.';
+  coinChoiceActions.classList.toggle('hidden', !canChooseCoin);
   turnChoiceActions.classList.add('hidden');
 }
 
@@ -1010,6 +1012,7 @@ function openDeckHub(data) {
   currentDeckBoxId = data.deckBoxId;
   deckHubMode = data.mode || 'manage';
   pendingTableDuelId = data.tableId || null;
+  pendingTableDuelMode = data.tableDuelMode || 'multiplayer';
   window.BSTAR_CARD_DEFS = data.cardCatalog || window.BSTAR_CARD_DEFS || {};
   builderOwnedCards = data.storedCards || {};
   currentDecks = (data.decks || []).map(d => normalizeDeck(clone(d)));
@@ -1025,14 +1028,20 @@ function renderDeckHub() {
   deckHubListEl.innerHTML = '';
 
   if (deckHubTitleEl) {
-    deckHubTitleEl.textContent = deckHubMode === 'tableSelect' ? 'Choose Duel Deck' : 'Deck Box';
+    if (deckHubMode === 'tableSelect') {
+      deckHubTitleEl.textContent = pendingTableDuelMode === 'solo' ? 'Choose Solo Duel Deck' : 'Choose 2 Player Duel Deck';
+    } else {
+      deckHubTitleEl.textContent = 'Deck Box';
+    }
   }
 
   const selectingForTable = deckHubMode === 'tableSelect';
   deckHubNewBtn.classList.toggle('hidden', selectingForTable);
   deckHubDeleteBtn.classList.toggle('hidden', selectingForTable);
   deckHubCardsBtn.classList.toggle('hidden', selectingForTable);
-  deckHubEditBtn.textContent = selectingForTable ? 'Start Duel' : 'Edit';
+  deckHubEditBtn.textContent = selectingForTable
+    ? (pendingTableDuelMode === 'solo' ? 'Start Solo Duel' : 'Join Duel')
+    : 'Edit';
 
   if (!currentDecks.length) {
     deckHubListEl.innerHTML = '<div style="opacity:.65;padding:12px;">No decks yet. Create one below.</div>';
@@ -1164,12 +1173,14 @@ function startSelectedTableDuelDeck() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       tableId: pendingTableDuelId,
-      deckId: deck.id
+      deckId: deck.id,
+      mode: pendingTableDuelMode
     })
   });
 
   deckHubMode = 'manage';
   pendingTableDuelId = null;
+  pendingTableDuelMode = 'multiplayer';
 }
 
 function refreshDeckHub() {
@@ -2044,7 +2055,7 @@ function renderTableSupportRow(rowEl, cards, side, kind, selectedCard, canPlayNo
   rowEl.innerHTML = '';
   const count = kind === 'equipment' ? 3 : 4;
   const hasCards = (cards || []).some(Boolean);
-  const hasSelectedTarget = kind === 'item' ? isContinuousItemCard(selectedCard) : isEquipmentZoneCard(selectedCard);
+  const hasSelectedTarget = kind === 'item' ? isItemZoneCard(selectedCard) : isEquipmentZoneCard(selectedCard);
 
   rowEl.classList.toggle('has-cards', hasCards);
   rowEl.classList.toggle('selecting', side === 'self' && canPlayNonFighter && hasSelectedTarget);
@@ -2054,7 +2065,7 @@ function renderTableSupportRow(rowEl, cards, side, kind, selectedCard, canPlayNo
     const canTarget = side === 'self'
       && canPlayNonFighter
       && !card
-      && ((kind === 'item' && isContinuousItemCard(selectedCard)) || (kind === 'equipment' && isEquipmentZoneCard(selectedCard)));
+      && ((kind === 'item' && isItemZoneCard(selectedCard)) || (kind === 'equipment' && isEquipmentZoneCard(selectedCard)));
 
     const slot = renderTableSupportZone(card, side, kind, i + 1, canTarget);
 
@@ -3041,7 +3052,7 @@ function renderTableDuelUi() {
       div.classList.add('selected');
     }
 
-    if (selectedHandCardUid === card.uid && (isEventCard(card) || (isItemZoneCard(card) && !isContinuousItemCard(card))) && canPlayNonFighter) {
+    if (selectedHandCardUid === card.uid && isEventCard(card) && canPlayNonFighter) {
       div.classList.add('event-selected');
       const activate = document.createElement('button');
       activate.className = 'table-event-activate-pill';
@@ -3947,6 +3958,7 @@ deckHubCloseBtn.addEventListener('click', () => {
   const closeAction = deckHubMode === 'tableSelect' ? 'closeTableDeckSelect' : 'closeDeckBuilder';
   deckHubMode = 'manage';
   pendingTableDuelId = null;
+  pendingTableDuelMode = 'multiplayer';
 
   fetch(`https://${GetParentResourceName()}/${closeAction}`, {
     method: 'POST',

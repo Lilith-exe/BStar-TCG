@@ -6,7 +6,7 @@ lua54 'yes'
 name 'bstar_cards'
 author 'Lilith + Lola'
 description 'Prototype BStar card system for QBCore'
-version '0.1.0'
+version '0.6.11'
 
 shared_scripts {
     'config.lua',

@@ -1,6 +1,9 @@
 # BStar Cards Changelog
 
 ## Latest
+- Added support for 16:9 aspect ratio. (dynamic scaling coming soon)
+- Added 2 player support 
+- Fixed how item cards work. (item cards now place on the field first and only go to cemetery once the effect has resolved)
 
 ## v0.6.6
 - Added default card backs 

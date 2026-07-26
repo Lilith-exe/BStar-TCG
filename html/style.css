@@ -2330,6 +2330,10 @@ button:hover {
   pointer-events: none;
   z-index: 15;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --table-card-width: clamp(86px, min(7.2vw, 15vh), 148px);
+  --table-hand-card-width: clamp(76px, min(6.4vw, 15vh), 126px);
+  --table-board-width: min(78vw, calc(100vh * 1.75), 1260px);
+  --table-board-height: min(56vh, calc(var(--table-board-width) * 0.52), 660px);
 }
 
 .table-board {
@@ -2338,10 +2342,8 @@ button:hover {
   top: 45%;
   transform: translate(-50%, -50%) perspective(1500px) rotateX(3deg);
   transform-origin: center center;
-  width: min(78vw, 1260px);
-  height: min(56vh, 660px);
-  min-width: 920px;
-  min-height: 480px;
+  width: var(--table-board-width);
+  height: var(--table-board-height);
   pointer-events: none;
 }
 
@@ -2478,8 +2480,8 @@ button:hover {
   left: 50%;
   transform: translateX(-50%);
   display: grid;
-  grid-template-columns: repeat(3, clamp(122px, 7.8vw, 148px));
-  gap: clamp(72px, 8.4vw, 140px);
+  grid-template-columns: repeat(3, var(--table-card-width));
+  gap: clamp(46px, min(7vw, 9vh), 140px);
   pointer-events: auto;
 }
 
@@ -2503,7 +2505,7 @@ button:hover {
 }
 
 .table-opponent-hand-card {
-  width: clamp(78px, 5vw, 96px);
+  width: clamp(58px, min(4.8vw, 10vh), 96px);
   aspect-ratio: 5 / 7;
   border-radius: 6px;
   overflow: hidden;
@@ -2523,8 +2525,8 @@ button:hover {
 .table-equip-row {
   position: absolute;
   display: grid;
-  grid-template-columns: repeat(3, clamp(122px, 7.8vw, 148px));
-  gap: clamp(72px, 8.4vw, 140px);
+  grid-template-columns: repeat(3, var(--table-card-width));
+  gap: clamp(46px, min(7vw, 9vh), 140px);
   pointer-events: auto;
 }
 
@@ -2532,8 +2534,8 @@ button:hover {
   left: 50%;
   transform: translateX(-50%);
   display: grid;
-  grid-template-columns: repeat(4, clamp(122px, 7.8vw, 148px));
-  gap: clamp(30px, 3vw, 54px);
+  grid-template-columns: repeat(4, var(--table-card-width));
+  gap: clamp(22px, min(3vw, 5vh), 54px);
 }
 
 .table-item-row.opponent {
@@ -2550,8 +2552,8 @@ button:hover {
   right: auto;
   transform: none;
   display: none;
-  grid-template-columns: repeat(3, clamp(122px, 7.8vw, 148px));
-  gap: clamp(72px, 8.4vw, 140px);
+  grid-template-columns: repeat(3, var(--table-card-width));
+  gap: clamp(46px, min(7vw, 9vh), 140px);
   pointer-events: none;
 }
 
@@ -2600,7 +2602,8 @@ button:hover {
 
 .table-location-slot {
   position: absolute;
-  width: clamp(122px, 7.8vw, 148px);
+  width: var(--table-card-width);
+  z-index: 28;
   pointer-events: auto;
   display: block;
   border: 0;
@@ -2671,7 +2674,7 @@ button:hover {
 
 .table-card-pile {
   position: absolute;
-  width: clamp(122px, 7.8vw, 148px);
+  width: var(--table-card-width);
   aspect-ratio: 5 / 7;
   border: 1px solid rgba(152, 232, 255, 0.34);
   border-radius: 8px;
@@ -2821,7 +2824,7 @@ button.table-card-pile {
 
 .table-zone {
   position: relative;
-  width: clamp(122px, 7.8vw, 148px);
+  width: var(--table-card-width);
   aspect-ratio: 5 / 7;
 
   border-radius: 8px;
@@ -3159,6 +3162,20 @@ button.table-card-pile {
   opacity: 1;
 }
 
+.table-location-slot .table-support-slot.empty {
+  opacity: 0.62;
+  background: rgba(6, 20, 26, 0.12);
+  border-color: rgba(152, 232, 255, 0.44);
+  box-shadow:
+    inset 0 0 14px rgba(80, 220, 255, 0.08),
+    0 0 14px rgba(35, 210, 255, 0.12);
+}
+
+.table-location-slot .table-support-label {
+  color: rgba(255, 236, 170, 0.82);
+  font-size: clamp(11px, 1vw, 15px);
+}
+
 .table-zone.promote-target .table-state-label::before {
   content: "PROMOTE";
 }
@@ -3210,15 +3227,15 @@ button.table-card-pile {
 .table-hand-row {
   position: fixed;
   left: 50%;
-  bottom: 18px;
+  bottom: max(10px, env(safe-area-inset-bottom));
   transform: translateX(-50%);
   display: flex;
   justify-content: center;
   align-items: flex-end;
   gap: clamp(8px, 1.2vw, 18px);
-  max-width: min(70vw, 980px);
-  min-height: 172px;
-  padding: 14px 18px 10px;
+  max-width: min(72vw, 980px);
+  min-height: calc(var(--table-hand-card-width) * 1.18);
+  padding: 10px 14px 8px;
   border-radius: 10px 10px 0 0;
   background:
     linear-gradient(180deg, rgba(4, 12, 18, 0.08), rgba(4, 12, 18, 0.42)),
@@ -3236,7 +3253,7 @@ button.table-card-pile {
 .table-hand-card:nth-child(4) { transform: rotate(8deg); }
 
 .table-hand-card {
-  width: clamp(92px, 7.2vw, 126px);
+  width: var(--table-hand-card-width);
   border-radius: 8px;
   position: relative;
   overflow: visible;
@@ -3388,12 +3405,12 @@ button.table-card-pile {
 
 .table-preview-panel {
   position: fixed;
-  left: 18px;
-  top: 42px;
-  width: min(40vw, 720px);
-  min-width: 620px;
-  max-height: calc(100vh - 165px);
-  padding: 16px;
+  left: clamp(10px, 1.4vw, 18px);
+  top: clamp(12px, 4.4vh, 42px);
+  width: clamp(320px, 34vw, 620px);
+  max-width: calc(100vw - 32px);
+  max-height: min(52vh, calc(100vh - 150px));
+  padding: clamp(10px, 1.25vw, 16px);
   border-radius: 8px;
   color: white;
   background:
@@ -3407,7 +3424,7 @@ button.table-card-pile {
 
 .table-preview-panel.empty {
   width: min(24vw, 430px);
-  min-width: 320px;
+  min-width: min(320px, calc(100vw - 32px));
 }
 
 .table-preview-panel.empty .table-preview-body {
@@ -3423,8 +3440,8 @@ button.table-card-pile {
 
 .table-preview-body {
   display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 18px;
+  grid-template-columns: clamp(92px, 11.5vw, 190px) 1fr;
+  gap: clamp(10px, 1.2vw, 18px);
   align-items: start;
 }
 
@@ -3433,7 +3450,7 @@ button.table-card-pile {
 }
 
 .table-preview-image {
-  width: 220px;
+  width: clamp(92px, 11.5vw, 190px);
   aspect-ratio: 5 / 7;
   object-fit: contain;
   border-radius: 7px;
@@ -3445,7 +3462,7 @@ button.table-card-pile {
 }
 
 .table-preview-name {
-  font-size: 26px;
+  font-size: clamp(18px, 1.6vw, 26px);
   font-weight: 850;
   line-height: 1.15;
   color: white;
@@ -3453,7 +3470,7 @@ button.table-card-pile {
 
 .table-preview-meta {
   margin-top: 6px;
-  font-size: 15px;
+  font-size: clamp(11px, 0.95vw, 15px);
   line-height: 1.35;
   color: rgba(235, 245, 255, 0.72);
 }
@@ -3466,7 +3483,7 @@ button.table-card-pile {
 }
 
 .table-preview-stat {
-  min-height: 68px;
+  min-height: clamp(40px, 6vh, 68px);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -3482,7 +3499,7 @@ button.table-card-pile {
 }
 
 .table-preview-stat strong {
-  font-size: 30px;
+  font-size: clamp(18px, 2vw, 30px);
   line-height: 1;
 }
 
@@ -3569,16 +3586,16 @@ button.table-card-pile {
 }
 
 .table-preview-effect-title {
-  font-size: 15px;
+  font-size: clamp(12px, 1vw, 15px);
   font-weight: 850;
   margin-bottom: 6px;
 }
 
 .table-preview-effect-text {
-  font-size: 16px;
+  font-size: clamp(11px, 1vw, 16px);
   line-height: 1.42;
   color: rgba(245, 248, 255, 0.84);
-  max-height: 240px;
+  max-height: min(22vh, 240px);
   overflow-y: auto;
   white-space: pre-line;
 }
@@ -3825,21 +3842,234 @@ button.table-card-pile {
 
 @media (max-width: 1180px) {
   .table-board {
-    min-width: 760px;
-    width: 82vw;
+    min-width: 0;
+    width: min(86vw, calc(100vh * 1.62));
   }
 
   .table-preview-panel {
-    width: 260px;
-    min-width: 260px;
+    width: clamp(286px, 31vw, 360px);
+    min-width: 0;
   }
 
   .table-preview-body {
-    grid-template-columns: 86px 1fr;
+    grid-template-columns: 82px 1fr;
   }
 
   .table-preview-image {
-    width: 86px;
+    width: 82px;
+  }
+}
+
+@media (max-aspect-ratio: 16 / 9) {
+  .table-duel-wrap {
+    --table-card-width: clamp(78px, min(5.7vw, 12.8vh), 116px);
+    --table-hand-card-width: clamp(70px, min(5.5vw, 12.5vh), 104px);
+    --table-board-width: min(82vw, calc(100vh * 1.66), 1180px);
+    --table-board-height: min(62vh, calc(var(--table-board-width) * 0.52), 650px);
+  }
+
+  .table-board {
+    top: 48%;
+  }
+
+  .table-fighter-row {
+    gap: clamp(42px, min(6vw, 7.4vh), 104px);
+  }
+
+  .table-fighter-row.opponent {
+    top: 20%;
+  }
+
+  .table-fighter-row.self {
+    bottom: 20%;
+  }
+
+  .table-item-row,
+  .table-equip-row {
+    gap: clamp(36px, min(5.4vw, 7vh), 98px);
+  }
+
+  .table-item-row {
+    gap: clamp(18px, min(2.4vw, 4vh), 38px);
+  }
+
+  .table-card-pile.deck.opponent {
+    left: 10%;
+    top: -6%;
+  }
+
+  .table-card-pile.cemetery.opponent {
+    left: 10%;
+    top: 20%;
+  }
+
+  .table-card-pile.deck.self {
+    right: 10%;
+    bottom: -6%;
+  }
+
+  .table-card-pile.cemetery.self {
+    right: 10%;
+    bottom: 20%;
+  }
+
+  .table-opponent-hand-backs {
+    top: clamp(-202px, -23vh, -140px);
+    gap: clamp(7px, 0.8vw, 12px);
+  }
+
+  .table-item-row.opponent {
+    top: -8%;
+  }
+
+  .table-item-row.self {
+    bottom: -7%;
+  }
+
+  .table-location-slot.opponent {
+    left: auto;
+    right: 10%;
+    top: 20%;
+  }
+
+  .table-location-slot.self {
+    left: 10%;
+    right: auto;
+    bottom: 20%;
+  }
+
+  .table-phase-badge {
+    left: 32%;
+    top: 48%;
+  }
+
+  .table-lp-wrap.opponent {
+    right: -6%;
+    top: -2%;
+  }
+
+  .table-lp-wrap.self {
+    left: -6%;
+    bottom: -2%;
+  }
+
+  .table-life-points {
+    font-size: clamp(25px, 2.4vw, 34px);
+    padding: 3px 12px;
+  }
+
+  .table-preview-panel {
+    width: clamp(300px, 28vw, 420px);
+    max-height: min(40vh, calc(100vh - 190px));
+  }
+
+  .table-preview-body {
+    grid-template-columns: clamp(76px, 7.2vw, 108px) minmax(0, 1fr);
+  }
+
+  .table-preview-image {
+    width: clamp(76px, 7.2vw, 108px);
+  }
+
+  .table-preview-name {
+    font-size: clamp(15px, 1.35vw, 21px);
+  }
+
+  .table-preview-meta {
+    font-size: clamp(10px, 0.82vw, 12px);
+  }
+
+  .table-preview-stats {
+    gap: 5px;
+    margin-top: 8px;
+  }
+
+  .table-preview-stat {
+    min-height: 42px;
+    padding: 0 4px;
+  }
+
+  .table-preview-stat strong {
+    font-size: clamp(15px, 1.55vw, 22px);
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+
+  .table-preview-effect {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  .table-preview-effect-text {
+    font-size: clamp(10px, 0.82vw, 12px);
+    max-height: 12vh;
+  }
+
+  .table-hand-row {
+    max-width: min(64vw, 840px);
+    padding-inline: 12px;
+  }
+
+  .table-debug-actions {
+    right: 10px;
+    bottom: clamp(84px, 14vh, 150px);
+    gap: 6px;
+  }
+
+  .table-debug-actions button {
+    min-width: 100px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .table-grave-panel {
+    width: min(360px, 34vw);
+  }
+}
+
+@media (max-height: 720px) {
+  .table-duel-wrap {
+    --table-card-width: clamp(70px, min(5.4vw, 12.4vh), 104px);
+    --table-hand-card-width: clamp(66px, min(5.2vw, 12vh), 96px);
+    --table-board-height: min(60vh, calc(var(--table-board-width) * 0.5));
+  }
+
+  .table-preview-panel {
+    top: 12px;
+    max-height: 38vh;
+  }
+
+  .table-preview-effect-text {
+    max-height: 10vh;
+  }
+
+  .table-draw-prompt {
+    bottom: 150px;
+    font-size: 15px;
+  }
+
+  .table-action-hint {
+    bottom: 126px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 860px) {
+  .table-board {
+    min-width: 0;
+    width: 92vw;
+  }
+
+  .table-preview-panel {
+    width: min(320px, calc(100vw - 24px));
+  }
+
+  .table-preview-body {
+    grid-template-columns: 76px 1fr;
+  }
+
+  .table-preview-image {
+    width: 76px;
   }
 }
 
