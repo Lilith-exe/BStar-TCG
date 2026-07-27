@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.6.8
 - Updated cards.lua to be in line with the master list.
 - Added 115 new card artworks.
 - Pushed better effect wording for some cards.
