@@ -219,6 +219,18 @@ local function findOpenFighterZone(playerState)
     return nil
 end
 
+local function findHandCardIndex(playerState, filter, api)
+    filter = filter or {}
+
+    for i, card in ipairs(playerState.hand or {}) do
+        if cardMatchesFilter(card, filter, api) then
+            return i, card
+        end
+    end
+
+    return nil, nil
+end
+
 local function appendLog(duel, message)
     duel.log = duel.log or {}
     duel.log[#duel.log + 1] = {
@@ -421,6 +433,58 @@ function ACTIONS.special_summon_from_deck(duel, sourcePlayerIndex, sourceCard, a
     api.resetFighterHp(card)
     player.fighterZones[zoneIndex] = card
     appendLog(duel, ('Player %s special summoned %s.'):format(sourcePlayerIndex, card.cardId))
+end
+
+function ACTIONS.special_summon_from_hand_or_deck(duel, sourcePlayerIndex, sourceCard, action, api)
+    local player = duel.players[sourcePlayerIndex]
+    if not player then return end
+
+    local zoneIndex = findOpenFighterZone(player)
+    if not zoneIndex then return end
+
+    local card = nil
+    local handIndex = nil
+    local deckIndex = nil
+
+    handIndex, card = findHandCardIndex(player, action.filter, api)
+    if handIndex and card then
+        table.remove(player.hand, handIndex)
+    else
+        deckIndex, card = findDeckCardIndex(player, action.filter, api)
+        if deckIndex and card then
+            table.remove(player.deck, deckIndex)
+        end
+    end
+
+    if not card then return end
+
+    card.zone = 'fighterZone'
+    card.controller = sourcePlayerIndex
+    card.hasAttacked = false
+    api.resetFighterHp(card)
+    player.fighterZones[zoneIndex] = card
+    appendLog(duel, ('Player %s special summoned %s.'):format(sourcePlayerIndex, card.cardId))
+end
+
+function ACTIONS.special_summon_self_from_hand(duel, sourcePlayerIndex, sourceCard, action, api)
+    local player = duel.players[sourcePlayerIndex]
+    if not player or not sourceCard then return end
+
+    local zoneIndex = findOpenFighterZone(player)
+    if not zoneIndex then return end
+
+    for i = #(player.hand or {}), 1, -1 do
+        if player.hand[i] == sourceCard then
+            table.remove(player.hand, i)
+            sourceCard.zone = 'fighterZone'
+            sourceCard.controller = sourcePlayerIndex
+            sourceCard.hasAttacked = false
+            api.resetFighterHp(sourceCard)
+            player.fighterZones[zoneIndex] = sourceCard
+            appendLog(duel, ('Player %s special summoned %s from hand.'):format(sourcePlayerIndex, sourceCard.cardId))
+            return
+        end
+    end
 end
 
 function ACTIONS.special_summon_from_deck_or_graveyard(duel, sourcePlayerIndex, sourceCard, action, api)
@@ -782,6 +846,25 @@ local function passesCondition(duel, sourcePlayerIndex, sourceCard, effect, even
         end
 
         if count < tonumber(condition.ownEquipmentCountMin) then
+            return false
+        end
+    end
+
+    if condition.ownEquipmentCountMax then
+        local player = duel.players[sourcePlayerIndex]
+        local count = 0
+        for i = 1, 3 do
+            local slot = player and player.equipmentZones and player.equipmentZones[i] or nil
+            if slot and (slot.vehicle or slot.weapon or slot.equipment) then
+                for _, key in ipairs({ 'vehicle', 'weapon', 'equipment' }) do
+                    if slot[key] then count = count + 1 end
+                end
+            elseif slot then
+                count = count + 1
+            end
+        end
+
+        if count > tonumber(condition.ownEquipmentCountMax) then
             return false
         end
     end

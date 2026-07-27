@@ -1,6 +1,14 @@
 # BStar Cards Changelog
 
 ## Latest
+- Updated cards.lua to be in line with the master list.
+- Added 115 new card artworks.
+- Pushed better effect wording for some cards.
+- Balanced EN001 Layla Hart from 300LP to 200LP cost. 
+- Rewrote CSV to LUA script for better failsafes and more functionality.
+- Rewrote batch thumb generator for better efficiency.
+- Added first pass effects engine support for EN011 to EN020.
+- Added some more tags and effects into the effects engine.
 
 ## v0.6.7
 - Added support for 16:9 aspect ratio. (dynamic scaling coming soon)

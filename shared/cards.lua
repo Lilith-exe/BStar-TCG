@@ -8,48 +8,50 @@ Cards = {
         level = 'LEVEL 2',
         speed = '3',
         attack = '40',
-        defense = '100',
+        defense = '90',
         effectTitle = 'MOVING FUNDS',
-        effectText = 'You can pay up to 300LP, then choose one of these effects: 1) This card gains half that value in ATK. 2) This card gains half that value in HP. 3) Your opponent loses half that value in LP.',
+        effectText = 'OPD: You can pay up to 200LP, then choose one of these effects: 1) This card gains half that value in ATK. 2) This card gains half that value in HP. 3) Your opponent loses half that value in LP.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'activated', 'choice_required', 'lose_lp', 'stat_modifier', 'damage_lp' },
         effects = {
-            {
-                trigger = 'activated',
-                tags = { 'lose_lp', 'choice_required', 'stat_modifier', 'damage_lp', 'once_per_game' },
-                oncePerGame = true,
-                promptText = 'Pay up to 300 LP, then choose one effect.',
-                form = {
-                    number = { key = 'paidLp', label = 'LP to pay', min = 0, max = 300, default = 300, maxLifePoints = true },
-                    options = {
-                        { id = 'gain_attack', label = 'Gain ATK', description = 'This card gains half the paid LP as ATK.' },
-                        { id = 'gain_hp', label = 'Gain HP', description = 'This card gains half the paid LP as HP.' },
-                        { id = 'damage_lp', label = 'Opponent Loses LP', description = 'Your opponent loses half the paid LP.' }
-                    }
-                },
-                options = {
-                    {
-                        id = 'gain_attack',
-                        actions = {
-                            { action = 'lose_lp', amount = { fromResponse = 'paidLp', min = 0, max = 300 } },
-                            { action = 'modify_stats', stats = { attack = { fromResponse = 'paidLp', multiplier = 0.5, round = 'floor' } } }
-                        }
-                    },
-                    {
-                        id = 'gain_hp',
-                        actions = {
-                            { action = 'lose_lp', amount = { fromResponse = 'paidLp', min = 0, max = 300 } },
-                            { action = 'modify_stats', stats = { hp = { fromResponse = 'paidLp', multiplier = 0.5, round = 'floor' } } }
-                        }
-                    },
-                    {
-                        id = 'damage_lp',
-                        actions = {
-                            { action = 'lose_lp', amount = { fromResponse = 'paidLp', min = 0, max = 300 } },
-                            { action = 'damage_opponent_lp', amount = { fromResponse = 'paidLp', multiplier = 0.5, round = 'floor' } }
-                        }
-                    }
-                }
-            }
+        {
+        trigger = 'activated',
+        tags = { 'lose_lp', 'choice_required', 'stat_modifier', 'damage_lp', 'once_per_game' },
+        oncePerGame = true,
+        promptText = 'Pay up to 200 LP, then choose one effect.',
+        form = {
+        number = { key = 'paidLp', label = 'LP to pay', min = 0, max = 200, default = 200, maxLifePoints = true },
+        options = {
+        { id = 'gain_attack', label = 'Gain ATK', description = 'This card gains half the paid LP as ATK.' },
+        { id = 'gain_hp', label = 'Gain HP', description = 'This card gains half the paid LP as HP.' },
+        { id = 'damage_lp', label = 'Opponent Loses LP', description = 'Your opponent loses half the paid LP.' }
+        }
+        },
+        options = {
+        {
+        id = 'gain_attack',
+        actions = {
+        { action = 'lose_lp', amount = { fromResponse = 'paidLp', min = 0, max = 200 } },
+        { action = 'modify_stats', stats = { attack = { fromResponse = 'paidLp', multiplier = 0.5, round = 'floor' } } }
+        }
+        },
+        {
+        id = 'gain_hp',
+        actions = {
+        { action = 'lose_lp', amount = { fromResponse = 'paidLp', min = 0, max = 200 } },
+        { action = 'modify_stats', stats = { hp = { fromResponse = 'paidLp', multiplier = 0.5, round = 'floor' } } }
+        }
+        },
+        {
+        id = 'damage_lp',
+        actions = {
+        { action = 'lose_lp', amount = { fromResponse = 'paidLp', min = 0, max = 200 } },
+        { action = 'damage_opponent_lp', amount = { fromResponse = 'paidLp', multiplier = 0.5, round = 'floor' } }
+        }
+        }
+        }
+        }
         },
         setCode = 'ALPH1-EN001',
         edition = '1st Edition',
@@ -67,19 +69,21 @@ Cards = {
         attack = '10',
         defense = '20',
         effectTitle = 'EFFECT',
-        effectText = 'On summon, you can lose 300 LP and draw 2 cards.',
+        effectText = 'When this card is summoned you can lose 300 LP and draw 2 cards.',
+        cardTags = {},
+        legality = 'Semi Limited',
         effectTags = { 'on_summon', 'lose_lp', 'draw' },
         effects = {
-            {
-                trigger = 'on_summon',
-                tags = { 'lose_lp', 'draw' },
-                optional = true,
-                promptText = 'Do you want to lose 300 LP and draw 2 cards?',
-                actions = {
-                    { action = 'lose_lp', target = 'self', amount = 300 },
-                    { action = 'draw', target = 'self', amount = 2 }
-                }
-            }
+        {
+        trigger = 'on_summon',
+        tags = { 'lose_lp', 'draw' },
+        optional = true,
+        promptText = 'Do you want to lose 300 LP and draw 2 cards?',
+        actions = {
+        { action = 'lose_lp', target = 'self', amount = 300 },
+        { action = 'draw', target = 'self', amount = 2 }
+        }
+        }
         },
         setCode = 'ALPH1-EN002',
         edition = '1st Edition',
@@ -95,23 +99,25 @@ Cards = {
         level = 'LEVEL 2',
         speed = '5',
         attack = '40',
-        defense = '60',
+        defense = '80',
         effectTitle = 'EFFECT',
-        effectText = 'When this card is summoned, add 1 \'SAFR\' fighter from your deck. \'SAFR\' cards you control cannot be destroyed by card effects. This card is unaffected by burn effects.',
+        effectText = 'On summon you can add 1 \'SAFR\' fighter from your deck. \'SAFR\' cards you control cannot be destroyed by card effects. This card is unaffected by burn effects.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'on_summon', 'search_deck', 'destroy_immunity', 'burn_immunity' },
         effects = {
-            {
-                trigger = 'on_summon',
-                tags = { 'search_deck' },
-                actions = {
-                    {
-                        action = 'search_deck_to_hand',
-                        choose = true,
-                        promptText = 'Choose 1 SAFR Fighter card to add to your hand.',
-                        filter = { type = 'Fighter', jobContains = 'SAFR' }
-                    }
-                }
-            }
+        {
+        trigger = 'on_summon',
+        tags = { 'search_deck' },
+        actions = {
+        {
+        action = 'search_deck_to_hand',
+        choose = true,
+        promptText = 'Choose 1 SAFR Fighter card to add to your hand.',
+        filter = { type = 'Fighter', jobContains = 'SAFR' }
+        }
+        }
+        }
         },
         setCode = 'ALPH1-EN003',
         edition = '1st Edition',
@@ -123,27 +129,29 @@ Cards = {
         name = 'Wyatt Rayne',
         rarity = 'RARE',
         type = 'Fighter',
-        job = 'Mirror Park Auto Owner',
+        job = 'Los Santos Customs Owner',
         level = 'LEVEL 2',
         speed = '4',
         attack = '30',
         defense = '50',
         effectTitle = 'EFFECT',
-        effectText = "Add 1 'Riley's Performance' card from your deck.",
+        effectText = 'On summon you can add 1 \'Los Santos Customs\' card from your deck.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'on_summon', 'search_deck' },
         effects = {
-            {
-                trigger = 'on_summon',
-                tags = { 'search_deck' },
-                actions = {
-                    {
-                        action = 'search_deck_to_hand',
-                        choose = true,
-                        promptText = "Choose 1 Riley's Performance card to add to your hand.",
-                        filter = { nameContains = "Riley's Performance" }
-                    }
-                }
-            }
+        {
+        trigger = 'on_summon',
+        tags = { 'search_deck' },
+        actions = {
+        {
+        action = 'search_deck_to_hand',
+        choose = true,
+        promptText = "Choose 1 Los Santos Customs card to add to your hand.",
+        filter = { nameContains = "Los Santos Customs" }
+        }
+        }
+        }
         },
         setCode = 'ALPH1-EN004',
         edition = '1st Edition',
@@ -161,40 +169,42 @@ Cards = {
         attack = '30',
         defense = '50',
         effectTitle = 'WHITE SHORTS',
-        effectText = 'OPT: You can return this card to your hand and SP summon 1 \'Cougar\' from your deck. If you control \'Cougar\' you can tribute that card and SP summon this card from the hand or cemetery.',
+        effectText = 'OPT: You can return this card to your hand and SP summon 1 \'Cougar\' from your deck. If you control \'Cougar\' you can tribute that card and SP summon this card from the hand or cemetary.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'activated', 'return_to_hand', 'special_summon', 'tribute', 'once_per_turn' },
         effects = {
-            {
-                trigger = 'activated',
-                activationZones = { 'fighterZone' },
-                tags = { 'return_to_hand', 'special_summon', 'once_per_turn' },
-                oncePerTurn = true,
-                oncePerTurnKey = 'xena_cougar',
-                optional = true,
-                promptText = 'Return Xena to your hand and special summon 1 Cougar from your deck?',
-                actions = {
-                    {
-                        action = 'return_self_to_hand_and_special_summon_from_deck',
-                        filter = { type = 'Fighter', nameContains = 'Cougar', notCardId = 'ALPH1_EN005_XENA_COUGAR_MIRANOVA' }
-                    }
-                }
-            },
-            {
-                trigger = 'activated',
-                activationZones = { 'hand', 'graveyard' },
-                tags = { 'tribute', 'special_summon', 'once_per_turn' },
-                oncePerTurn = true,
-                oncePerTurnKey = 'xena_cougar',
-                optional = true,
-                condition = { ownControlsNameContains = 'Cougar', ownControlsNotCardId = 'ALPH1_EN005_XENA_COUGAR_MIRANOVA' },
-                promptText = 'Tribute 1 Cougar you control to special summon Xena from your hand or cemetery?',
-                actions = {
-                    {
-                        action = 'tribute_matching_fighter_and_special_summon_self',
-                        tributeFilter = { type = 'Fighter', nameContains = 'Cougar', notCardId = 'ALPH1_EN005_XENA_COUGAR_MIRANOVA' }
-                    }
-                }
-            }
+        {
+        trigger = 'activated',
+        activationZones = { 'fighterZone' },
+        tags = { 'return_to_hand', 'special_summon', 'once_per_turn' },
+        oncePerTurn = true,
+        oncePerTurnKey = 'xena_cougar',
+        optional = true,
+        promptText = 'Return Xena to your hand and special summon 1 Cougar from your deck?',
+        actions = {
+        {
+        action = 'return_self_to_hand_and_special_summon_from_deck',
+        filter = { type = 'Fighter', nameContains = 'Cougar', notCardId = 'ALPH1_EN005_XENA_COUGAR_MIRANOVA' }
+        }
+        }
+        },
+        {
+        trigger = 'activated',
+        activationZones = { 'hand', 'graveyard' },
+        tags = { 'tribute', 'special_summon', 'once_per_turn' },
+        oncePerTurn = true,
+        oncePerTurnKey = 'xena_cougar',
+        optional = true,
+        condition = { ownControlsNameContains = 'Cougar', ownControlsNotCardId = 'ALPH1_EN005_XENA_COUGAR_MIRANOVA' },
+        promptText = 'Tribute 1 Cougar you control to special summon Xena from your hand or cemetery?',
+        actions = {
+        {
+        action = 'tribute_matching_fighter_and_special_summon_self',
+        tributeFilter = { type = 'Fighter', nameContains = 'Cougar', notCardId = 'ALPH1_EN005_XENA_COUGAR_MIRANOVA' }
+        }
+        }
+        }
         },
         setCode = 'ALPH1-EN005',
         edition = '1st Edition',
@@ -213,20 +223,22 @@ Cards = {
         defense = '40',
         effectTitle = 'STOP AND SEARCH',
         effectText = 'Your opponent must discard any \'Contraband\' cards in their hand. This effect can only be used once per game.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'activated', 'discard', 'once_per_game' },
         effects = {
-            {
-                trigger = 'activated',
-                tags = { 'discard', 'once_per_game' },
-                oncePerGame = true,
-                actions = {
-                    {
-                        action = 'discard_matching_hand',
-                        target = 'opponent',
-                        filter = { nameContains = 'Contraband' }
-                    }
-                }
-            }
+        {
+        trigger = 'activated',
+        tags = { 'discard', 'once_per_game' },
+        oncePerGame = true,
+        actions = {
+        {
+        action = 'discard_matching_hand',
+        target = 'opponent',
+        filter = { nameContains = 'Contraband' }
+        }
+        }
+        }
         },
         setCode = 'ALPH1-EN006',
         edition = '1st Edition',
@@ -244,23 +256,25 @@ Cards = {
         attack = '20',
         defense = '30',
         effectTitle = 'EFFECT',
-        effectText = 'Equip 1 Vehicle card from your deck to a fighter on the field.',
+        effectText = 'On summon you can equip 1 Vehicle card from your deck to a fighter on the field.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'on_summon', 'equip', 'search_deck' },
         effects = {
-            {
-                trigger = 'on_summon',
-                tags = { 'equip', 'search_deck' },
-                optional = true,
-                promptText = 'Do you want to search your deck for a Vehicle card and equip it?',
-                actions = {
-                    {
-                        action = 'equip_from_deck',
-                        choose = true,
-                        promptText = 'Choose 1 Vehicle card from your deck to equip.',
-                        filter = { type = 'Vehicle' }
-                    }
-                }
-            }
+        {
+        trigger = 'on_summon',
+        tags = { 'equip', 'search_deck' },
+        optional = true,
+        promptText = 'Do you want to search your deck for a Vehicle card and equip it?',
+        actions = {
+        {
+        action = 'equip_from_deck',
+        choose = true,
+        promptText = 'Choose 1 Vehicle card from your deck to equip.',
+        filter = { type = 'Vehicle' }
+        }
+        }
+        }
         },
         setCode = 'ALPH1-EN007',
         edition = '1st Edition',
@@ -279,21 +293,24 @@ Cards = {
         defense = '50',
         effectTitle = 'Love the Way you Mine',
         effectText = 'While this card is the only fighter you control, it gains +50 ATK and +20 HP.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'continuous', 'stat_modifier' },
         effects = {
-            {
-                continuous = true,
-                tags = { 'stat_modifier' },
-                condition = { ownFighterCount = 1 },
-                actions = {
-                    {
-                        action = 'modify_stats',
-                        target = 'self',
-                        stats = { attack = 50, hp = 20 }
-                    }
-                }
-            }
+        {
+        continuous = true,
+        tags = { 'stat_modifier' },
+        condition = { ownFighterCount = 1 },
+        actions = {
+        {
+        action = 'modify_stats',
+        target = 'self',
+        stats = { attack = 50, hp = 20 }
+        }
+        }
+        }
         },
+        continuous = true,
         setCode = 'ALPH1-EN008',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN008_ALEX_CAVEMAN_ORTIZ.png'
@@ -311,19 +328,21 @@ Cards = {
         defense = '30',
         effectTitle = 'NO ZOEY, NO!',
         effectText = 'Steal your opponents shoes! All opponents fighters lose 4 SPD.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'on_summon', 'stat_modifier' },
         effects = {
-            {
-                trigger = 'on_summon',
-                tags = { 'stat_modifier' },
-                actions = {
-                    {
-                        action = 'modify_stats',
-                        target = 'all_opponent_fighters',
-                        stats = { speed = -4 }
-                    }
-                }
-            }
+        {
+        trigger = 'on_summon',
+        tags = { 'stat_modifier' },
+        actions = {
+        {
+        action = 'modify_stats',
+        target = 'all_opponent_fighters',
+        stats = { speed = -4 }
+        }
+        }
+        }
         },
         setCode = 'ALPH1-EN009',
         edition = '1st Edition',
@@ -341,21 +360,23 @@ Cards = {
         attack = '10',
         defense = '40',
         effectTitle = 'WHERE CAN I TAKE YA?',
-        effectText = 'Add any Location card from your deck.',
+        effectText = 'On summon you can add any Location card from your deck.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'on_summon', 'search_deck' },
         effects = {
-            {
-                trigger = 'on_summon',
-                tags = { 'search_deck' },
-                actions = {
-                    {
-                        action = 'search_deck_to_hand',
-                        choose = true,
-                        promptText = 'Choose 1 Location card to add to your hand.',
-                        filter = { type = 'Location' }
-                    }
-                }
-            }
+        {
+        trigger = 'on_summon',
+        tags = { 'search_deck' },
+        actions = {
+        {
+        action = 'search_deck_to_hand',
+        choose = true,
+        promptText = 'Choose 1 Location card to add to your hand.',
+        filter = { type = 'Location' }
+        }
+        }
+        }
         },
         setCode = 'ALPH1-EN010',
         edition = '1st Edition',
@@ -373,7 +394,40 @@ Cards = {
         attack = '40',
         defense = '60',
         effectTitle = 'EMT/DRIFTER',
-        effectText = 'If you control 2 or more vehicle cards, revive 1 fighter from your cemetery. If you control less than 2, you can add 1 \'bandage\' card from your deck to your hand.',
+        effectText = 'On summon, If you control 2 or more vehicle cards, add 1 \'AED\' from your deck to your hand. If you control less than 2, you can add 1 \'bandage\' card from your deck to your hand.',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'on_summon', 'search_deck' },
+        effects = {
+        {
+        trigger = 'on_summon',
+        tags = { 'search_deck' },
+        condition = { ownEquipmentCountMin = 2 },
+        actions = {
+        {
+        action = 'search_deck_to_hand',
+        choose = true,
+        promptText = 'Choose 1 AED card to add to your hand.',
+        filter = { nameContains = 'AED' }
+        }
+        }
+        },
+        {
+        trigger = 'on_summon',
+        tags = { 'search_deck' },
+        optional = true,
+        condition = { ownEquipmentCountMax = 1 },
+        promptText = 'Do you want to add 1 Bandage card from your deck to your hand?',
+        actions = {
+        {
+        action = 'search_deck_to_hand',
+        choose = true,
+        promptText = 'Choose 1 Bandage card to add to your hand.',
+        filter = { nameContains = 'Bandage' }
+        }
+        }
+        }
+        },
         setCode = 'ALPH1-EN011',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN011_FINNAGEN_SKYTECH.png'
@@ -391,13 +445,35 @@ Cards = {
         defense = '30',
         effectTitle = 'POACHED',
         effectText = 'If this card is killed in battle, summon 1 \'USFW\' card from your deck or hand.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN012',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN012_COUGAR.png'
     },
 
-    ['ALPH1_EN013_LAYLA_HART'] = {
-        id = 'ALPH1_EN013_LAYLA_HART',
+    ['ALPH1_EN013_TOLL_BOOTH'] = {
+        id = 'ALPH1_EN013_TOLL_BOOTH',
+        name = 'Toll booth',
+        rarity = 'SECRET',
+        type = 'Item',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'THIS IS BALANCED.. RIGHT?',
+        effectText = 'Discard this card, each time your opponent SP summons a fighter this turn, draw 1 card.',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'activated', 'discard', 'special_summon', 'draw', 'turn_modifier' },
+        setCode = 'ALPH1-EN013',
+        edition = '1st Edition',
+        inventoryImage = 'ALPH1-EN013_TOLL_BOOTH.png'
+    },
+
+    ['ALPH1_EN014_LAYLA_HART'] = {
+        id = 'ALPH1_EN014_LAYLA_HART',
         name = 'Layla Hart',
         rarity = 'ULTRA',
         type = 'Fighter',
@@ -407,14 +483,17 @@ Cards = {
         attack = '30',
         defense = '50',
         effectTitle = 'YOUR PACK IS IN THE TRAY!',
-        effectText = 'You can banish this card from your cemetery to draw 3 cards, then discard 1.',
-        setCode = 'ALPH1-EN013',
+        effectText = 'You can banish this card from your cemetery to draw 3 cards, then discard 1. Your opponent also draws 1 card.',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'activated', 'cemetery', 'banish', 'draw', 'discard' },
+        setCode = 'ALPH1-EN014',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN013_LAYLA_HART.png'
+        inventoryImage = 'ALPH1-EN014_LAYLA_HART.png'
     },
 
-    ['ALPH1_EN014_ZACK_GATOR'] = {
-        id = 'ALPH1_EN014_ZACK_GATOR',
+    ['ALPH1_EN015_ZACK_GATOR'] = {
+        id = 'ALPH1_EN015_ZACK_GATOR',
         name = 'Zack Gator',
         rarity = 'COMMON',
         type = 'Fighter',
@@ -424,65 +503,103 @@ Cards = {
         attack = '30',
         defense = '40',
         effectTitle = 'HE PROTECC',
-        effectText = 'All animal cards you control gain +30 HP.',
-        setCode = 'ALPH1-EN014',
+        effectText = 'While this card is on the field, all animal cards you control gain +40 HP.',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'continuous', 'stat_modifier', 'animal' },
+        setCode = 'ALPH1-EN015',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN014_ZACK_GATOR.png'
+        inventoryImage = 'ALPH1-EN015_ZACK_GATOR.png'
     },
 
-    ['ALPH1_EN015_HAYES_TOWING'] = {
-        id = 'ALPH1_EN015_HAYES_TOWING',
+    ['ALPH1_EN016_HAYES_TOWING'] = {
+        id = 'ALPH1_EN016_HAYES_TOWING',
         name = 'Hayes Towing',
         rarity = 'COMMON',
         type = 'Location',
         job = '',
-        level = 'LEVEL 1',
+        level = '',
         speed = '',
         attack = '',
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'Once per turn, take control of one of your opponents vehicle cards. You opponent can sacrafice 1 card they control to get their vehicle card back in their control. If you cannot control any more vehicles, destroy this card.',
-        setCode = 'ALPH1-EN015',
-        edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN015_HAYES_TOWING.png'
-    },
-
-    ['ALPH1_EN016_KENCHIE'] = {
-        id = 'ALPH1_EN016_KENCHIE',
-        name = 'Kenchie',
-        rarity = 'COMMON',
-        type = 'Fighter',
-        job = 'Wizard',
-        level = 'LEVEL 1',
-        speed = '3',
-        attack = '50',
-        defense = '60',
-        effectTitle = 'ABRA KADABUNNY?',
-        effectText = 'Target 1 \'Fighter\' card, send it to the cemetary and SP summon 1 \'animal\' card in its place.',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'activated', 'control', 'vehicle', 'once_per_turn' },
         setCode = 'ALPH1-EN016',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN016_KENCHIE.png'
+        inventoryImage = 'ALPH1-EN016_HAYES_TOWING.png'
     },
 
-    ['ALPH1_EN017_ICEMAN_HERNANDEZ'] = {
-        id = 'ALPH1_EN017_ICEMAN_HERNANDEZ',
-        name = 'Iceman Hernandez',
-        rarity = 'SUPER',
+    ['ALPH1_EN017_REDEMPTION_LUNA_RAYNE'] = {
+        id = 'ALPH1_EN017_REDEMPTION_LUNA_RAYNE',
+        name = 'Redemption Luna Rayne',
+        rarity = 'RARE',
         type = 'Fighter',
         job = '',
         level = 'LEVEL 1',
         speed = '3',
-        attack = '30',
-        defense = '40',
-        effectTitle = 'YOU\'RE HIRED!',
-        effectText = 'Add 1 level 2 or higher card from your deck.',
+        attack = '20',
+        defense = '30',
+        effectTitle = 'TAG TEAM',
+        effectText = 'OPT on summon, if you control no other fighters, you can special summon 1 level 1 Trey Rayne from your hand or deck.',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'on_summon', 'special_summon', 'once_per_turn' },
+        effects = {
+        {
+        trigger = 'on_summon',
+        tags = { 'special_summon', 'once_per_turn' },
+        optional = true,
+        oncePerTurn = true,
+        condition = { ownFighterCount = 1 },
+        promptText = 'Do you want to special summon 1 Level 1 Trey Rayne from your hand or deck?',
+        actions = {
+        { action = 'special_summon_from_hand_or_deck', filter = { type = 'Fighter', level = 1, nameContains = 'Trey Rayne' } }
+        }
+        }
+        },
         setCode = 'ALPH1-EN017',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN017_ICEMAN_HERNANDEZ.png'
+        inventoryImage = 'ALPH1-EN017_REDEMPTION_LUNA_RAYNE.png'
     },
 
-    ['ALPH1_EN018_NIKOLAS_HAAJA'] = {
-        id = 'ALPH1_EN018_NIKOLAS_HAAJA',
+    ['ALPH1_EN018_REDEMPTION_TREY_RAYNE'] = {
+        id = 'ALPH1_EN018_REDEMPTION_TREY_RAYNE',
+        name = 'Redemption Trey Rayne',
+        rarity = 'RARE',
+        type = 'Fighter',
+        job = '',
+        level = 'LEVEL 1',
+        speed = '3',
+        attack = '20',
+        defense = '30',
+        effectTitle = 'TAG TEAM',
+        effectText = 'OPT on summon, if you control no other fighters, you can special summon 1 level 1 Luna Rayne from your hand or deck.',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'on_summon', 'special_summon', 'once_per_turn' },
+        effects = {
+        {
+        trigger = 'on_summon',
+        tags = { 'special_summon', 'once_per_turn' },
+        optional = true,
+        oncePerTurn = true,
+        condition = { ownFighterCount = 1 },
+        promptText = 'Do you want to special summon 1 Level 1 Luna Rayne from your hand or deck?',
+        actions = {
+        { action = 'special_summon_from_hand_or_deck', filter = { type = 'Fighter', level = 1, nameContains = 'Luna Rayne' } }
+        }
+        }
+        },
+        setCode = 'ALPH1-EN018',
+        edition = '1st Edition',
+        inventoryImage = 'ALPH1-EN018_REDEMPTION_TREY_RAYNE.png'
+    },
+
+    ['ALPH1_EN019_NIKOLAS_HAAJA'] = {
+        id = 'ALPH1_EN019_NIKOLAS_HAAJA',
         name = 'Nikolas Haaja',
         rarity = 'COMMON',
         type = 'Fighter',
@@ -493,13 +610,16 @@ Cards = {
         defense = '30',
         effectTitle = 'EFFECT',
         effectText = 'After 2 turns, promote this card to a level 2 \'Nikolas\' card from your deck.',
-        setCode = 'ALPH1-EN018',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'delayed', 'promotion', 'search_deck' },
+        setCode = 'ALPH1-EN019',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN018_NIKOLAS_HAAJA.png'
+        inventoryImage = 'ALPH1-EN019_NIKOLAS_HAAJA.png'
     },
 
-    ['ALPH1_EN019_MAX_TURNER_MIRANOVA'] = {
-        id = 'ALPH1_EN019_MAX_TURNER_MIRANOVA',
+    ['ALPH1_EN020_MAX_TURNER_MIRANOVA'] = {
+        id = 'ALPH1_EN020_MAX_TURNER_MIRANOVA',
         name = 'Max Turner Miranova',
         rarity = 'COMMON',
         type = 'Fighter',
@@ -510,13 +630,29 @@ Cards = {
         defense = '30',
         effectTitle = 'BROTHERS',
         effectText = 'If you control \'Wyatt Rayne\', you can special summon this card from your hand.',
-        setCode = 'ALPH1-EN019',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'activated', 'special_summon' },
+        effects = {
+        {
+        trigger = 'activated',
+        activationZones = { 'hand' },
+        tags = { 'special_summon' },
+        optional = true,
+        condition = { ownControlsNameContains = 'Wyatt Rayne' },
+        promptText = 'Do you want to special summon Max Turner Miranova from your hand?',
+        actions = {
+        { action = 'special_summon_self_from_hand' }
+        }
+        }
+        },
+        setCode = 'ALPH1-EN020',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN019_MAX_TURNER_MIRANOVA.png'
+        inventoryImage = 'ALPH1-EN020_MAX_TURNER_MIRANOVA.png'
     },
 
-    ['ALPH1_EN020_WYATT_RAYNE'] = {
-        id = 'ALPH1_EN020_WYATT_RAYNE',
+    ['ALPH1_EN021_WYATT_RAYNE'] = {
+        id = 'ALPH1_EN021_WYATT_RAYNE',
         name = 'Wyatt Rayne',
         rarity = 'COMMON',
         type = 'Fighter',
@@ -527,13 +663,29 @@ Cards = {
         defense = '40',
         effectTitle = 'BROTHERS',
         effectText = 'If you control \'Max Turner Miranova\', you can special summon this card from your hand.',
-        setCode = 'ALPH1-EN020',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'activated', 'special_summon' },
+        effects = {
+        {
+        trigger = 'activated',
+        activationZones = { 'hand' },
+        tags = { 'special_summon' },
+        optional = true,
+        condition = { ownControlsNameContains = 'Max Turner Miranova' },
+        promptText = 'Do you want to special summon Wyatt Rayne from your hand?',
+        actions = {
+        { action = 'special_summon_self_from_hand' }
+        }
+        }
+        },
+        setCode = 'ALPH1-EN021',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN020_WYATT_RAYNE.png'
+        inventoryImage = 'ALPH1-EN021_WYATT_RAYNE.png'
     },
 
-    ['ALPH1_EN021_JAY_MOZZY'] = {
-        id = 'ALPH1_EN021_JAY_MOZZY',
+    ['ALPH1_EN022_JAY_MOZZY'] = {
+        id = 'ALPH1_EN022_JAY_MOZZY',
         name = 'Jay Mozzy',
         rarity = 'ULTRA',
         type = 'Fighter',
@@ -544,30 +696,36 @@ Cards = {
         defense = '60',
         effectTitle = 'EFFECT',
         effectText = 'Once per turn, you can discard 1 card from your hand. If the card was a location card, you can search for 1 location or item card from your deck. If the card was a fighter card, you can search for 1 Level 2 fighter from your deck.',
-        setCode = 'ALPH1-EN021',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'activated', 'discard', 'search_deck', 'once_per_turn' },
+        setCode = 'ALPH1-EN022',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN021_JAY_MOZZY.png'
+        inventoryImage = 'ALPH1-EN022_JAY_MOZZY.png'
     },
 
-    ['ALPH1_EN022_XENA_MIRANOVA'] = {
-        id = 'ALPH1_EN022_XENA_MIRANOVA',
+    ['ALPH1_EN023_XENA_MIRANOVA'] = {
+        id = 'ALPH1_EN023_XENA_MIRANOVA',
         name = 'Xena Miranova',
         rarity = 'SECRET',
         type = 'Fighter',
         job = 'Chief EMS',
         level = 'LEVEL 2',
         speed = '4',
-        attack = '20',
-        defense = '60',
+        attack = '40',
+        defense = '90',
         effectTitle = '5MG OF MORPHINE STAT!',
         effectText = 'Each time an item card is used, place 1 \'Healing\' token on this card. You can remove 3 \'Healing\' tokens to restore 1 fighters HP to its base value.',
-        setCode = 'ALPH1-EN022',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'on_play', 'token', 'heal' },
+        setCode = 'ALPH1-EN023',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN022_XENA_MIRANOVA.png'
+        inventoryImage = 'ALPH1-EN023_XENA_MIRANOVA.png'
     },
 
-    ['ALPH1_EN023_JAY_MOZZY'] = {
-        id = 'ALPH1_EN023_JAY_MOZZY',
+    ['ALPH1_EN024_JAY_MOZZY'] = {
+        id = 'ALPH1_EN024_JAY_MOZZY',
         name = 'Jay Mozzy',
         rarity = 'RARE',
         type = 'Fighter',
@@ -578,13 +736,30 @@ Cards = {
         defense = '40',
         effectTitle = 'GET BAKED',
         effectText = 'Add 1 \'Doobie\' card to your hand. Also target 1 fighter on the field, reduce its SPD to 1.',
-        setCode = 'ALPH1-EN023',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'on_summon', 'search_deck', 'stat_modifier' },
+        effects = {
+        {
+        trigger = 'on_summon',
+        tags = { 'search_deck' },
+        actions = {
+        {
+        action = 'search_deck_to_hand',
+        choose = true,
+        promptText = 'Choose 1 Doobie card to add to your hand.',
+        filter = { nameContains = 'Doobie' }
+        }
+        }
+        }
+        },
+        setCode = 'ALPH1-EN024',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN023_JAY_MOZZY.png'
+        inventoryImage = 'ALPH1-EN024_JAY_MOZZY.png'
     },
 
-    ['ALPH1_EN024_BANDAGE'] = {
-        id = 'ALPH1_EN024_BANDAGE',
+    ['ALPH1_EN025_BANDAGE'] = {
+        id = 'ALPH1_EN025_BANDAGE',
         name = 'Bandage',
         rarity = 'COMMON',
         type = 'Item',
@@ -595,23 +770,25 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'Heal 1 of your fighters for +30 HP. Also flip a coin, if tails, remove any \'bleed\' effect.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'on_play', 'heal', 'coin_flip' },
         effects = {
-            {
-                trigger = 'on_play',
-                tags = { 'heal' },
-                actions = {
-                    { action = 'heal_all_fighters', target = 'self', amount = 30 }
-                }
-            }
+        {
+        trigger = 'on_play',
+        tags = { 'heal' },
+        actions = {
+        { action = 'heal_all_fighters', target = 'self', amount = 30 }
+        }
+        }
         },
-        setCode = 'ALPH1-EN024',
+        setCode = 'ALPH1-EN025',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN024_BANDAGE.png'
+        inventoryImage = 'ALPH1-EN025_BANDAGE.png'
     },
 
-    ['ALPH1_EN025_BROCK_LEE'] = {
-        id = 'ALPH1_EN025_BROCK_LEE',
+    ['ALPH1_EN026_BROCK_LEE'] = {
+        id = 'ALPH1_EN026_BROCK_LEE',
         name = 'Brock Lee',
         rarity = 'RARE',
         type = 'Fighter',
@@ -622,13 +799,30 @@ Cards = {
         defense = '30',
         effectTitle = 'WABBIT',
         effectText = 'Add 1 \'Twitchy Wabbit\' card to your hand.',
-        setCode = 'ALPH1-EN025',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'on_summon', 'search_deck' },
+        effects = {
+        {
+        trigger = 'on_summon',
+        tags = { 'search_deck' },
+        actions = {
+        {
+        action = 'search_deck_to_hand',
+        choose = true,
+        promptText = 'Choose 1 Twitchy Wabbit card to add to your hand.',
+        filter = { nameContains = 'Twitchy Wabbit' }
+        }
+        }
+        }
+        },
+        setCode = 'ALPH1-EN026',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN025_BROCK_LEE.png'
+        inventoryImage = 'ALPH1-EN026_BROCK_LEE.png'
     },
 
-    ['ALPH1_EN026_WULFRIK_CHAOSBANE'] = {
-        id = 'ALPH1_EN026_WULFRIK_CHAOSBANE',
+    ['ALPH1_EN027_WULFRIK_CHAOSBANE'] = {
+        id = 'ALPH1_EN027_WULFRIK_CHAOSBANE',
         name = 'Wulfrik Chaosbane',
         rarity = 'COMMON',
         type = 'Fighter',
@@ -639,13 +833,16 @@ Cards = {
         defense = '30',
         effectTitle = 'EFFECT',
         effectText = 'This card takes no damage from \'Crow\' cards.',
-        setCode = 'ALPH1-EN026',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'damage_immunity' },
+        setCode = 'ALPH1-EN027',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN026_WULFRIK_CHAOSBANE.png'
+        inventoryImage = 'ALPH1-EN027_WULFRIK_CHAOSBANE.png'
     },
 
-    ['ALPH1_EN027_CROW'] = {
-        id = 'ALPH1_EN027_CROW',
+    ['ALPH1_EN028_CROW'] = {
+        id = 'ALPH1_EN028_CROW',
         name = 'Crow',
         rarity = 'SUPER',
         type = 'Fighter',
@@ -656,13 +853,16 @@ Cards = {
         defense = '10',
         effectTitle = 'CAW',
         effectText = 'Your opponent must CAW! or they lose the duel.',
-        setCode = 'ALPH1-EN027',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'duel_loss' },
+        setCode = 'ALPH1-EN028',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN027_CROW.png'
+        inventoryImage = 'ALPH1-EN028_CROW.png'
     },
 
-    ['ALPH1_EN028_BOB_HODGES'] = {
-        id = 'ALPH1_EN028_BOB_HODGES',
+    ['ALPH1_EN029_BOB_HODGES'] = {
+        id = 'ALPH1_EN029_BOB_HODGES',
         name = 'Bob Hodges',
         rarity = 'COMMON',
         type = 'Fighter',
@@ -673,13 +873,30 @@ Cards = {
         defense = '40',
         effectTitle = 'NORTHERN KINDA GUY',
         effectText = 'Add 1 \'Paleto\' location card from your deck.',
-        setCode = 'ALPH1-EN028',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'on_summon', 'search_deck' },
+        effects = {
+        {
+        trigger = 'on_summon',
+        tags = { 'search_deck' },
+        actions = {
+        {
+        action = 'search_deck_to_hand',
+        choose = true,
+        promptText = 'Choose 1 Paleto Location card to add to your hand.',
+        filter = { type = 'Location', nameContains = 'Paleto' }
+        }
+        }
+        }
+        },
+        setCode = 'ALPH1-EN029',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN028_BOB_HODGES.png'
+        inventoryImage = 'ALPH1-EN029_BOB_HODGES.png'
     },
 
-    ['ALPH1_EN029_BOB_HODGES'] = {
-        id = 'ALPH1_EN029_BOB_HODGES',
+    ['ALPH1_EN030_BOB_HODGES'] = {
+        id = 'ALPH1_EN030_BOB_HODGES',
         name = 'Bob Hodges',
         rarity = 'RARE',
         type = 'Fighter',
@@ -687,18 +904,21 @@ Cards = {
         level = 'LEVEL 2',
         speed = '2',
         attack = '30',
-        defense = '60',
+        defense = '80',
         effectTitle = 'BUSH IMMUNITY',
         effectText = 'If you control a \'Bobs Bush\' card, this card cannot be targeted by opponents card effects.',
-        setCode = 'ALPH1-EN029',
+        cardTags = {},
+        legality = '',
+        effectTags = { 'continuous', 'target_immunity' },
+        setCode = 'ALPH1-EN030',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN029_BOB_HODGES.png'
+        inventoryImage = 'ALPH1-EN030_BOB_HODGES.png'
     },
 
-    ['ALPH1_EN030_YUKA_KASEN'] = {
-        id = 'ALPH1_EN030_YUKA_KASEN',
+    ['ALPH1_EN031_YUKA_KASEN'] = {
+        id = 'ALPH1_EN031_YUKA_KASEN',
         name = 'Yuka Kasen',
-        rarity = 'ULTRA',
+        rarity = 'SUPER',
         type = 'Fighter',
         job = 'Diamond Casino Manager',
         level = 'LEVEL 1',
@@ -707,13 +927,15 @@ Cards = {
         defense = '50',
         effectTitle = 'DON\'T TEST ME',
         effectText = 'Roll a 6 sided dice, if 3 or higher, destroy 1 of your opponents cards. If you roll a 1, destroy one of your own cards.',
-        setCode = 'ALPH1-EN030',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN031',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN030_YUKA_KASEN.png'
+        inventoryImage = 'ALPH1-EN031_YUKA_KASEN.png'
     },
 
-    ['ALPH1_EN031_SEN_GANBE'] = {
-        id = 'ALPH1_EN031_SEN_GANBE',
+    ['ALPH1_EN032_SEN_GANBE'] = {
+        id = 'ALPH1_EN032_SEN_GANBE',
         name = 'Sen Ganbe',
         rarity = 'ULTRA',
         type = 'Fighter',
@@ -724,13 +946,15 @@ Cards = {
         defense = '40',
         effectTitle = 'RETURN TO SENDER',
         effectText = 'When a \'Casino\' card is attacked, roll a 6 sided dice. If you roll 4 or higher, the attacker is destroyed instead.',
-        setCode = 'ALPH1-EN031',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN032',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN031_SEN_GANBE.png'
+        inventoryImage = 'ALPH1-EN032_SEN_GANBE.png'
     },
 
-    ['ALPH1_EN032_HIROSHI_YAMATO'] = {
-        id = 'ALPH1_EN032_HIROSHI_YAMATO',
+    ['ALPH1_EN033_HIROSHI_YAMATO'] = {
+        id = 'ALPH1_EN033_HIROSHI_YAMATO',
         name = 'Hiroshi Yamato',
         rarity = 'ULTRA',
         type = 'Fighter',
@@ -741,15 +965,17 @@ Cards = {
         defense = '30',
         effectTitle = 'UHH I DON\'T THINK SO!',
         effectText = 'When a \'Casino\' location, item or event card is targeted for destruction, flip a coin, if heads the card is not destroyed.',
-        setCode = 'ALPH1-EN032',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN033',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN032_HIROSHI_YAMATO.png'
+        inventoryImage = 'ALPH1-EN033_HIROSHI_YAMATO.png'
     },
 
-    ['ALPH1_EN033_HAO_YAMATO'] = {
-        id = 'ALPH1_EN033_HAO_YAMATO',
+    ['ALPH1_EN034_HAO_YAMATO'] = {
+        id = 'ALPH1_EN034_HAO_YAMATO',
         name = 'Hao Yamato',
-        rarity = 'ULTRA',
+        rarity = 'SUPER',
         type = 'Fighter',
         job = 'Diamond Casino Director',
         level = 'LEVEL 2',
@@ -758,47 +984,53 @@ Cards = {
         defense = '70',
         effectTitle = 'ORGANISE',
         effectText = 'Add 1 \'Casino\' card to your hand.',
-        setCode = 'ALPH1-EN033',
-        edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN033_HAO_YAMATO.png'
-    },
-
-    ['ALPH1_EN034_PADDY_SOULJA'] = {
-        id = 'ALPH1_EN034_PADDY_SOULJA',
-        name = 'Paddy Soulja',
-        rarity = 'RARE',
-        type = 'Fighter',
-        job = '',
-        level = 'LEVEL 1',
-        speed = '2',
-        attack = '40',
-        defense = '30',
-        effectTitle = 'HAZE DER U NO',
-        effectText = 'This card gains +20 HP for every \'Weed\' card in your cemetery.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN034',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN034_PADDY_SOULJA.png'
+        inventoryImage = 'ALPH1-EN034_HAO_YAMATO.png'
     },
 
-    ['ALPH1_EN035_BRADLEY_BK_KRAY'] = {
-        id = 'ALPH1_EN035_BRADLEY_BK_KRAY',
-        name = 'Bradley \'BK\' Kray',
+    ['ALPH1_EN035_KENCHIE_DAWSON'] = {
+        id = 'ALPH1_EN035_KENCHIE_DAWSON',
+        name = 'Kenchie Dawson',
         rarity = 'COMMON',
         type = 'Fighter',
-        job = '',
+        job = 'Wizard',
         level = 'LEVEL 1',
-        speed = '4',
-        attack = '30',
-        defense = '20',
-        effectTitle = 'M.I.C.K.E.Y',
-        effectText = 'Your opponent must do a mickey mouse impression, otherwise you gain +30 LP.',
+        speed = '3',
+        attack = '50',
+        defense = '60',
+        effectTitle = 'ABRA KADABUNNY?',
+        effectText = 'If your opponent summons 3 or more fighters this turn, tribute all of their fighters for 1x L1 \'Bunny token\' with 40 ATK, 40 HP and 3 SPD. Then summon this card to your field.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN035',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN035_BRADLEY_\'BK\'_KRAY.png'
+        inventoryImage = 'ALPH1-EN035_KENCHIE_DAWSON.png'
     },
 
-    ['ALPH1_EN036_LUKE_TAYLOR'] = {
-        id = 'ALPH1_EN036_LUKE_TAYLOR',
+    ['ALPH1_EN036'] = {
+        id = 'ALPH1_EN036',
+        name = '',
+        rarity = '',
+        type = '',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = '',
+        effectText = '',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN036',
+        edition = '1st Edition',
+        inventoryImage = 'ALPH1-EN036.png'
+    },
+
+    ['ALPH1_EN037_LUKE_TAYLOR'] = {
+        id = 'ALPH1_EN037_LUKE_TAYLOR',
         name = 'Luke Taylor',
         rarity = 'SUPER',
         type = 'Fighter',
@@ -807,15 +1039,17 @@ Cards = {
         speed = '4',
         attack = '50',
         defense = '40',
-        effectTitle = 'HARVEST',
-        effectText = 'Send any plant or animal card to the cemetary, after 2 turns add any item card from your deck.',
-        setCode = 'ALPH1-EN036',
+        effectTitle = '',
+        effectText = '',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN037',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN036_LUKE_TAYLOR.png'
+        inventoryImage = 'ALPH1-EN037_LUKE_TAYLOR.png'
     },
 
-    ['ALPH1_EN037_KENCHIE_DAWSON'] = {
-        id = 'ALPH1_EN037_KENCHIE_DAWSON',
+    ['ALPH1_EN038_KENCHIE_DAWSON'] = {
+        id = 'ALPH1_EN038_KENCHIE_DAWSON',
         name = 'Kenchie Dawson',
         rarity = 'ULTRA',
         type = 'Fighter',
@@ -823,33 +1057,37 @@ Cards = {
         level = 'LEVEL 2',
         speed = '5',
         attack = '30',
-        defense = '30',
+        defense = '60',
         effectTitle = 'THIS JUST IN!',
-        effectText = 'Target 1 of your opponents fighters. This card gains the effect of the card you targeted for this turn.',
-        setCode = 'ALPH1-EN037',
-        edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN037_KENCHIE_DAWSON.png'
-    },
-
-    ['ALPH1_EN038_MATTEO_PIAZZA'] = {
-        id = 'ALPH1_EN038_MATTEO_PIAZZA',
-        name = 'Matteo Piazza',
-        rarity = 'RARE',
-        type = 'Fighter',
-        job = 'LSC Mechanic',
-        level = 'LEVEL 2',
-        speed = '4',
-        attack = '40',
-        defense = '40',
-        effectTitle = 'Los Snail Customs',
-        effectText = 'Add any \'Vehicle Upgrade\' card to your hand. This card then loses -2 SPD.',
+        effectText = 'Target 1 of your fighters in the cemetery. This card gains the effect of the card you targeted for this turn.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN038',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN038_MATTEO_PIAZZA.png'
+        inventoryImage = 'ALPH1-EN038_KENCHIE_DAWSON.png'
     },
 
-    ['ALPH1_EN039_MATT_JACKSON'] = {
-        id = 'ALPH1_EN039_MATT_JACKSON',
+    ['ALPH1_EN039'] = {
+        id = 'ALPH1_EN039',
+        name = '',
+        rarity = '',
+        type = '',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = '',
+        effectText = '',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN039',
+        edition = '1st Edition',
+        inventoryImage = 'ALPH1-EN039.png'
+    },
+
+    ['ALPH1_EN040_MATT_JACKSON'] = {
+        id = 'ALPH1_EN040_MATT_JACKSON',
         name = 'Matt Jackson',
         rarity = 'RARE',
         type = 'Fighter',
@@ -860,13 +1098,15 @@ Cards = {
         defense = '50',
         effectTitle = 'Manufacture',
         effectText = 'Discard 1 card, then search 1 \'Backpack\' card from your deck.',
-        setCode = 'ALPH1-EN039',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN040',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN039_MATT_JACKSON.png'
+        inventoryImage = 'ALPH1-EN040_MATT_JACKSON.png'
     },
 
-    ['ALPH1_EN040_AMNESTY'] = {
-        id = 'ALPH1_EN040_AMNESTY',
+    ['ALPH1_EN041_AMNESTY'] = {
+        id = 'ALPH1_EN041_AMNESTY',
         name = 'Amnesty',
         rarity = 'SUPER',
         type = 'Event',
@@ -877,13 +1117,15 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'All weapons must be destroyed by both players. Neither player takes damage to their LP this turn.',
-        setCode = 'ALPH1-EN040',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN041',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN040_AMNESTY.png'
+        inventoryImage = 'ALPH1-EN041_AMNESTY.png'
     },
 
-    ['ALPH1_EN041_LEPRECHAUN_MISCHIEF_2026'] = {
-        id = 'ALPH1_EN041_LEPRECHAUN_MISCHIEF_2026',
+    ['ALPH1_EN042_LEPRECHAUN_MISCHIEF_2026'] = {
+        id = 'ALPH1_EN042_LEPRECHAUN_MISCHIEF_2026',
         name = 'Leprechaun Mischief 2026',
         rarity = 'SECRET',
         type = 'Event',
@@ -894,13 +1136,15 @@ Cards = {
         defense = '',
         effectTitle = 'RESET!',
         effectText = 'Both players shuffle all cards back into the deck and redraw 4 cards.',
-        setCode = 'ALPH1-EN041',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN042',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN041_LEPRECHAUN_MISCHIEF_2026.png'
+        inventoryImage = 'ALPH1-EN042_LEPRECHAUN_MISCHIEF_2026.png'
     },
 
-    ['ALPH1_EN042_HEADPOP'] = {
-        id = 'ALPH1_EN042_HEADPOP',
+    ['ALPH1_EN043_HEADPOP'] = {
+        id = 'ALPH1_EN043_HEADPOP',
         name = 'Headpop',
         rarity = 'SUPER',
         type = 'Event',
@@ -911,13 +1155,15 @@ Cards = {
         defense = '',
         effectTitle = 'CODE 0',
         effectText = 'Send one of your opponents fighters to the cemetery.',
-        setCode = 'ALPH1-EN042',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN043',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN042_HEADPOP.png'
+        inventoryImage = 'ALPH1-EN043_HEADPOP.png'
     },
 
-    ['ALPH1_EN043_MASS_HEADPOP'] = {
-        id = 'ALPH1_EN043_MASS_HEADPOP',
+    ['ALPH1_EN044_MASS_HEADPOP'] = {
+        id = 'ALPH1_EN044_MASS_HEADPOP',
         name = 'Mass Headpop',
         rarity = 'ULTRA',
         type = 'Event',
@@ -928,13 +1174,15 @@ Cards = {
         defense = '',
         effectTitle = 'CODE 0',
         effectText = 'Send all fighters on the field to the cemetary.',
-        setCode = 'ALPH1-EN043',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN044',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN043_MASS_HEADPOP.png'
+        inventoryImage = 'ALPH1-EN044_MASS_HEADPOP.png'
     },
 
-    ['ALPH1_EN044_VACATION_TO_BAHAMAS'] = {
-        id = 'ALPH1_EN044_VACATION_TO_BAHAMAS',
+    ['ALPH1_EN045_VACATION_TO_BAHAMAS'] = {
+        id = 'ALPH1_EN045_VACATION_TO_BAHAMAS',
         name = 'Vacation to Bahamas',
         rarity = 'RARE',
         type = 'Event',
@@ -945,13 +1193,15 @@ Cards = {
         defense = '',
         effectTitle = 'BYE BYE!',
         effectText = 'Reduce your LP by -20, then target 1 of your opponents fighters and remove it from play for the rest of this game.',
-        setCode = 'ALPH1-EN044',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN045',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN044_VACATION_TO_BAHAMAS.png'
+        inventoryImage = 'ALPH1-EN045_VACATION_TO_BAHAMAS.png'
     },
 
-    ['ALPH1_EN045_PINK_GRAPPLE_GUN'] = {
-        id = 'ALPH1_EN045_PINK_GRAPPLE_GUN',
+    ['ALPH1_EN046_PINK_GRAPPLE_GUN'] = {
+        id = 'ALPH1_EN046_PINK_GRAPPLE_GUN',
         name = 'Pink Grapple Gun',
         rarity = 'COMMON',
         type = 'Item',
@@ -962,13 +1212,15 @@ Cards = {
         defense = '',
         effectTitle = 'Yoink!',
         effectText = 'When one of your fighters is attacked, send this card to the cemetery, negate the attack and return your fighter to your hand.',
-        setCode = 'ALPH1-EN045',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN046',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN045_PINK_GRAPPLE_GUN.png'
+        inventoryImage = 'ALPH1-EN046_PINK_GRAPPLE_GUN.png'
     },
 
-    ['ALPH1_EN046_AED'] = {
-        id = 'ALPH1_EN046_AED',
+    ['ALPH1_EN047_AED'] = {
+        id = 'ALPH1_EN047_AED',
         name = 'AED',
         rarity = 'SUPER',
         type = 'Item',
@@ -979,13 +1231,15 @@ Cards = {
         defense = '',
         effectTitle = 'Revive',
         effectText = 'Revive one of your fighters from your cemetery.',
-        setCode = 'ALPH1-EN046',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN047',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN046_AED.png'
+        inventoryImage = 'ALPH1-EN047_AED.png'
     },
 
-    ['ALPH1_EN047_BLUE_METH'] = {
-        id = 'ALPH1_EN047_BLUE_METH',
+    ['ALPH1_EN048_BLUE_METH'] = {
+        id = 'ALPH1_EN048_BLUE_METH',
         name = 'Blue Meth',
         rarity = 'SUPER',
         type = 'Item',
@@ -996,13 +1250,15 @@ Cards = {
         defense = '',
         effectTitle = 'Heisennburg',
         effectText = 'The equipped fighter gains +50 HP for 3 turns. On the 4th turn, its HP becomes 1.',
-        setCode = 'ALPH1-EN047',
+        cardTags = { 'Contraband', 'drug' },
+        legality = '',
+        setCode = 'ALPH1-EN048',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN047_BLUE_METH.png'
+        inventoryImage = 'ALPH1-EN048_BLUE_METH.png'
     },
 
-    ['ALPH1_EN048_METH'] = {
-        id = 'ALPH1_EN048_METH',
+    ['ALPH1_EN049_METH'] = {
+        id = 'ALPH1_EN049_METH',
         name = 'Meth',
         rarity = 'RARE',
         type = 'Item',
@@ -1013,13 +1269,15 @@ Cards = {
         defense = '',
         effectTitle = 'Pinkman',
         effectText = 'The equipped fighter gains +20 HP for 2 turns. On the 3rd turn, it loses 30 HP.',
-        setCode = 'ALPH1-EN048',
+        cardTags = { 'Contraband', 'drug' },
+        legality = '',
+        setCode = 'ALPH1-EN049',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN048_METH.png'
+        inventoryImage = 'ALPH1-EN049_METH.png'
     },
 
-    ['ALPH1_EN049_FENANYL'] = {
-        id = 'ALPH1_EN049_FENANYL',
+    ['ALPH1_EN050_FENANYL'] = {
+        id = 'ALPH1_EN050_FENANYL',
         name = 'Fenanyl',
         rarity = 'SUPER',
         type = 'Item',
@@ -1030,13 +1288,15 @@ Cards = {
         defense = '',
         effectTitle = 'High Risk High Reward',
         effectText = 'Increase your LP by +150 for 4 turns, on the 5th turn reduce your LP to 0.',
-        setCode = 'ALPH1-EN049',
+        cardTags = { 'Contraband', 'drug' },
+        legality = '',
+        setCode = 'ALPH1-EN050',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN049_FENANYL.png'
+        inventoryImage = 'ALPH1-EN050_FENANYL.png'
     },
 
-    ['ALPH1_EN050_HEROINE'] = {
-        id = 'ALPH1_EN050_HEROINE',
+    ['ALPH1_EN051_HEROINE'] = {
+        id = 'ALPH1_EN051_HEROINE',
         name = 'Heroine',
         rarity = 'RARE',
         type = 'Item',
@@ -1047,13 +1307,15 @@ Cards = {
         defense = '',
         effectTitle = 'Smackhead',
         effectText = 'Increase your LP by +30 for 3 turns, on the 4th turn reduce your LP by -80.',
-        setCode = 'ALPH1-EN050',
+        cardTags = { 'Contraband', 'drug' },
+        legality = '',
+        setCode = 'ALPH1-EN051',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN050_HEROINE.png'
+        inventoryImage = 'ALPH1-EN051_HEROINE.png'
     },
 
-    ['ALPH1_EN051_HANDCUFFS'] = {
-        id = 'ALPH1_EN051_HANDCUFFS',
+    ['ALPH1_EN052_HANDCUFFS'] = {
+        id = 'ALPH1_EN052_HANDCUFFS',
         name = 'Handcuffs',
         rarity = 'COMMON',
         type = 'Item',
@@ -1064,13 +1326,15 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'If you control a \'SAST\' fighter, target 1 fighter your opponent controls, it cannot attack for 2 turns.',
-        setCode = 'ALPH1-EN051',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN052',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN051_HANDCUFFS.png'
+        inventoryImage = 'ALPH1-EN052_HANDCUFFS.png'
     },
 
-    ['ALPH1_EN052_TASER'] = {
-        id = 'ALPH1_EN052_TASER',
+    ['ALPH1_EN053_TASER'] = {
+        id = 'ALPH1_EN053_TASER',
         name = 'Taser',
         rarity = 'RARE',
         type = 'Item',
@@ -1081,13 +1345,15 @@ Cards = {
         defense = '',
         effectTitle = 'TASER TASER TASER!',
         effectText = 'Target 1 fighter your opponent controls, it cannot activate effects or be promoted for 2 turns.',
-        setCode = 'ALPH1-EN052',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN053',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN052_TASER.png'
+        inventoryImage = 'ALPH1-EN053_TASER.png'
     },
 
-    ['ALPH1_EN053_LOCKPICK'] = {
-        id = 'ALPH1_EN053_LOCKPICK',
+    ['ALPH1_EN054_LOCKPICK'] = {
+        id = 'ALPH1_EN054_LOCKPICK',
         name = 'Lockpick',
         rarity = 'COMMON',
         type = 'Item',
@@ -1098,13 +1364,15 @@ Cards = {
         defense = '',
         effectTitle = '*OUR* vehicle',
         effectText = 'Take control of 1 \'Vehicle\' card on your opponents field.',
-        setCode = 'ALPH1-EN053',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN054',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN053_LOCKPICK.png'
+        inventoryImage = 'ALPH1-EN054_LOCKPICK.png'
     },
 
-    ['ALPH1_EN054_MAX_SLAYTER'] = {
-        id = 'ALPH1_EN054_MAX_SLAYTER',
+    ['ALPH1_EN055_MAX_SLAYTER'] = {
+        id = 'ALPH1_EN055_MAX_SLAYTER',
         name = 'Max Slayter',
         rarity = 'COMMON',
         type = 'Fighter',
@@ -1115,13 +1383,15 @@ Cards = {
         defense = '40',
         effectTitle = 'Business relations',
         effectText = 'All \'Owner\' cards you control gain +4 SPD and +20 HP.',
-        setCode = 'ALPH1-EN054',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN055',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN054_MAX_SLAYTER.png'
+        inventoryImage = 'ALPH1-EN055_MAX_SLAYTER.png'
     },
 
-    ['ALPH1_EN055_CASPER_CORTEZ'] = {
-        id = 'ALPH1_EN055_CASPER_CORTEZ',
+    ['ALPH1_EN056_CASPER_CORTEZ'] = {
+        id = 'ALPH1_EN056_CASPER_CORTEZ',
         name = 'Casper Cortez',
         rarity = 'SUPER',
         type = 'Fighter',
@@ -1132,30 +1402,34 @@ Cards = {
         defense = '80',
         effectTitle = 'Berserk',
         effectText = 'If this card takes non-lethal damage, its ATK increases by +40 and SPD increases by +3 for 3 turns.',
-        setCode = 'ALPH1-EN055',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN056',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN055_CASPER_CORTEZ.png'
+        inventoryImage = 'ALPH1-EN056_CASPER_CORTEZ.png'
     },
 
-    ['ALPH1_EN056_TURBO'] = {
-        id = 'ALPH1_EN056_TURBO',
+    ['ALPH1_EN057_TURBO'] = {
+        id = 'ALPH1_EN057_TURBO',
         name = 'Turbo',
         rarity = 'RARE',
         type = 'Item',
         job = '',
         level = '',
-        speed = 'x2',
+        speed = 'SPD x2',
         attack = '',
         defense = '',
         effectTitle = 'STUTUTU',
         effectText = 'This card lasts for 3 turns before being destroyed.',
-        setCode = 'ALPH1-EN056',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN057',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN056_TURBO.png'
+        inventoryImage = 'ALPH1-EN057_TURBO.png'
     },
 
-    ['ALPH1_EN057_TRANSMISSION_STAGE_4'] = {
-        id = 'ALPH1_EN057_TRANSMISSION_STAGE_4',
+    ['ALPH1_EN058_TRANSMISSION_STAGE_4'] = {
+        id = 'ALPH1_EN058_TRANSMISSION_STAGE_4',
         name = 'Transmission Stage 4',
         rarity = 'COMMON',
         type = 'Item',
@@ -1166,13 +1440,15 @@ Cards = {
         defense = '',
         effectTitle = 'Changing Gears',
         effectText = 'Target 1 \'Vehicle\' card. You can change the fighter it is equiped to.',
-        setCode = 'ALPH1-EN057',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN058',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN057_TRANSMISSION_STAGE_4.png'
+        inventoryImage = 'ALPH1-EN058_TRANSMISSION_STAGE_4.png'
     },
 
-    ['ALPH1_EN058_DUMPSTER'] = {
-        id = 'ALPH1_EN058_DUMPSTER',
+    ['ALPH1_EN059_DUMPSTER'] = {
+        id = 'ALPH1_EN059_DUMPSTER',
         name = 'Dumpster',
         rarity = 'COMMON',
         type = 'Item',
@@ -1183,30 +1459,34 @@ Cards = {
         defense = '',
         effectTitle = 'Trash',
         effectText = 'Discard 1 random card from your opponents hand.',
-        setCode = 'ALPH1-EN058',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN059',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN058_DUMPSTER.png'
+        inventoryImage = 'ALPH1-EN059_DUMPSTER.png'
     },
 
-    ['ALPH1_EN059_BACKPACK'] = {
-        id = 'ALPH1_EN059_BACKPACK',
+    ['ALPH1_EN060_BACKPACK'] = {
+        id = 'ALPH1_EN060_BACKPACK',
         name = 'Backpack',
         rarity = 'RARE',
         type = 'Item',
-        job = '',
+        job = 'Continuous',
         level = '',
         speed = '',
         attack = '',
         defense = '',
-        effectTitle = 'EFFECT',
-        effectText = 'Increase your backrow slots by +1.',
-        setCode = 'ALPH1-EN059',
+        effectTitle = 'Hidden Pocket',
+        effectText = 'While active, your opponent cannot target cards in your hand or support zones except this card.',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN060',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN059_BACKPACK.png'
+        inventoryImage = 'ALPH1-EN060_BACKPACK.png'
     },
 
-    ['ALPH1_EN060_TWITCHY_WABBIT'] = {
-        id = 'ALPH1_EN060_TWITCHY_WABBIT',
+    ['ALPH1_EN061_TWITCHY_WABBIT'] = {
+        id = 'ALPH1_EN061_TWITCHY_WABBIT',
         name = 'Twitchy Wabbit',
         rarity = 'COMMON',
         type = 'Item',
@@ -1217,13 +1497,15 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'Equip to 1 \'Brock Lee\' card. It gains 20 HP and 10 SPD.',
-        setCode = 'ALPH1-EN060',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN061',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN060_TWITCHY_WABBIT.png'
+        inventoryImage = 'ALPH1-EN061_TWITCHY_WABBIT.png'
     },
 
-    ['ALPH1_EN061_INSIGHTFUL'] = {
-        id = 'ALPH1_EN061_INSIGHTFUL',
+    ['ALPH1_EN062_INSIGHTFUL'] = {
+        id = 'ALPH1_EN062_INSIGHTFUL',
         name = 'Insightful',
         rarity = 'RARE',
         type = 'Item',
@@ -1234,13 +1516,15 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'Draw 2 cards, then skip your next 2 draw phases.',
-        setCode = 'ALPH1-EN061',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN062',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN061_INSIGHTFUL.png'
+        inventoryImage = 'ALPH1-EN062_INSIGHTFUL.png'
     },
 
-    ['ALPH1_EN062_HOSTAGE_DEMANDS'] = {
-        id = 'ALPH1_EN062_HOSTAGE_DEMANDS',
+    ['ALPH1_EN063_HOSTAGE_DEMANDS'] = {
+        id = 'ALPH1_EN063_HOSTAGE_DEMANDS',
         name = 'Hostage Demands',
         rarity = 'ULTRA',
         type = 'Item',
@@ -1251,13 +1535,15 @@ Cards = {
         defense = '',
         effectTitle = 'No Air One',
         effectText = 'Declare 1 card type, your opponent cannot use cards of that type until your next turn.',
-        setCode = 'ALPH1-EN062',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN063',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN062_HOSTAGE_DEMANDS.png'
+        inventoryImage = 'ALPH1-EN063_HOSTAGE_DEMANDS.png'
     },
 
-    ['ALPH1_EN063_CASINO_LUCKY_WHEEL'] = {
-        id = 'ALPH1_EN063_CASINO_LUCKY_WHEEL',
+    ['ALPH1_EN064_CASINO_LUCKY_WHEEL'] = {
+        id = 'ALPH1_EN064_CASINO_LUCKY_WHEEL',
         name = 'Casino Lucky Wheel',
         rarity = 'RARE',
         type = 'Item',
@@ -1268,13 +1554,15 @@ Cards = {
         defense = '',
         effectTitle = 'Try Your Luck',
         effectText = 'Once per turn you can pay between 10 and 100 LP. Roll a 6 sided dice. If you roll a 5 or 6, gain twice the LP you paid. If you roll a 3 or 4, gain back the LP you spent on this card. If you roll 1 or 2 do nothing.',
-        setCode = 'ALPH1-EN063',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN064',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN063_CASINO_LUCKY_WHEEL.png'
+        inventoryImage = 'ALPH1-EN064_CASINO_LUCKY_WHEEL.png'
     },
 
-    ['ALPH1_EN064_FIREHOUSE'] = {
-        id = 'ALPH1_EN064_FIREHOUSE',
+    ['ALPH1_EN065_FIREHOUSE'] = {
+        id = 'ALPH1_EN065_FIREHOUSE',
         name = 'Firehouse',
         rarity = 'COMMON',
         type = 'Location',
@@ -1285,30 +1573,34 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'All \'SAFR\' cards you control gain +3 SPD. Also you can use any level 1 SAFR card to promote to any level 2 SAFR card.',
-        setCode = 'ALPH1-EN064',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN065',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN064_FIREHOUSE.png'
+        inventoryImage = 'ALPH1-EN065_FIREHOUSE.png'
     },
 
-    ['ALPH1_EN065_RILEY_S_PERFORMANCE'] = {
-        id = 'ALPH1_EN065_RILEY_S_PERFORMANCE',
-        name = 'Riley\'s Performance',
+    ['ALPH1_EN066_LOS_SANTOS_CUSTOMS'] = {
+        id = 'ALPH1_EN066_LOS_SANTOS_CUSTOMS',
+        name = 'Los Santos Customs',
         rarity = 'COMMON',
         type = 'Location',
-        job = 'Mirror Park Location',
+        job = '',
         level = '',
         speed = '',
         attack = '',
         defense = '',
         effectTitle = 'Performance Upgrade',
         effectText = 'Add 1 \'Vehicle Upgrade\' card to your hand.',
-        setCode = 'ALPH1-EN065',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN066',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN065_RILEY\'S_PERFORMANCE.png'
+        inventoryImage = 'ALPH1-EN066_LOS_SANTOS_CUSTOMS.png'
     },
 
-    ['ALPH1_EN066_TROOPER_STATION'] = {
-        id = 'ALPH1_EN066_TROOPER_STATION',
+    ['ALPH1_EN067_TROOPER_STATION'] = {
+        id = 'ALPH1_EN067_TROOPER_STATION',
         name = 'Trooper Station',
         rarity = 'COMMON',
         type = 'Location',
@@ -1319,13 +1611,15 @@ Cards = {
         defense = '',
         effectTitle = 'Call for Backup',
         effectText = 'Add one \'SAST\', \'BCSO\' or \'LSPD\' item card from your deck.',
-        setCode = 'ALPH1-EN066',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN067',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN066_TROOPER_STATION.png'
+        inventoryImage = 'ALPH1-EN067_TROOPER_STATION.png'
     },
 
-    ['ALPH1_EN067_BOB_S_BUSH'] = {
-        id = 'ALPH1_EN067_BOB_S_BUSH',
+    ['ALPH1_EN068_BOB_S_BUSH'] = {
+        id = 'ALPH1_EN068_BOB_S_BUSH',
         name = 'Bob\'s Bush',
         rarity = 'COMMON',
         type = 'Item',
@@ -1336,166 +1630,186 @@ Cards = {
         defense = '',
         effectTitle = 'Sneaky',
         effectText = 'When an opponents fighter delcares an attack. Summon 1 \'Bob Hodges (BCSO)\' card from your deck. Decrease your opponents fighters SPD by -3.',
-        setCode = 'ALPH1-EN067',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN068',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN067_BOB\'S_BUSH.png'
+        inventoryImage = 'ALPH1-EN068_BOB\'S_BUSH.png'
     },
 
-    ['ALPH1_EN068_BRAVADO_BUFFALO_STX'] = {
-        id = 'ALPH1_EN068_BRAVADO_BUFFALO_STX',
+    ['ALPH1_EN069_BRAVADO_BUFFALO_STX'] = {
+        id = 'ALPH1_EN069_BRAVADO_BUFFALO_STX',
         name = 'Bravado Buffalo STX',
         rarity = 'COMMON',
         type = 'Vehicle',
         job = '',
         level = '',
-        speed = '+4',
+        speed = 'SPD +4',
         attack = '',
         defense = '',
-        effectTitle = 'EFFECT',
+        effectTitle = '',
         effectText = '',
-        setCode = 'ALPH1-EN068',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN069',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN068_BRAVADO_BUFFALO_STX.png'
+        inventoryImage = 'ALPH1-EN069_BRAVADO_BUFFALO_STX.png'
     },
 
-    ['ALPH1_EN069_ALEUTIAN'] = {
-        id = 'ALPH1_EN069_ALEUTIAN',
+    ['ALPH1_EN070_ALEUTIAN'] = {
+        id = 'ALPH1_EN070_ALEUTIAN',
         name = 'Aleutian',
         rarity = 'COMMON',
         type = 'Vehicle',
         job = '',
         level = '',
-        speed = '+3',
+        speed = 'SPD +3',
         attack = '',
         defense = '',
         effectTitle = 'Rapid Response',
         effectText = 'If this card is equipped to a \'SAMS\' fighter, increase SPD by another +2.',
-        setCode = 'ALPH1-EN069',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN070',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN069_ALEUTIAN.png'
+        inventoryImage = 'ALPH1-EN070_ALEUTIAN.png'
     },
 
-    ['ALPH1_EN070_GREEN_PANTO'] = {
-        id = 'ALPH1_EN070_GREEN_PANTO',
+    ['ALPH1_EN071_GREEN_PANTO'] = {
+        id = 'ALPH1_EN071_GREEN_PANTO',
         name = 'Green Panto',
         rarity = 'RARE',
         type = 'Vehicle',
         job = '',
         level = '',
-        speed = '+1',
+        speed = 'SPD +1',
         attack = '',
         defense = '',
-        effectTitle = 'They\'re Everywhere!',
+        effectTitle = 'Panto-monium',
         effectText = 'When this card is sent to the cemetery, you can add 1 \'Green Panto\' card from your deck.',
-        setCode = 'ALPH1-EN070',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN071',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN070_GREEN_PANTO.png'
+        inventoryImage = 'ALPH1-EN071_GREEN_PANTO.png'
     },
 
-    ['ALPH1_EN071_RUSTY_REBEL'] = {
-        id = 'ALPH1_EN071_RUSTY_REBEL',
+    ['ALPH1_EN072_RUSTY_REBEL'] = {
+        id = 'ALPH1_EN072_RUSTY_REBEL',
         name = 'Rusty Rebel',
         rarity = 'COMMON',
         type = 'Vehicle',
         job = '',
         level = '',
-        speed = '-1',
+        speed = 'SPD -1',
         attack = '',
         defense = '',
         effectTitle = 'Trusty Rusty',
         effectText = 'This card can be attached to any fighter card on the field.',
-        setCode = 'ALPH1-EN071',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN072',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN071_RUSTY_REBEL.png'
+        inventoryImage = 'ALPH1-EN072_RUSTY_REBEL.png'
     },
 
-    ['ALPH1_EN072_CHEBUREK_RUNE'] = {
-        id = 'ALPH1_EN072_CHEBUREK_RUNE',
+    ['ALPH1_EN073_CHEBUREK_RUNE'] = {
+        id = 'ALPH1_EN073_CHEBUREK_RUNE',
         name = 'Cheburek Rune',
         rarity = 'RARE',
         type = 'Vehicle',
         job = '',
         level = '',
-        speed = '-2',
+        speed = 'SPD -2',
         attack = '',
         defense = '',
         effectTitle = 'Carboard Kit?',
         effectText = 'After this card has been equipped your fighter for 2 turns, you can target 1 of your opponents fighters, it is now equipped by this card.',
-        setCode = 'ALPH1-EN072',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN073',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN072_CHEBUREK_RUNE.png'
+        inventoryImage = 'ALPH1-EN073_CHEBUREK_RUNE.png'
     },
 
-    ['ALPH1_EN073_CERAMIC_PISTOL'] = {
-        id = 'ALPH1_EN073_CERAMIC_PISTOL',
+    ['ALPH1_EN074_CERAMIC_PISTOL'] = {
+        id = 'ALPH1_EN074_CERAMIC_PISTOL',
         name = 'Ceramic Pistol',
         rarity = 'COMMON',
         type = 'Weapon',
         job = '',
         level = '',
         speed = '',
-        attack = '+30',
+        attack = 'ATK +30',
         defense = '',
         effectTitle = 'Concealment',
         effectText = 'This card is concealed to any card which destroys \'Contraband\' cards.',
-        setCode = 'ALPH1-EN073',
+        cardTags = { 'Contraband' },
+        legality = '',
+        setCode = 'ALPH1-EN074',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN073_CERAMIC_PISTOL.png'
+        inventoryImage = 'ALPH1-EN074_CERAMIC_PISTOL.png'
     },
 
-    ['ALPH1_EN074_HUNTING_RIFLE'] = {
-        id = 'ALPH1_EN074_HUNTING_RIFLE',
+    ['ALPH1_EN075_HUNTING_RIFLE'] = {
+        id = 'ALPH1_EN075_HUNTING_RIFLE',
         name = 'Hunting Rifle',
         rarity = 'COMMON',
         type = 'Weapon',
         job = '',
         level = '',
         speed = '',
-        attack = '+20',
+        attack = 'ATK +20',
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'This card is only effective against \'Animal\' cards.',
-        setCode = 'ALPH1-EN074',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN075',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN074_HUNTING_RIFLE.png'
+        inventoryImage = 'ALPH1-EN075_HUNTING_RIFLE.png'
     },
 
-    ['ALPH1_EN075_FLAMETHROWER'] = {
-        id = 'ALPH1_EN075_FLAMETHROWER',
+    ['ALPH1_EN076_FLAMETHROWER'] = {
+        id = 'ALPH1_EN076_FLAMETHROWER',
         name = 'Flamethrower',
         rarity = 'RARE',
         type = 'Weapon',
         job = '',
         level = '',
         speed = '',
-        attack = '+10',
+        attack = 'ATK +10',
         defense = '',
         effectTitle = 'We Didn\'t Start the Fire!',
         effectText = 'If the equipped fighter attacks your opponents fighter, apply burn. Burn: reduce the fighters HP by 10 each turn. If the equipped card attacks directly, apply burn to your opponents LP.',
-        setCode = 'ALPH1-EN075',
+        cardTags = { 'Contraband' },
+        legality = '',
+        setCode = 'ALPH1-EN076',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN075_FLAMETHROWER.png'
+        inventoryImage = 'ALPH1-EN076_FLAMETHROWER.png'
     },
 
-    ['ALPH1_EN076_TECH_9'] = {
-        id = 'ALPH1_EN076_TECH_9',
+    ['ALPH1_EN077_TECH_9'] = {
+        id = 'ALPH1_EN077_TECH_9',
         name = 'Tech 9',
         rarity = 'COMMON',
         type = 'Weapon',
         job = '',
         level = '',
-        speed = '+2',
-        attack = '+30',
+        speed = 'SPD +2',
+        attack = 'ATK +30',
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'A leathal compact weapon with blazing fire rate!',
-        setCode = 'ALPH1-EN076',
+        cardTags = { 'Contraband' },
+        legality = '',
+        setCode = 'ALPH1-EN077',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN076_TECH_9.png'
+        inventoryImage = 'ALPH1-EN077_TECH_9.png'
     },
 
-    ['ALPH1_EN077_BRADLEY_BK_KRAY'] = {
-        id = 'ALPH1_EN077_BRADLEY_BK_KRAY',
+    ['ALPH1_EN078_BRADLEY_BK_KRAY'] = {
+        id = 'ALPH1_EN078_BRADLEY_BK_KRAY',
         name = 'Bradley \'BK\' Kray',
         rarity = 'RARE',
         type = 'Fighter',
@@ -1506,13 +1820,15 @@ Cards = {
         defense = '100',
         effectTitle = 'RATATATATA',
         effectText = 'If this card is equipped with an \'SMG\' or \'PDW\', it can make 2 attacks this battle phase.',
-        setCode = 'ALPH1-EN077',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN078',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN077_BRADLEY_\'BK\'_KRAY.png'
+        inventoryImage = 'ALPH1-EN078_BRADLEY_\'BK\'_KRAY.png'
     },
 
-    ['ALPH1_EN078_KIN_RODINE'] = {
-        id = 'ALPH1_EN078_KIN_RODINE',
+    ['ALPH1_EN079_KIN_RODINE'] = {
+        id = 'ALPH1_EN079_KIN_RODINE',
         name = 'Kin Rodine',
         rarity = 'RARE',
         type = 'Fighter',
@@ -1523,13 +1839,15 @@ Cards = {
         defense = '80',
         effectTitle = 'MMA Master',
         effectText = 'Boost another fighters ATK and HP by +20 for 2 turns.',
-        setCode = 'ALPH1-EN078',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN079',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN078_KIN_RODINE.png'
+        inventoryImage = 'ALPH1-EN079_KIN_RODINE.png'
     },
 
-    ['ALPH1_EN079_JAMIE_THOMAS'] = {
-        id = 'ALPH1_EN079_JAMIE_THOMAS',
+    ['ALPH1_EN080_JAMIE_THOMAS'] = {
+        id = 'ALPH1_EN080_JAMIE_THOMAS',
         name = 'Jamie Thomas',
         rarity = 'COMMON',
         type = 'Fighter',
@@ -1540,13 +1858,15 @@ Cards = {
         defense = '60',
         effectTitle = 'EFFECT',
         effectText = 'On summon: Target 2 location or item cards in your cemetary. Shuffle 1 back into your deck and add the other to your hand.',
-        setCode = 'ALPH1-EN079',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN080',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN079_JAMIE_THOMAS.png'
+        inventoryImage = 'ALPH1-EN080_JAMIE_THOMAS.png'
     },
 
-    ['ALPH1_EN080_CLYDE_RILEY_SR'] = {
-        id = 'ALPH1_EN080_CLYDE_RILEY_SR',
+    ['ALPH1_EN081_CLYDE_RILEY_SR'] = {
+        id = 'ALPH1_EN081_CLYDE_RILEY_SR',
         name = 'Clyde Riley Sr.',
         rarity = 'SUPER',
         type = 'Fighter',
@@ -1557,13 +1877,15 @@ Cards = {
         defense = '70',
         effectTitle = 'Staff Roster',
         effectText = 'Shuffle up to 3 of your fighters from the cemetery back into your deck, then draw 1 card.',
-        setCode = 'ALPH1-EN080',
+        cardTags = { 'SAMS', 'SAFR', 'EMS' },
+        legality = '',
+        setCode = 'ALPH1-EN081',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN080_CLYDE_RILEY_SR.png'
     },
 
-    ['ALPH1_EN081_WILLIAM_TAZENTINE'] = {
-        id = 'ALPH1_EN081_WILLIAM_TAZENTINE',
+    ['ALPH1_EN082_WILLIAM_TAZENTINE'] = {
+        id = 'ALPH1_EN082_WILLIAM_TAZENTINE',
         name = 'William Tazentine',
         rarity = 'COMMON',
         type = 'Fighter',
@@ -1574,13 +1896,15 @@ Cards = {
         defense = '30',
         effectTitle = 'Business Tax',
         effectText = 'On summon: Gain 20 LP for all location cards in your hand, cemetary and on the field. After 3 turns banish this card.',
-        setCode = 'ALPH1-EN081',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN082',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN081_WILLIAM_TAZENTINE.png'
+        inventoryImage = 'ALPH1-EN082_WILLIAM_TAZENTINE.png'
     },
 
-    ['ALPH1_EN082_TERRANCE_REDFIELD_RILEY'] = {
-        id = 'ALPH1_EN082_TERRANCE_REDFIELD_RILEY',
+    ['ALPH1_EN083_TERRANCE_REDFIELD_RILEY'] = {
+        id = 'ALPH1_EN083_TERRANCE_REDFIELD_RILEY',
         name = 'Terrance Redfield Riley',
         rarity = 'RARE',
         type = 'Fighter',
@@ -1591,30 +1915,34 @@ Cards = {
         defense = '50',
         effectTitle = '#Blame Terrance',
         effectText = 'Send 1 \'Vehicle\' Card from your hand or field to the graveyard, then you can target up to 1 vehicle card and 1 weapon card your opponent controls and destroy them.',
-        setCode = 'ALPH1-EN082',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN083',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN082_TERRANCE_REDFIELD_RILEY.png'
+        inventoryImage = 'ALPH1-EN083_TERRANCE_REDFIELD_RILEY.png'
     },
 
-    ['ALPH1_EN083_TERRANCE_REDFIELD_RILEY'] = {
-        id = 'ALPH1_EN083_TERRANCE_REDFIELD_RILEY',
+    ['ALPH1_EN084_TERRANCE_REDFIELD_RILEY'] = {
+        id = 'ALPH1_EN084_TERRANCE_REDFIELD_RILEY',
         name = 'Terrance Redfield Riley',
         rarity = 'COMMON',
         type = 'Fighter',
         job = 'High Noon Hookah',
         level = 'Level 1',
         speed = '2',
-        attack = '20',
+        attack = '30',
         defense = '40',
         effectTitle = 'Rejuvinate',
         effectText = 'Once per turn you can make all of your fighters lose -1 SPD. Then heal all your fighters by +20 HP.',
-        setCode = 'ALPH1-EN083',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN084',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN083_TERRANCE_REDFIELD_RILEY.png'
+        inventoryImage = 'ALPH1-EN084_TERRANCE_REDFIELD_RILEY.png'
     },
 
-    ['ALPH1_EN084_VEHICLE_ARMOUR'] = {
-        id = 'ALPH1_EN084_VEHICLE_ARMOUR',
+    ['ALPH1_EN085_VEHICLE_ARMOUR'] = {
+        id = 'ALPH1_EN085_VEHICLE_ARMOUR',
         name = 'Vehicle Armour',
         rarity = 'COMMON',
         type = 'Item',
@@ -1625,13 +1953,15 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'While this card is on the field, any damage you take is halved. Also fighters you control with an equipped vehicle, cannot be attacked.',
-        setCode = 'ALPH1-EN084',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN085',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN084_VEHICLE_ARMOUR.png'
+        inventoryImage = 'ALPH1-EN085_VEHICLE_ARMOUR.png'
     },
 
-    ['ALPH1_EN085_TRIAD_COMPOUND'] = {
-        id = 'ALPH1_EN085_TRIAD_COMPOUND',
+    ['ALPH1_EN086_TRIAD_COMPOUND'] = {
+        id = 'ALPH1_EN086_TRIAD_COMPOUND',
         name = 'Triad compound',
         rarity = 'SUPER',
         type = 'Location',
@@ -1642,14 +1972,16 @@ Cards = {
         defense = '',
         effectTitle = 'Shaolin Temple',
         effectText = 'Once per turn you can summon up to two level 2 or lower \'Triad\' fighters. Upon activation, all opponents fighters lose -20 HP.',
-        setCode = 'ALPH1-EN085',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN086',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN085_TRIAD_COMPOUND.png'
+        inventoryImage = 'ALPH1-EN086_TRIAD_COMPOUND.png'
     },
 
-    ['ALPH1_EN086_JOHN_MORGAN'] = {
-        id = 'ALPH1_EN086_JOHN_MORGAN',
-        name = 'John Morgan',
+    ['ALPH1_EN087_TAYLOR_BANDIT'] = {
+        id = 'ALPH1_EN087_TAYLOR_BANDIT',
+        name = 'Taylor Bandit',
         rarity = 'SUPER',
         type = 'Fighter',
         job = 'Dynasty 8',
@@ -1659,30 +1991,34 @@ Cards = {
         defense = '60',
         effectTitle = 'Any D8 Around?',
         effectText = 'Pay 30 LP. Search your deck for 1 \'location\' card. You can then destroy 1 of your opponents \'location\' cards.',
-        setCode = 'ALPH1-EN086',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN087',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN086_JOHN_MORGAN.png'
+        inventoryImage = 'ALPH1-EN087_TAYLOR_BANDIT.png'
     },
 
-    ['ALPH1_EN087_MUFASA_VOLKOV'] = {
-        id = 'ALPH1_EN087_MUFASA_VOLKOV',
+    ['ALPH1_EN088_MUFASA_VOLKOV'] = {
+        id = 'ALPH1_EN088_MUFASA_VOLKOV',
         name = 'Mufasa Volkov',
         rarity = 'COMMON',
         type = 'Fighter',
         job = '',
         level = 'Level 1',
         speed = '3',
-        attack = '60',
-        defense = '30',
+        attack = '20',
+        defense = '80',
         effectTitle = 'Switching Tactics',
-        effectText = 'Once per turn you can switch the ATK and DEF of this card. You cannot attack the turn you activate this effect.',
-        setCode = 'ALPH1-EN087',
+        effectText = 'Once per turn you can switch the ATK and HP of this card. You cannot attack the turn you activate this effect.',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN088',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN087_MUFASA_VOLKOV.png'
+        inventoryImage = 'ALPH1-EN088_MUFASA_VOLKOV.png'
     },
 
-    ['ALPH1_EN088_MUFASA_VOLKOV'] = {
-        id = 'ALPH1_EN088_MUFASA_VOLKOV',
+    ['ALPH1_EN089_MUFASA_VOLKOV'] = {
+        id = 'ALPH1_EN089_MUFASA_VOLKOV',
         name = 'Mufasa Volkov',
         rarity = 'RARE',
         type = 'Fighter',
@@ -1692,14 +2028,16 @@ Cards = {
         attack = '70',
         defense = '100',
         effectTitle = 'Stand Guard',
-        effectText = 'Once per turn if a \'location\' or \'fighter\' card you control is targeted for destruction, negate the desctruction.',
-        setCode = 'ALPH1-EN088',
+        effectText = 'Once per turn if a \'location\' or \'fighter\' card you control is targeted for destruction, negate the destruction.',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN089',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN088_MUFASA_VOLKOV.png'
+        inventoryImage = 'ALPH1-EN089_MUFASA_VOLKOV.png'
     },
 
-    ['ALPH1_EN089_LOTTO'] = {
-        id = 'ALPH1_EN089_LOTTO',
+    ['ALPH1_EN090_LOTTO'] = {
+        id = 'ALPH1_EN090_LOTTO',
         name = 'Lotto!',
         rarity = 'COMMON',
         type = 'Event',
@@ -1710,13 +2048,15 @@ Cards = {
         defense = '',
         effectTitle = 'Lotto!',
         effectText = 'Roll a 100 sided dice. If you roll 90 or above, gain +100 LP.',
-        setCode = 'ALPH1-EN089',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN090',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN089_LOTTO!.png'
+        inventoryImage = 'ALPH1-EN090_LOTTO!.png'
     },
 
-    ['ALPH1_EN090_ERIC_COLEMAN'] = {
-        id = 'ALPH1_EN090_ERIC_COLEMAN',
+    ['ALPH1_EN091_ERIC_COLEMAN'] = {
+        id = 'ALPH1_EN091_ERIC_COLEMAN',
         name = 'Eric Coleman',
         rarity = 'RARE',
         type = 'Fighter',
@@ -1727,14 +2067,16 @@ Cards = {
         defense = '40',
         effectTitle = '*Slaps Roof of Car*',
         effectText = 'You can discard 1 \'Larrys Car Lot\' from your hand. This card gains that effect for 3 turns. "If you draw a \'Vehicle\' card. You can draw 1 more card."',
-        setCode = 'ALPH1-EN090',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN091',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN090_ERIC_COLEMAN.png'
+        inventoryImage = 'ALPH1-EN091_ERIC_COLEMAN.png'
     },
 
-    ['ALPH1_EN091_LARRYS_CAR_LOT'] = {
-        id = 'ALPH1_EN091_LARRYS_CAR_LOT',
-        name = 'Larrys Car Lot',
+    ['ALPH1_EN092_COLEMANS_CAR_LOT'] = {
+        id = 'ALPH1_EN092_COLEMANS_CAR_LOT',
+        name = 'Colemans Car Lot',
         rarity = 'COMMON',
         type = 'Location',
         job = '',
@@ -1744,24 +2086,15 @@ Cards = {
         defense = '',
         effectTitle = 'Caryard',
         effectText = 'If you draw a \'Vehicle\' card. You can draw 1 more card.',
-        effectTags = { 'on_draw', 'draw' },
-        effects = {
-            {
-                trigger = 'on_draw',
-                tags = { 'draw' },
-                condition = { drawnType = 'Vehicle' },
-                actions = {
-                    { action = 'draw', target = 'self', amount = 1 }
-                }
-            }
-        },
-        setCode = 'ALPH1-EN091',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN092',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN091_LARRYS_CAR_LOT.png'
+        inventoryImage = 'ALPH1-EN092_COLEMANS_CAR_LOT.png'
     },
 
-    ['ALPH1_EN092_KENZIE_HALL'] = {
-        id = 'ALPH1_EN092_KENZIE_HALL',
+    ['ALPH1_EN093_KENZIE_HALL'] = {
+        id = 'ALPH1_EN093_KENZIE_HALL',
         name = 'Kenzie Hall',
         rarity = 'COMMON',
         type = 'Fighter',
@@ -1772,13 +2105,15 @@ Cards = {
         defense = '40',
         effectTitle = 'Best Friends',
         effectText = 'On summon apply +20 HP to a chosen fighter on the field.',
-        setCode = 'ALPH1-EN092',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN093',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN092_KENZIE_HALL.png'
+        inventoryImage = 'ALPH1-EN093_KENZIE_HALL.png'
     },
 
-    ['ALPH1_EN093_KENZIE_HALL'] = {
-        id = 'ALPH1_EN093_KENZIE_HALL',
+    ['ALPH1_EN094_KENZIE_HALL'] = {
+        id = 'ALPH1_EN094_KENZIE_HALL',
         name = 'Kenzie Hall',
         rarity = 'RARE',
         type = 'Fighter',
@@ -1789,13 +2124,15 @@ Cards = {
         defense = '40',
         effectTitle = 'The Mother of UWU',
         effectText = 'If an \'Alan Hall\' fighter you control is destroyed by battle, inflict damage to your opponent equal to the attacking fighters attack.',
-        setCode = 'ALPH1-EN093',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN094',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN093_KENZIE_HALL.png'
+        inventoryImage = 'ALPH1-EN094_KENZIE_HALL.png'
     },
 
-    ['ALPH1_EN094_CHADWICK_SLAMMER'] = {
-        id = 'ALPH1_EN094_CHADWICK_SLAMMER',
+    ['ALPH1_EN095_CHADWICK_SLAMMER'] = {
+        id = 'ALPH1_EN095_CHADWICK_SLAMMER',
         name = 'Chadwick Slammer',
         rarity = 'COMMON',
         type = 'Fighter',
@@ -1805,14 +2142,16 @@ Cards = {
         attack = '20',
         defense = '40',
         effectTitle = 'Slammer Special',
-        effectText = 'Pay half your LP. Destroy all fighters your opponent controls. Then bannish all \'FIB\' cards in your hand and field.',
-        setCode = 'ALPH1-EN094',
+        effectText = 'Pay half your LP. Destroy all fighters your opponent controls. Then discard all \'FIB\' cards from your hand.',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN095',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN094_CHADWICK_SLAMMER.png'
+        inventoryImage = 'ALPH1-EN095_CHADWICK_SLAMMER.png'
     },
 
-    ['ALPH1_EN095_XAVIER_WU'] = {
-        id = 'ALPH1_EN095_XAVIER_WU',
+    ['ALPH1_EN096_XAVIER_WU'] = {
+        id = 'ALPH1_EN096_XAVIER_WU',
         name = 'Xavier Wu',
         rarity = 'SUPER',
         type = 'Fighter',
@@ -1823,14 +2162,16 @@ Cards = {
         defense = '100',
         effectTitle = 'Arsenal',
         effectText = 'If you control 3 or more weapon cards, all fighters you control cannot be targeted by card effects.',
-        setCode = 'ALPH1-EN095',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN096',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN095_XAVIER_WU.png'
+        inventoryImage = 'ALPH1-EN096_XAVIER_WU.png'
     },
 
-    ['ALPH1_EN096_LOGAN_WU'] = {
-        id = 'ALPH1_EN096_LOGAN_WU',
-        name = 'Logan Wu',
+    ['ALPH1_EN097_LOGAN_BANDIT_DAWSON'] = {
+        id = 'ALPH1_EN097_LOGAN_BANDIT_DAWSON',
+        name = 'Logan Bandit Dawson',
         rarity = 'ULTRA',
         type = 'Fighter',
         job = 'Triad',
@@ -1840,13 +2181,15 @@ Cards = {
         defense = '110',
         effectTitle = 'Kaboom',
         effectText = 'Once per turn you can place 1 \'Sticky Bomb\' counter on each of your opponents fighters. You can remove all \'sticky bomb\' counters from all cards, dealing -30HP for each counter. You cannot detonate sticky bombs the turn you place them.',
-        setCode = 'ALPH1-EN096',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN097',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN096_LOGAN_WU.png'
+        inventoryImage = 'ALPH1-EN097_LOGAN_BANDIT_DAWSON.png'
     },
 
-    ['ALPH1_EN097_KITT_REED_WU'] = {
-        id = 'ALPH1_EN097_KITT_REED_WU',
+    ['ALPH1_EN098_KITT_REED_WU'] = {
+        id = 'ALPH1_EN098_KITT_REED_WU',
         name = 'Kitt Reed Wu',
         rarity = 'RARE',
         type = 'Fighter',
@@ -1857,13 +2200,15 @@ Cards = {
         defense = '90',
         effectTitle = 'Duck and Weave',
         effectText = 'Each time one of your fighters dodges an attack, draw 1 card.',
-        setCode = 'ALPH1-EN097',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN098',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN097_KITT_REED_WU.png'
+        inventoryImage = 'ALPH1-EN098_KITT_REED_WU.png'
     },
 
-    ['ALPH1_EN098_SPARTAN_ARSENAL'] = {
-        id = 'ALPH1_EN098_SPARTAN_ARSENAL',
+    ['ALPH1_EN099_SPARTAN_ARSENAL'] = {
+        id = 'ALPH1_EN099_SPARTAN_ARSENAL',
         name = 'Spartan Arsenal',
         rarity = 'COMMON',
         type = 'Location',
@@ -1874,13 +2219,15 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'If you draw a \'weapon\' card, you can draw 1 more card.',
-        setCode = 'ALPH1-EN098',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN099',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN098_SPARTAN_ARSENAL.png'
+        inventoryImage = 'ALPH1-EN099_SPARTAN_ARSENAL.png'
     },
 
-    ['ALPH1_EN099_GUN_BENCH'] = {
-        id = 'ALPH1_EN099_GUN_BENCH',
+    ['ALPH1_EN100_GUN_BENCH'] = {
+        id = 'ALPH1_EN100_GUN_BENCH',
         name = 'Gun Bench',
         rarity = 'COMMON',
         type = 'Item',
@@ -1891,13 +2238,15 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'You can discard this card from your hand. For the rest of this turn, every time your opponent plays a weapon card, draw 1 card.',
-        setCode = 'ALPH1-EN099',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN100',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN099_GUN_BENCH.png'
+        inventoryImage = 'ALPH1-EN100_GUN_BENCH.png'
     },
 
-    ['ALPH1_EN100_MARINE_BEACH_RECYCLING'] = {
-        id = 'ALPH1_EN100_MARINE_BEACH_RECYCLING',
+    ['ALPH1_EN101_MARINE_BEACH_RECYCLING'] = {
+        id = 'ALPH1_EN101_MARINE_BEACH_RECYCLING',
         name = 'Marine Beach Recycling',
         rarity = 'COMMON',
         type = 'Location',
@@ -1908,14 +2257,16 @@ Cards = {
         defense = '',
         effectTitle = 'Recycle',
         effectText = 'Once per turn, you can discard any number of item cards, draw that many cards from your deck.',
-        setCode = 'ALPH1-EN100',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN101',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN100_MARINE_BEACH_RECYCLING.png'
+        inventoryImage = 'ALPH1-EN101_MARINE_BEACH_RECYCLING.png'
     },
 
-    ['ALPH1_EN101_MORNINGWOOD_AMMU'] = {
-        id = 'ALPH1_EN101_MORNINGWOOD_AMMU',
-        name = 'Morningwood Ammu',
+    ['ALPH1_EN102_AMMO_SOUTH'] = {
+        id = 'ALPH1_EN102_AMMO_SOUTH',
+        name = 'Ammo South',
         rarity = 'COMMON',
         type = 'Location',
         job = '',
@@ -1925,64 +2276,72 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'Once per turn you can return any \'weapon\' card to your hand, then add 1 \'weapon\' card from your cemetary to your hand.',
-        setCode = 'ALPH1-EN101',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN102',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN101_MORNINGWOOD_AMMU.png'
+        inventoryImage = 'ALPH1-EN102_AMMO_SOUTH.png'
     },
 
-    ['ALPH1_EN102_SMG'] = {
-        id = 'ALPH1_EN102_SMG',
+    ['ALPH1_EN103_SMG'] = {
+        id = 'ALPH1_EN103_SMG',
         name = 'SMG',
         rarity = 'RARE',
         type = 'Weapon',
         job = '',
         level = '',
         speed = '',
-        attack = '+20',
+        attack = 'ATK +20',
         defense = '',
         effectTitle = 'Dual Wield',
         effectText = 'You can equip up to 2 copies of \'SMG\' to any fighter.',
-        setCode = 'ALPH1-EN102',
+        cardTags = { 'Contraband' },
+        legality = '',
+        setCode = 'ALPH1-EN103',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN102_SMG.png'
+        inventoryImage = 'ALPH1-EN103_SMG.png'
     },
 
-    ['ALPH1_EN103_COMBAT_PDW'] = {
-        id = 'ALPH1_EN103_COMBAT_PDW',
+    ['ALPH1_EN104_COMBAT_PDW'] = {
+        id = 'ALPH1_EN104_COMBAT_PDW',
         name = 'Combat PDW',
         rarity = 'SUPER',
         type = 'Weapon',
         job = '',
         level = '',
         speed = '',
-        attack = '+30',
+        attack = 'ATK +30',
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'The equipped fighter can attack 2 opponents fighters per turn.',
-        setCode = 'ALPH1-EN103',
+        cardTags = { 'Contraband' },
+        legality = '',
+        setCode = 'ALPH1-EN104',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN103_COMBAT_PDW.png'
+        inventoryImage = 'ALPH1-EN104_COMBAT_PDW.png'
     },
 
-    ['ALPH1_EN104_PFISTER_COMET_CTX'] = {
-        id = 'ALPH1_EN104_PFISTER_COMET_CTX',
+    ['ALPH1_EN105_PFISTER_COMET_CTX'] = {
+        id = 'ALPH1_EN105_PFISTER_COMET_CTX',
         name = 'Pfister Comet CTX',
         rarity = 'SUPER',
         type = 'Vehicle',
         job = '',
         level = '',
-        speed = '+10',
+        speed = 'SPD +10',
         attack = '',
         defense = '',
         effectTitle = 'Exclusive',
         effectText = 'You can only have 1 of this card on the field at a time.',
-        setCode = 'ALPH1-EN104',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN105',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN104_PFISTER_COMET_CTX.png'
+        inventoryImage = 'ALPH1-EN105_PFISTER_COMET_CTX.png'
     },
 
-    ['ALPH1_EN105_SPIKE_STRIP'] = {
-        id = 'ALPH1_EN105_SPIKE_STRIP',
+    ['ALPH1_EN106_SPIKE_STRIP'] = {
+        id = 'ALPH1_EN106_SPIKE_STRIP',
         name = 'Spike Strip',
         rarity = 'COMMON',
         type = 'Item',
@@ -1993,13 +2352,15 @@ Cards = {
         defense = '',
         effectTitle = 'Kill all Tyres!',
         effectText = 'Destroy all of your opponents \'vehicle\' cards.',
-        setCode = 'ALPH1-EN105',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN106',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN105_SPIKE_STRIP.png'
+        inventoryImage = 'ALPH1-EN106_SPIKE_STRIP.png'
     },
 
-    ['ALPH1_EN106_FUEL_SHORTAGE'] = {
-        id = 'ALPH1_EN106_FUEL_SHORTAGE',
+    ['ALPH1_EN107_FUEL_SHORTAGE'] = {
+        id = 'ALPH1_EN107_FUEL_SHORTAGE',
         name = 'Fuel Shortage',
         rarity = 'RARE',
         type = 'Continuous Event',
@@ -2010,13 +2371,15 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'All opponents vehicles lose half of their SPD. You must pay 20 LP each turn to keep this card active.',
-        setCode = 'ALPH1-EN106',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN107',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN106_FUEL_SHORTAGE.png'
+        inventoryImage = 'ALPH1-EN107_FUEL_SHORTAGE.png'
     },
 
-    ['ALPH1_EN107_HOUSE_ROBBERY'] = {
-        id = 'ALPH1_EN107_HOUSE_ROBBERY',
+    ['ALPH1_EN108_HOUSE_ROBBERY'] = {
+        id = 'ALPH1_EN108_HOUSE_ROBBERY',
         name = 'House robbery',
         rarity = 'SUPER',
         type = 'Event',
@@ -2027,13 +2390,15 @@ Cards = {
         defense = '',
         effectTitle = '5 FINGER DISCOUNT',
         effectText = 'Take control of 2 of your opponents \'item\', \'weapon\', or \'vehicle\' cards.',
-        setCode = 'ALPH1-EN107',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN108',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN107_HOUSE_ROBBERY.png'
+        inventoryImage = 'ALPH1-EN108_HOUSE_ROBBERY.png'
     },
 
-    ['ALPH1_EN108_PALETO_HEIST'] = {
-        id = 'ALPH1_EN108_PALETO_HEIST',
+    ['ALPH1_EN109_PALETO_HEIST'] = {
+        id = 'ALPH1_EN109_PALETO_HEIST',
         name = 'Paleto Heist',
         rarity = 'COMMON',
         type = 'Event',
@@ -2043,14 +2408,16 @@ Cards = {
         attack = '',
         defense = '',
         effectTitle = 'EFFECT',
-        effectText = 'This card cannot be played unless by the effect of \'Bank Card\'. Gain +30 LP and draw until you have 4 cards in your hand.',
-        setCode = 'ALPH1-EN108',
+        effectText = 'This card cannot be played unless by the effect of \'Bank Card\'. Gain +300 LP and draw until you have 4 cards in your hand.',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN109',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN108_PALETO_HEIST.png'
+        inventoryImage = 'ALPH1-EN109_PALETO_HEIST.png'
     },
 
-    ['ALPH1_EN109_BANK_CARD'] = {
-        id = 'ALPH1_EN109_BANK_CARD',
+    ['ALPH1_EN110_BANK_CARD'] = {
+        id = 'ALPH1_EN110_BANK_CARD',
         name = 'Bank Card',
         rarity = 'RARE',
         type = 'Item',
@@ -2061,13 +2428,15 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'If this card remains on your field for 3 turns, you can play \'Paleto Heist\' from your deck.',
-        setCode = 'ALPH1-EN109',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN110',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN109_BANK_CARD.png'
+        inventoryImage = 'ALPH1-EN110_BANK_CARD.png'
     },
 
-    ['ALPH1_EN110_POLICE_CHASE'] = {
-        id = 'ALPH1_EN110_POLICE_CHASE',
+    ['ALPH1_EN111_POLICE_CHASE'] = {
+        id = 'ALPH1_EN111_POLICE_CHASE',
         name = 'Police Chase',
         rarity = 'COMMON',
         type = 'Event',
@@ -2078,30 +2447,34 @@ Cards = {
         defense = '',
         effectTitle = 'PIT MANOVEUR',
         effectText = 'If you control an \'LEO\' vehicle card, target the lowest SPD vehicle card on the field, then banish it and its equipped fighter.',
-        setCode = 'ALPH1-EN110',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN111',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN110_POLICE_CHASE.png'
+        inventoryImage = 'ALPH1-EN111_POLICE_CHASE.png'
     },
 
-    ['ALPH1_EN111_AK47'] = {
-        id = 'ALPH1_EN111_AK47',
-        name = 'AK47',
+    ['ALPH1_EN112_DRACO'] = {
+        id = 'ALPH1_EN112_DRACO',
+        name = 'Draco',
         rarity = 'SUPER',
         type = 'Weapon',
         job = '',
         level = '',
         speed = '',
-        attack = '+40',
+        attack = 'ATK +40',
         defense = '',
         effectTitle = '7.62',
         effectText = 'The equipped card inflicts piercing damage.',
-        setCode = 'ALPH1-EN111',
+        cardTags = { 'Contraband' },
+        legality = '',
+        setCode = 'ALPH1-EN112',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN111_AK47.png'
+        inventoryImage = 'ALPH1-EN112_DRACO.png'
     },
 
-    ['ALPH1_EN112_SOSMC_CLUBHOUSE'] = {
-        id = 'ALPH1_EN112_SOSMC_CLUBHOUSE',
+    ['ALPH1_EN113_SOSMC_CLUBHOUSE'] = {
+        id = 'ALPH1_EN113_SOSMC_CLUBHOUSE',
         name = 'SOSMC Clubhouse',
         rarity = 'ULTRA',
         type = 'Location',
@@ -2112,13 +2485,15 @@ Cards = {
         defense = '',
         effectTitle = 'SFFS',
         effectText = 'SOSMC cards you control gain +2 SPD. Once per turn you can discard 1 card to activate 1 of these effects: 1. Add 1 \'SOSMC\' card to your hand. 2. Special summon 1 \'SOSMC\' card from your hand.',
-        setCode = 'ALPH1-EN112',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN113',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN112_SOSMC_CLUBHOUSE.png'
+        inventoryImage = 'ALPH1-EN113_SOSMC_CLUBHOUSE.png'
     },
 
-    ['ALPH1_EN113_ELI_MALLORY'] = {
-        id = 'ALPH1_EN113_ELI_MALLORY',
+    ['ALPH1_EN114_ELI_MALLORY'] = {
+        id = 'ALPH1_EN114_ELI_MALLORY',
         name = 'Eli Mallory',
         rarity = 'RARE',
         type = 'Fighter',
@@ -2128,14 +2503,16 @@ Cards = {
         attack = '30',
         defense = '70',
         effectTitle = 'HEROES NEVER DIE!',
-        effectText = 'Your other fighters cannot be destroyed by battle.',
-        setCode = 'ALPH1-EN113',
+        effectText = 'While this card is on the field, your other fighters cannot be destroyed by battle.',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN114',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN113_ELI_MALLORY.png'
+        inventoryImage = 'ALPH1-EN114_ELI_MALLORY.png'
     },
 
-    ['ALPH1_EN114_KIN_RODINE'] = {
-        id = 'ALPH1_EN114_KIN_RODINE',
+    ['ALPH1_EN115_KIN_RODINE'] = {
+        id = 'ALPH1_EN115_KIN_RODINE',
         name = 'Kin Rodine',
         rarity = 'ULTRA',
         type = 'Fighter',
@@ -2144,15 +2521,17 @@ Cards = {
         speed = '4',
         attack = '30',
         defense = '60',
-        effectTitle = 'Upside Down Man',
-        effectText = 'If your LP is lower than your opponents, this cards ATK becomes equal to half of the difference (rounded up).',
-        setCode = 'ALPH1-EN114',
+        effectTitle = '',
+        effectText = 'If your LP is lower than your opponents, this cards ATK becomes equal to half of the difference (rounded up) until the end of your opponents next turn.',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN115',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN114_KIN_RODINE.png'
+        inventoryImage = 'ALPH1-EN115_KIN_RODINE.png'
     },
 
-    ['ALPH1_EN115_CLYDE_RILEY_JR'] = {
-        id = 'ALPH1_EN115_CLYDE_RILEY_JR',
+    ['ALPH1_EN116_CLYDE_RILEY_JR'] = {
+        id = 'ALPH1_EN116_CLYDE_RILEY_JR',
         name = 'Clyde Riley JR',
         rarity = 'RARE',
         type = 'Fighter',
@@ -2163,13 +2542,15 @@ Cards = {
         defense = '20',
         effectTitle = 'EFFECT',
         effectText = 'If this card is discarded, you can place 1 random card from your opponents hand, at the bottom of their deck.',
-        setCode = 'ALPH1-EN115',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN116',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN115_CLYDE_RILEY_JR.png'
+        inventoryImage = 'ALPH1-EN116_CLYDE_RILEY_JR.png'
     },
 
-    ['ALPH1_EN116_OXYCODONE'] = {
-        id = 'ALPH1_EN116_OXYCODONE',
+    ['ALPH1_EN117_OXYCODONE'] = {
+        id = 'ALPH1_EN117_OXYCODONE',
         name = 'Oxycodone',
         rarity = 'COMMON',
         type = 'Item',
@@ -2180,30 +2561,34 @@ Cards = {
         defense = '',
         effectTitle = 'Last Stand',
         effectText = 'If your fighter would take lethal damage, you can discard this card, the fighter survives with 1 HP. At the end of your next turn, send that fighter to the cemetary',
-        setCode = 'ALPH1-EN116',
+        cardTags = { 'Contraband', 'drug' },
+        legality = '',
+        setCode = 'ALPH1-EN117',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN116_OXYCODONE.png'
+        inventoryImage = 'ALPH1-EN117_OXYCODONE.png'
     },
 
-    ['ALPH1_EN117_HAKOUCHOU_DRAG'] = {
-        id = 'ALPH1_EN117_HAKOUCHOU_DRAG',
+    ['ALPH1_EN118_HAKOUCHOU_DRAG'] = {
+        id = 'ALPH1_EN118_HAKOUCHOU_DRAG',
         name = 'Hakouchou Drag',
         rarity = 'RARE',
         type = 'Item',
         job = '',
         level = '',
-        speed = '+6',
+        speed = 'SPD +6',
         attack = '',
         defense = '',
         effectTitle = 'Deathtrap',
         effectText = 'On each of your main phase, roll a D6, if you roll a 1 or 6, destroy this card and the equipped fighter takes -20 HP damage.',
-        setCode = 'ALPH1-EN117',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN118',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN117_HAKOUCHOU_DRAG.png'
+        inventoryImage = 'ALPH1-EN118_HAKOUCHOU_DRAG.png'
     },
 
-    ['ALPH1_EN118_SKATEBOARD'] = {
-        id = 'ALPH1_EN118_SKATEBOARD',
+    ['ALPH1_EN119_SKATEBOARD'] = {
+        id = 'ALPH1_EN119_SKATEBOARD',
         name = 'Skateboard',
         rarity = 'COMMON',
         type = 'Item',
@@ -2214,13 +2599,15 @@ Cards = {
         defense = '',
         effectTitle = 'Coinfl.. *uhh* Kickflip',
         effectText = 'Flip a coin, if heads draw a card. If tails your opponent draws a card.',
-        setCode = 'ALPH1-EN118',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN119',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN118_SKATEBOARD.png'
+        inventoryImage = 'ALPH1-EN119_SKATEBOARD.png'
     },
 
-    ['ALPH1_EN119_OUTFIT_BAG'] = {
-        id = 'ALPH1_EN119_OUTFIT_BAG',
+    ['ALPH1_EN120_OUTFIT_BAG'] = {
+        id = 'ALPH1_EN120_OUTFIT_BAG',
         name = 'Outfit Bag',
         rarity = 'SUPER',
         type = 'Item',
@@ -2231,13 +2618,15 @@ Cards = {
         defense = '',
         effectTitle = 'Quick Change!',
         effectText = 'Send 1 of your fighters back to your hand, summon 1 fighter with the same name from your deck.',
-        setCode = 'ALPH1-EN119',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN120',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN119_OUTFIT_BAG.png'
+        inventoryImage = 'ALPH1-EN120_OUTFIT_BAG.png'
     },
 
-    ['ALPH1_EN120_XP_POTION'] = {
-        id = 'ALPH1_EN120_XP_POTION',
+    ['ALPH1_EN121_XP_POTION'] = {
+        id = 'ALPH1_EN121_XP_POTION',
         name = 'XP potion',
         rarity = 'RARE',
         type = 'Item',
@@ -2248,13 +2637,15 @@ Cards = {
         defense = '',
         effectTitle = 'Speedy Promo',
         effectText = 'You can promote 1 fighter the turn they were summoned.',
-        setCode = 'ALPH1-EN120',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN121',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN120_XP_POTION.png'
+        inventoryImage = 'ALPH1-EN121_XP_POTION.png'
     },
 
-    ['ALPH1_EN121_AIR_FRESHENER'] = {
-        id = 'ALPH1_EN121_AIR_FRESHENER',
+    ['ALPH1_EN122_AIR_FRESHENER'] = {
+        id = 'ALPH1_EN122_AIR_FRESHENER',
         name = 'Air freshener',
         rarity = 'COMMON',
         type = 'Item',
@@ -2265,13 +2656,15 @@ Cards = {
         defense = '',
         effectTitle = 'De-Stress',
         effectText = 'Once per turn, gain +10 LP for every vehicle card you control',
-        setCode = 'ALPH1-EN121',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN122',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN121_AIR_FRESHENER.png'
+        inventoryImage = 'ALPH1-EN122_AIR_FRESHENER.png'
     },
 
-    ['ALPH1_EN122_IFAKS'] = {
-        id = 'ALPH1_EN122_IFAKS',
+    ['ALPH1_EN123_IFAKS'] = {
+        id = 'ALPH1_EN123_IFAKS',
         name = 'IFAKS',
         rarity = 'SUPER',
         type = 'Item',
@@ -2282,81 +2675,91 @@ Cards = {
         defense = '',
         effectTitle = 'Heal me daddy!',
         effectText = 'When one of your fighters is targeted for an attack, discard this card from your hand. Negate the attack and end the battle phase.',
-        setCode = 'ALPH1-EN122',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN123',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN122_IFAKS.png'
+        inventoryImage = 'ALPH1-EN123_IFAKS.png'
     },
 
-    ['ALPH1_EN123_SNS_CLIP'] = {
-        id = 'ALPH1_EN123_SNS_CLIP',
+    ['ALPH1_EN124_SNS_CLIP'] = {
+        id = 'ALPH1_EN124_SNS_CLIP',
         name = 'SNS clip',
         rarity = 'RARE',
         type = 'Weapon',
         job = '',
         level = '',
         speed = '',
-        attack = '+0',
+        attack = 'ATK +0',
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'If \'SNS Clip\', \'SNS Trigger\' and \'SNS Body\' are all equiped on your field, send them to the cemetery and add one \'SNS Pistol\' from your deck.',
-        setCode = 'ALPH1-EN123',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN124',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN123_SNS_CLIP.png'
+        inventoryImage = 'ALPH1-EN124_SNS_CLIP.png'
     },
 
-    ['ALPH1_EN124_CHEVAL_FUGITIVE'] = {
-        id = 'ALPH1_EN124_CHEVAL_FUGITIVE',
+    ['ALPH1_EN125_CHEVAL_FUGITIVE'] = {
+        id = 'ALPH1_EN125_CHEVAL_FUGITIVE',
         name = 'Cheval Fugitive',
         rarity = 'COMMON',
         type = 'Vehicle',
         job = '',
         level = '',
-        speed = '+4',
+        speed = 'SPD +4',
         attack = '',
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'Each turn during the end phase, reduce the speed of this card by -1 until it becomes 1.',
-        setCode = 'ALPH1-EN124',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN125',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN124_CHEVAL_FUGITIVE.png'
+        inventoryImage = 'ALPH1-EN125_CHEVAL_FUGITIVE.png'
     },
 
-    ['ALPH1_EN125_BRAVADO_BISON'] = {
-        id = 'ALPH1_EN125_BRAVADO_BISON',
+    ['ALPH1_EN126_BRAVADO_BISON'] = {
+        id = 'ALPH1_EN126_BRAVADO_BISON',
         name = 'Bravado Bison',
         rarity = 'COMMON',
         type = 'Vehicle',
         job = '',
         level = '',
-        speed = '+1',
+        speed = 'SPD +1',
         attack = '',
         defense = '',
         effectTitle = 'Little Big Bison',
         effectText = 'This card also applies +1 SPD to all other fighters you control.',
-        setCode = 'ALPH1-EN125',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN126',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN125_BRAVADO_BISON.png'
+        inventoryImage = 'ALPH1-EN126_BRAVADO_BISON.png'
     },
 
-    ['ALPH1_EN126_POLICE_BUFFALO_STX_HELLFIRE'] = {
-        id = 'ALPH1_EN126_POLICE_BUFFALO_STX_HELLFIRE',
+    ['ALPH1_EN127_POLICE_BUFFALO_STX_HELLFIRE'] = {
+        id = 'ALPH1_EN127_POLICE_BUFFALO_STX_HELLFIRE',
         name = 'Police Buffalo STX Hellfire',
         rarity = 'RARE',
         type = 'Vehicle',
         job = '',
         level = '',
-        speed = '+6',
+        speed = 'SPD +6',
         attack = '',
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'Can only be equipped to an \'LEO\' card.',
-        setCode = 'ALPH1-EN126',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN127',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN126_POLICE_BUFFALO_STX_HELLFIRE.png'
+        inventoryImage = 'ALPH1-EN127_POLICE_BUFFALO_STX_HELLFIRE.png'
     },
 
-    ['ALPH1_EN127_DOOBIE'] = {
-        id = 'ALPH1_EN127_DOOBIE',
+    ['ALPH1_EN128_DOOBIE'] = {
+        id = 'ALPH1_EN128_DOOBIE',
         name = 'Doobie',
         rarity = 'COMMON',
         type = 'Item',
@@ -2367,13 +2770,15 @@ Cards = {
         defense = '',
         effectTitle = 'Spark Up!',
         effectText = 'Choose one of your fighters, it loses -2 SPD and gains +30 HP.',
-        setCode = 'ALPH1-EN127',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN128',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN127_DOOBIE.png'
+        inventoryImage = 'ALPH1-EN128_DOOBIE.png'
     },
 
-    ['ALPH1_EN128_STAGE_3_BRAKES'] = {
-        id = 'ALPH1_EN128_STAGE_3_BRAKES',
+    ['ALPH1_EN129_STAGE_3_BRAKES'] = {
+        id = 'ALPH1_EN129_STAGE_3_BRAKES',
         name = 'Stage 3 Brakes',
         rarity = 'COMMON',
         type = 'Item',
@@ -2384,13 +2789,15 @@ Cards = {
         defense = '',
         effectTitle = 'Slam the Brakes',
         effectText = 'Target 1 of your opponents vehicles. For this turn it loses all SPD bonus.',
-        setCode = 'ALPH1-EN128',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN129',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN128_STAGE_3_BRAKES.png'
+        inventoryImage = 'ALPH1-EN129_STAGE_3_BRAKES.png'
     },
 
-    ['ALPH1_EN129_STAGE_4_ENGINE'] = {
-        id = 'ALPH1_EN129_STAGE_4_ENGINE',
+    ['ALPH1_EN130_STAGE_4_ENGINE'] = {
+        id = 'ALPH1_EN130_STAGE_4_ENGINE',
         name = 'Stage 4 Engine',
         rarity = 'RARE',
         type = 'Item',
@@ -2401,13 +2808,15 @@ Cards = {
         defense = '',
         effectTitle = 'Forged Internals',
         effectText = 'Target 1 vehicle you control, it gains +50% SPD.',
-        setCode = 'ALPH1-EN129',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN130',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN129_STAGE_4_ENGINE.png'
+        inventoryImage = 'ALPH1-EN130_STAGE_4_ENGINE.png'
     },
 
-    ['ALPH1_EN130_STAGE_4_SUSPENSION'] = {
-        id = 'ALPH1_EN130_STAGE_4_SUSPENSION',
+    ['ALPH1_EN131_STAGE_4_SUSPENSION'] = {
+        id = 'ALPH1_EN131_STAGE_4_SUSPENSION',
         name = 'Stage 4 Suspension',
         rarity = 'COMMON',
         type = 'Item',
@@ -2418,13 +2827,15 @@ Cards = {
         defense = '',
         effectTitle = 'Boing!',
         effectText = 'Target 1 vehicle you control, the first time it would be destroyed by a card effect, it survives.',
-        setCode = 'ALPH1-EN130',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN131',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN130_STAGE_4_SUSPENSION.png'
+        inventoryImage = 'ALPH1-EN131_STAGE_4_SUSPENSION.png'
     },
 
-    ['ALPH1_EN131_SAINT_ROSES_CHURCH'] = {
-        id = 'ALPH1_EN131_SAINT_ROSES_CHURCH',
+    ['ALPH1_EN132_SAINT_ROSES_CHURCH'] = {
+        id = 'ALPH1_EN132_SAINT_ROSES_CHURCH',
         name = 'Saint Roses Church',
         rarity = 'ULTRA',
         type = 'Location',
@@ -2435,13 +2846,15 @@ Cards = {
         defense = '',
         effectTitle = 'Let Us Pray',
         effectText = 'If your opponent would gain LP, they lose it instead. Gain LP equal to half what your opponent loses via this effect.',
-        setCode = 'ALPH1-EN131',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN132',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN131_SAINT_ROSES_CHURCH.png'
+        inventoryImage = 'ALPH1-EN132_SAINT_ROSES_CHURCH.png'
     },
 
-    ['ALPH1_EN132_WADE_WOLSON'] = {
-        id = 'ALPH1_EN132_WADE_WOLSON',
+    ['ALPH1_EN133_WADE_WOLSON'] = {
+        id = 'ALPH1_EN133_WADE_WOLSON',
         name = 'Wade Wolson',
         rarity = 'RARE',
         type = 'Fighter',
@@ -2452,13 +2865,15 @@ Cards = {
         defense = '20',
         effectTitle = 'Come Find Me!',
         effectText = 'Shuffle this card into your opponents deck, when your opponent draws this card, they lose -80LP, then you draw 1 card. This card is then sent to your cemetary.',
-        setCode = 'ALPH1-EN132',
+        cardTags = {},
+        legality = '',
+        setCode = 'ALPH1-EN133',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN132_WADE_WOLSON.png'
+        inventoryImage = 'ALPH1-EN133_WADE_WOLSON.png'
     },
 
-    ['ALPH1_EN133_DAILY_SPIN'] = {
-        id = 'ALPH1_EN133_DAILY_SPIN',
+    ['ALPH1_EN134_DAILY_SPIN'] = {
+        id = 'ALPH1_EN134_DAILY_SPIN',
         name = 'Daily Spin',
         rarity = 'RARE',
         type = 'Item',
@@ -2468,27 +2883,12 @@ Cards = {
         attack = '',
         defense = '',
         effectTitle = 'Fingers Crossed!',
-        effectText = 'Discard 1 level 2 fighter to draw 2 cards.',
-        setCode = 'ALPH1-EN133',
-        edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN133_DAILY_SPIN.png'
-    },
-
-    ['ALPH1_EN134_LUNA_RAYNE'] = {
-        id = 'ALPH1_EN134_LUNA_RAYNE',
-        name = 'Luna Rayne',
-        rarity = 'SECRET',
-        type = 'Fighter',
-        job = 'SOSMC Int. President',
-        level = 'Level 3',
-        speed = '4',
-        attack = '?',
-        defense = '80',
-        effectTitle = 'EFFECT',
-        effectText = 'If your opponent controls a fighter, and you control no cards, you can special summon this card. When this card is summoned, roll a 6 sided die. Its attack is equal to the result x10.',
+        effectText = 'Discard 1 level 2 fighter to draw a card.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN134',
         edition = '1st Edition',
-        inventoryImage = 'ALPH1-EN134_LUNA_RAYNE.png'
+        inventoryImage = 'ALPH1-EN134_DAILY_SPIN.png'
     },
 
     ['ALPH1_EN135_BAILEY_BLEWITT'] = {
@@ -2503,6 +2903,8 @@ Cards = {
         defense = '60',
         effectTitle = 'Surveilance',
         effectText = 'Once per turn, when you activate this effect: your opponent must chose 1 of these effects. 1) Your opponent must show you their hand or 2) Your opponent loses 40 LP.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN135',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN135_BAILEY_BLEWITT.png'
@@ -2520,6 +2922,8 @@ Cards = {
         defense = '',
         effectTitle = 'Reloading!!',
         effectText = 'Target one of your fighter cards, it can make 2 attacks this turn.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN136',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN136_EXTENDED_CLIP.png'
@@ -2533,10 +2937,12 @@ Cards = {
         job = '',
         level = '',
         speed = '',
-        attack = '+0',
+        attack = 'ATK +0',
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'If \'SNS Clip\', \'SNS Trigger\' and \'SNS Loop\' are all equiped on your field, send them to the cemetery and add one \'SNS Pistol\' from your deck.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN137',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN137_SNS_TRIGGER.png'
@@ -2550,10 +2956,12 @@ Cards = {
         job = '',
         level = '',
         speed = '',
-        attack = '+0',
+        attack = 'ATK +0',
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'If \'SNS Clip\', \'SNS Trigger\' and \'SNS Loop\' are all equiped on your field, send them to the cemetery and add one \'SNS Pistol\' from your deck.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN138',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN138_SNS_LOOP.png'
@@ -2567,10 +2975,12 @@ Cards = {
         job = '',
         level = '',
         speed = '',
-        attack = '+50',
+        attack = 'ATK +50',
         defense = '',
         effectTitle = '',
         effectText = '',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN139',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN139_SNS_PISTOL.png'
@@ -2588,6 +2998,8 @@ Cards = {
         defense = '0',
         effectTitle = '',
         effectText = '',
+        cardTags = {},
+        legality = 'Limited',
         setCode = 'ALPH1-EN140',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN140_RIGHT_ARM_OF_THE_LIGHTBRINGER.png'
@@ -2605,6 +3017,8 @@ Cards = {
         defense = '0',
         effectTitle = '',
         effectText = '',
+        cardTags = {},
+        legality = 'Limited',
         setCode = 'ALPH1-EN141',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN141_LEFT_ARM_OF_THE_LIGHTBRINGER.png'
@@ -2622,6 +3036,8 @@ Cards = {
         defense = '0',
         effectTitle = '',
         effectText = '',
+        cardTags = {},
+        legality = 'Limited',
         setCode = 'ALPH1-EN142',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN142_LEFT_LEG_OF_THE_LIGHTBRINGER.png'
@@ -2639,6 +3055,8 @@ Cards = {
         defense = '0',
         effectTitle = '',
         effectText = '',
+        cardTags = {},
+        legality = 'Limited',
         setCode = 'ALPH1-EN143',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN143_RIGHT_LEG_OF_THE_LIGHTBRINGER.png'
@@ -2656,6 +3074,8 @@ Cards = {
         defense = '2000',
         effectTitle = 'Kneel Before!',
         effectText = 'This card can only be summoned by discarding \'Right Arm of the Lightbringer\', \'Left Arm of the Lightbringer\', \'Left Leg of the Lightbringer\' and \'Right Leg of the Lightbringer\' from your hand.',
+        cardTags = {},
+        legality = 'Limited',
         setCode = 'ALPH1-EN144',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN144_LUCIAN_LIGHTBRINGER.png'
@@ -2673,6 +3093,8 @@ Cards = {
         defense = '',
         effectTitle = 'A Spoonful O\' Medicine',
         effectText = 'While this card is on the field you can summon level 2 \'EMS\' cards without promotion. Also \'EMS\' cards you control gain +30 HP.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN145',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN145_PILLBOX_HOSPITAL.png'
@@ -2690,17 +3112,19 @@ Cards = {
         defense = '50',
         effectTitle = 'EFFECT',
         effectText = 'On summon you can also special summon 1 \'Terrance Redfield Riley\' from your deck or cemetary.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'on_summon', 'special_summon' },
         effects = {
-            {
-                trigger = 'on_summon',
-                optional = true,
-                promptText = 'Do you want to special summon 1 Terrance Redfield Riley from your deck or cemetery?',
-                tags = { 'special_summon' },
-                actions = {
-                    { action = 'special_summon_from_deck_or_graveyard', filter = { type = 'Fighter', nameContains = 'Terrance Redfield Riley' } }
-                }
-            }
+        {
+        trigger = 'on_summon',
+        optional = true,
+        promptText = 'Do you want to special summon 1 Terrance Redfield Riley from your deck or cemetery?',
+        tags = { 'special_summon' },
+        actions = {
+        { action = 'special_summon_from_deck_or_graveyard', filter = { type = 'Fighter', nameContains = 'Terrance Redfield Riley' } }
+        }
+        }
         },
         setCode = 'ALPH1-EN146',
         edition = '1st Edition',
@@ -2719,6 +3143,8 @@ Cards = {
         defense = '',
         effectTitle = 'Small Loan of 1Mil Dollars',
         effectText = 'Draw 2 cards, in the end phase send your whole hand to the cemetery.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN147',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN147_BANK_LOAN.png'
@@ -2736,6 +3162,8 @@ Cards = {
         defense = '50',
         effectTitle = 'Under Investigation!',
         effectText = 'If you or your opponent control any \'First Responder\' card, you can special summon this card from your cemetary.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN148',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN148_ALAN_HALL.png'
@@ -2753,15 +3181,17 @@ Cards = {
         defense = '',
         effectTitle = 'EFFECT',
         effectText = 'Steal 30 LP from your opponent.',
+        cardTags = {},
+        legality = '',
         effectTags = { 'on_play', 'steal_lp', 'damage_lp', 'gain_lp' },
         effects = {
-            {
-                trigger = 'on_play',
-                tags = { 'steal_lp' },
-                actions = {
-                    { action = 'steal_lp', amount = 30 }
-                }
-            }
+        {
+        trigger = 'on_play',
+        tags = { 'steal_lp' },
+        actions = {
+        { action = 'steal_lp', amount = 30 }
+        }
+        }
         },
         setCode = 'ALPH1-EN149',
         edition = '1st Edition',
@@ -2775,11 +3205,13 @@ Cards = {
         type = '',
         job = '',
         level = '',
-        speed = '+3',
+        speed = 'SPD +3',
         attack = '',
         defense = '',
         effectTitle = 'Whambulance',
-        effectText = 'Any damage the equipped card would take is halved.',
+        effectText = 'Each turn heal 20 HP.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN150',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN150_AMBULANCE.png'
@@ -2797,8 +3229,295 @@ Cards = {
         defense = '',
         effectTitle = 'Morph',
         effectText = 'Shuffle 2 or more cards from your hand into your deck, then draw as many cards you shuffled.',
+        cardTags = {},
+        legality = '',
         setCode = 'ALPH1-EN151',
         edition = '1st Edition',
         inventoryImage = 'ALPH1-EN151_POLYMORPH_POTION.png'
+    },
+
+    ['INK1_EN001_PATTY_THE_OWL'] = {
+        id = 'INK1_EN001_PATTY_THE_OWL',
+        name = 'Patty the Owl',
+        rarity = 'ULTRA',
+        type = 'Item',
+        job = '',
+        level = '',
+        speed = '4',
+        attack = '10',
+        defense = '50',
+        effectTitle = 'Knowledge',
+        effectText = 'Discard this card, you can choose 1 card in your opponents hand at random, your opponent must reveal it.',
+        cardTags = { 'Ash and Ink' },
+        legality = '',
+        setCode = 'INK1-EN001',
+        edition = 'Limited Edition',
+        inventoryImage = 'INK1-EN001_PATTY_THE_OWL.png'
+    },
+
+    ['INK1_EN002_FINNAGEN_SKYTECH'] = {
+        id = 'INK1_EN002_FINNAGEN_SKYTECH',
+        name = 'Finnagen Skytech',
+        rarity = 'ULTRA',
+        type = 'Fighter',
+        job = 'Archivist',
+        level = 'Level 1',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = '',
+        effectText = '',
+        cardTags = {},
+        legality = '',
+        setCode = 'INK1-EN002',
+        edition = 'Limited Edition',
+        inventoryImage = 'INK1-EN002_FINNAGEN_SKYTECH.png'
+    },
+
+    ['INK1_EN003_EXPEDITION_MAP'] = {
+        id = 'INK1_EN003_EXPEDITION_MAP',
+        name = 'Expedition Map',
+        rarity = 'SUPER',
+        type = 'Item',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'X Marks the Spot',
+        effectText = 'Look at the top 3 cards of your deck, put them back on the top in your chosen order, then draw 1 card.',
+        cardTags = { 'Ash and Ink' },
+        legality = '',
+        setCode = 'INK1-EN003',
+        edition = 'Limited Edition',
+        inventoryImage = 'INK1-EN003_EXPEDITION_MAP.png'
+    },
+
+    ['INK1_EN004_PHOTOCOPIER'] = {
+        id = 'INK1_EN004_PHOTOCOPIER',
+        name = 'Photocopier',
+        rarity = 'SUPER',
+        type = '',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'Photocopy!',
+        effectText = 'Target 1 Level 1 fighter with less than 30 ATK that you control, special summon another copy from the deck.',
+        cardTags = {},
+        legality = '',
+        setCode = 'INK1-EN004',
+        edition = 'Limited Edition',
+        inventoryImage = 'INK1-EN004_PHOTOCOPIER.png'
+    },
+
+    ['INK1_EN005'] = {
+        id = 'INK1_EN005',
+        name = '',
+        rarity = 'SUPER',
+        type = '',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = '',
+        effectText = '',
+        cardTags = {},
+        legality = '',
+        setCode = 'INK1-EN005',
+        edition = 'Limited Edition',
+        inventoryImage = 'INK1-EN005.png'
+    },
+
+    ['PROM1_EN001_HARDCORE_COMICS'] = {
+        id = 'PROM1_EN001_HARDCORE_COMICS',
+        name = 'Hardcore Comics',
+        rarity = 'Unique',
+        type = 'Location',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'Ooooooh! Shiney!!',
+        effectText = 'Gain +20 LP for each \'Ultra Rare\' and above card you play to the field. (ultra rare, secret rare, ghost rare, mythic rare).',
+        cardTags = {},
+        legality = '',
+        setCode = 'PROM1-EN001',
+        edition = 'Limited 1/10',
+        inventoryImage = 'PROM1-EN001_HARDCORE_COMICS.png'
+    },
+
+    ['PROM1_EN002_HARDCORE_COMICS'] = {
+        id = 'PROM1_EN002_HARDCORE_COMICS',
+        name = 'Hardcore Comics',
+        rarity = 'Unique',
+        type = 'Location',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'Ooooooh! Shiney!!',
+        effectText = 'Gain +20 LP for each \'Ultra Rare\' and above card you play to the field. (ultra rare, secret rare, ghost rare, mythic rare).',
+        cardTags = {},
+        legality = '',
+        setCode = 'PROM1-EN002',
+        edition = 'Limited 2/10',
+        inventoryImage = 'PROM1-EN002_HARDCORE_COMICS.png'
+    },
+
+    ['PROM1_EN003_HARDCORE_COMICS'] = {
+        id = 'PROM1_EN003_HARDCORE_COMICS',
+        name = 'Hardcore Comics',
+        rarity = 'Unique',
+        type = 'Location',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'Ooooooh! Shiney!!',
+        effectText = 'Gain +20 LP for each \'Ultra Rare\' and above card you play to the field. (ultra rare, secret rare, ghost rare, mythic rare).',
+        cardTags = {},
+        legality = '',
+        setCode = 'PROM1-EN003',
+        edition = 'Limited 3/10',
+        inventoryImage = 'PROM1-EN003_HARDCORE_COMICS.png'
+    },
+
+    ['PROM1_EN004_HARDCORE_COMICS'] = {
+        id = 'PROM1_EN004_HARDCORE_COMICS',
+        name = 'Hardcore Comics',
+        rarity = 'Unique',
+        type = 'Location',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'Ooooooh! Shiney!!',
+        effectText = 'Gain +20 LP for each \'Ultra Rare\' and above card you play to the field. (ultra rare, secret rare, ghost rare, mythic rare).',
+        cardTags = {},
+        legality = '',
+        setCode = 'PROM1-EN004',
+        edition = 'Limited 4/10',
+        inventoryImage = 'PROM1-EN004_HARDCORE_COMICS.png'
+    },
+
+    ['PROM1_EN005_HARDCORE_COMICS'] = {
+        id = 'PROM1_EN005_HARDCORE_COMICS',
+        name = 'Hardcore Comics',
+        rarity = 'Unique',
+        type = 'Location',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'Ooooooh! Shiney!!',
+        effectText = 'Gain +20 LP for each \'Ultra Rare\' and above card you play to the field. (ultra rare, secret rare, ghost rare, mythic rare).',
+        cardTags = {},
+        legality = '',
+        setCode = 'PROM1-EN005',
+        edition = 'Limited 5/10',
+        inventoryImage = 'PROM1-EN005_HARDCORE_COMICS.png'
+    },
+
+    ['PROM1_EN006_HARDCORE_COMICS'] = {
+        id = 'PROM1_EN006_HARDCORE_COMICS',
+        name = 'Hardcore Comics',
+        rarity = 'Unique',
+        type = 'Location',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'Ooooooh! Shiney!!',
+        effectText = 'Gain +20 LP for each \'Ultra Rare\' and above card you play to the field. (ultra rare, secret rare, ghost rare, mythic rare).',
+        cardTags = {},
+        legality = '',
+        setCode = 'PROM1-EN006',
+        edition = 'Limited 6/10',
+        inventoryImage = 'PROM1-EN006_HARDCORE_COMICS.png'
+    },
+
+    ['PROM1_EN007_HARDCORE_COMICS'] = {
+        id = 'PROM1_EN007_HARDCORE_COMICS',
+        name = 'Hardcore Comics',
+        rarity = 'Unique',
+        type = 'Location',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'Ooooooh! Shiney!!',
+        effectText = 'Gain +20 LP for each \'Ultra Rare\' and above card you play to the field. (ultra rare, secret rare, ghost rare, mythic rare).',
+        cardTags = {},
+        legality = '',
+        setCode = 'PROM1-EN007',
+        edition = 'Limited 7/10',
+        inventoryImage = 'PROM1-EN007_HARDCORE_COMICS.png'
+    },
+
+    ['PROM1_EN008_HARDCORE_COMICS'] = {
+        id = 'PROM1_EN008_HARDCORE_COMICS',
+        name = 'Hardcore Comics',
+        rarity = 'Unique',
+        type = 'Location',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'Ooooooh! Shiney!!',
+        effectText = 'Gain +20 LP for each \'Ultra Rare\' and above card you play to the field. (ultra rare, secret rare, ghost rare, mythic rare).',
+        cardTags = {},
+        legality = '',
+        setCode = 'PROM1-EN008',
+        edition = 'Limited 8/10',
+        inventoryImage = 'PROM1-EN008_HARDCORE_COMICS.png'
+    },
+
+    ['PROM1_EN009_HARDCORE_COMICS'] = {
+        id = 'PROM1_EN009_HARDCORE_COMICS',
+        name = 'Hardcore Comics',
+        rarity = 'Unique',
+        type = 'Location',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'Ooooooh! Shiney!!',
+        effectText = 'Gain +20 LP for each \'Ultra Rare\' and above card you play to the field. (ultra rare, secret rare, ghost rare, mythic rare).',
+        cardTags = {},
+        legality = '',
+        setCode = 'PROM1-EN009',
+        edition = 'Limited 9/10',
+        inventoryImage = 'PROM1-EN009_HARDCORE_COMICS.png'
+    },
+
+    ['PROM1_EN010_HARDCORE_COMICS'] = {
+        id = 'PROM1_EN010_HARDCORE_COMICS',
+        name = 'Hardcore Comics',
+        rarity = 'Unique',
+        type = 'Location',
+        job = '',
+        level = '',
+        speed = '',
+        attack = '',
+        defense = '',
+        effectTitle = 'Ooooooh! Shiney!!',
+        effectText = 'Gain +20 LP for each \'Ultra Rare\' and above card you play to the field. (ultra rare, secret rare, ghost rare, mythic rare).',
+        cardTags = {},
+        legality = '',
+        setCode = 'PROM1-EN010',
+        edition = 'Limited 10/10',
+        inventoryImage = 'PROM1-EN010_HARDCORE_COMICS.png'
     }
 }
