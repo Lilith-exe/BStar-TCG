@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.7.0
 - Added a large pass of effect-engine plumbing across the ALPH1 set, including many previously deferred fighter, item, vehicle, weapon, location, and promo-card effects.
 - Expanded the reusable effect engine with deck/cemetery/banish movement, selected targets, multi-select prompts, costs, counters, statuses, delayed actions, LP changes, dice rolls, equipment modifiers, and card-tag based search filters.
 - Added first-pass response-chain support so summons, promotions, attacks, card plays, activated effects, and effect actions can pause for opponent responses and then continue resolving.

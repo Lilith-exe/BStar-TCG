@@ -2,6 +2,24 @@
 
 ## Latest
 
+## v0.7.0
+- Added a large pass of effect-engine plumbing across the ALPH1 set, including many previously deferred fighter, item, vehicle, weapon, location, and promo-card effects.
+- Expanded the reusable effect engine with deck/cemetery/banish movement, selected targets, multi-select prompts, costs, counters, statuses, delayed actions, LP changes, dice rolls, equipment modifiers, and card-tag based search filters.
+- Added first-pass response-chain support so summons, promotions, attacks, card plays, activated effects, and effect actions can pause for opponent responses and then continue resolving.
+- Added protection/replacement hooks for destruction, targeting, LP loss/gain, burn/status prevention, and one-use shield effects.
+- Added delayed-task and duration support for multi-turn effects, temporary statuses, crash effects, extra attacks, and start/end phase triggers.
+- Added battle hooks for attack declaration, direct attacks, battle damage, dodges, battle destruction, and battle-related cemetery sends.
+- Added visible status/counter payloads and table badges, plus proper banished-card inspection beside cemetery browsing.
+- Added stronger pending-action guards so players cannot continue normal duel actions while prompts, selections, or chains are unresolved.
+- Added broader equipment support, including same-name multi-equip handling, cross-field equipment movement, equipped-fighter stat modifiers, and battle-aware equipment bonuses.
+- Added CSV/card-data resilience for regenerated card IDs, including alias lookups, merged deck-box stacks, diagnostic commands, and `bstarnormalizeids` dry-run/apply cleanup.
+- Fixed solo test duel flow so shared-client coin toss and response prompts no longer leave the table waiting on a missing opponent.
+- Fixed Clyde Riley Sr.'s generated image filename lookup and several shifted-ID/deck-box display issues after CSV regeneration.
+- Updated Bob's Bush to work as a continuous item-zone trap with optional attack response wording.
+- Updated Layla Hart EN014 so the discard is player-chosen instead of automatic/random.
+- Updated Xena Miranova EN023 to use Healing counters, auto-gain counters from Item plays without a prompt, and only glow/activate her heal once 3 counters are available.
+- Added gitignored local review/errata notes for unclear card text, engine blockers, and card wording changes.
+
 ## v0.6.8
 - Updated cards.lua to be in line with the master list.
 - Added 115 new card artworks.
