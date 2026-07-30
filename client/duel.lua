@@ -88,7 +88,10 @@ RegisterNetEvent('bstar_cards:client:OpenCoinFlip', function(data)
     SendNUIMessage({
         action = 'openCoinFlip',
         duelId = data.duelId,
-        tableMode = data.tableMode == true
+        tableMode = data.tableMode == true,
+        tableId = data.tableId,
+        canChooseCoin = data.canChooseCoin ~= false,
+        soloMode = data.soloMode == true
     })
 
     ForceDuelFocus()
@@ -116,6 +119,17 @@ RegisterNetEvent('bstar_cards:client:PendingCardSelection', function(data)
     SendNUIMessage({
         action = 'pendingCardSelection',
         selection = data and data.selection or nil
+    })
+
+    ForceDuelFocus()
+end)
+
+RegisterNetEvent('bstar_cards:client:DuelMessageModal', function(data)
+    SendNUIMessage({
+        action = 'duelMessageModal',
+        title = data and data.title or 'Effect',
+        text = data and data.text or '',
+        confirmText = data and data.confirmText or 'Okay'
     })
 
     ForceDuelFocus()
@@ -211,7 +225,7 @@ end)
 
 RegisterNUICallback('duelResolvePendingSelection', function(data, cb)
     if currentDuelId and data and data.selectionId then
-        TriggerServerEvent('bstar_cards:server:DuelResolvePendingSelection', currentDuelId, data.selectionId, data.selectedUid)
+        TriggerServerEvent('bstar_cards:server:DuelResolvePendingSelection', currentDuelId, data.selectionId, data.selectedUid, data.selectedUids)
     end
     cb({ ok = true })
 end)

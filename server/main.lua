@@ -8,6 +8,162 @@ local MIN_DECK_CARDS = 30
 local MAX_DECK_CARDS = 50
 local MAX_COPIES_PER_CARD = 3
 local PendingTableDuels = {}
+local CardLookupAliases = nil
+
+local function normalizeCardLookupKey(value)
+    value = tostring(value or ''):upper()
+    value = value:gsub('[^A-Z0-9]+', '_')
+    value = value:gsub('_+', '_')
+    value = value:gsub('^_', ''):gsub('_$', '')
+    return value
+end
+
+local function addCardLookupAlias(aliases, alias, card)
+    alias = normalizeCardLookupKey(alias)
+    if alias ~= '' and not aliases[alias] then
+        aliases[alias] = card
+    end
+end
+
+local function buildCardLookupAliases()
+    local aliases = {}
+    local nameCounts = {}
+    local cardsByName = {}
+
+    for cardId, card in pairs(Cards or {}) do
+        addCardLookupAlias(aliases, cardId, card)
+        addCardLookupAlias(aliases, card and card.id, card)
+        addCardLookupAlias(aliases, card and card.setCode, card)
+
+        local setCode = card and card.setCode or nil
+        local name = card and card.name or nil
+        if setCode and name then
+            addCardLookupAlias(aliases, ("%s_%s"):format(setCode, name), card)
+        end
+
+        local nameKey = normalizeCardLookupKey(name)
+        if nameKey ~= '' then
+            nameCounts[nameKey] = (nameCounts[nameKey] or 0) + 1
+            cardsByName[nameKey] = card
+        end
+    end
+
+    for nameKey, count in pairs(nameCounts) do
+        if count == 1 then
+            aliases[nameKey] = cardsByName[nameKey]
+        end
+    end
+
+    return aliases
+end
+
+local function ResolveCardDefinition(cardId)
+    if Cards and Cards[cardId] then
+        return Cards[cardId], cardId
+    end
+
+    CardLookupAliases = CardLookupAliases or buildCardLookupAliases()
+    local card = CardLookupAliases[normalizeCardLookupKey(cardId)]
+    if card then
+        return card, card.id or cardId
+    end
+
+    local normalized = normalizeCardLookupKey(cardId)
+    local nameSuffix = normalized:match('^[A-Z]+%d*_EN%d%d%d_(.+)$')
+    if nameSuffix then
+        card = CardLookupAliases[nameSuffix]
+        if card then
+            return card, card.id or cardId
+        end
+    end
+
+    local setPrefix = normalized:match('^([A-Z]+%d*_EN%d%d%d)')
+    if setPrefix then
+        card = CardLookupAliases[setPrefix]
+        if card then
+            return card, card.id or cardId
+        end
+    end
+
+    return nil, cardId
+end
+
+local function getResolvedCardIdentity(cardId)
+    local card, resolvedCardId = ResolveCardDefinition(cardId)
+    if not card then return nil end
+    return card.id or resolvedCardId or cardId
+end
+
+local function getCurrentCardId(cardId)
+    local resolvedId = getResolvedCardIdentity(cardId)
+    if resolvedId and Cards and Cards[resolvedId] then
+        return resolvedId
+    end
+    return nil
+end
+
+local function getStoredAmountForCard(storedCards, cardId)
+    if not storedCards then return 0 end
+
+    if storedCards[cardId] then
+        return tonumber(storedCards[cardId].amount) or 0
+    end
+
+    local wantedId = getResolvedCardIdentity(cardId)
+    if not wantedId then return 0 end
+
+    local amount = 0
+    for storedCardId, storedCard in pairs(storedCards or {}) do
+        if getResolvedCardIdentity(storedCardId) == wantedId then
+            amount = amount + (tonumber(storedCard and storedCard.amount) or 0)
+        end
+    end
+
+    return amount
+end
+
+local function buildPlaceholders(count)
+    local placeholders = {}
+    for i = 1, count do
+        placeholders[#placeholders + 1] = '?'
+    end
+    return table.concat(placeholders, ', ')
+end
+
+local function normalizeDeckCardMap(cardMap)
+    local normalized = {}
+    local changed = false
+    local removed = 0
+    local moved = 0
+
+    for cardId, rawAmount in pairs(cardMap or {}) do
+        local amount = tonumber(rawAmount) or 0
+        if amount > 0 then
+            local currentId = getCurrentCardId(cardId)
+            if currentId then
+                normalized[currentId] = (normalized[currentId] or 0) + amount
+                if tostring(currentId) ~= tostring(cardId) then
+                    changed = true
+                    moved = moved + 1
+                end
+            else
+                changed = true
+                removed = removed + 1
+            end
+        else
+            changed = true
+            removed = removed + 1
+        end
+    end
+
+    for cardId, amount in pairs(normalized) do
+        if tonumber(cardMap and cardMap[cardId]) ~= tonumber(amount) then
+            changed = true
+        end
+    end
+
+    return normalized, changed, moved, removed
+end
 
 local function GetCardHealthText(card)
     local raw = card and (card.health or card.hp or card.defense or card.def) or nil
@@ -16,8 +172,18 @@ local function GetCardHealthText(card)
     return tostring(raw):gsub('^DEF', 'HP')
 end
 
+CreateThread(function()
+    Wait(0)
+    local count = 0
+    for _ in pairs(Cards or {}) do
+        count = count + 1
+    end
+    local sample = ResolveCardDefinition('ALPH1_EN001_LAYLA_HART')
+    print(('[BStar] Card definitions loaded: %s | Layla sample: %s'):format(count, sample and tostring(sample.name) or 'NOT FOUND'))
+end)
+
 local function BuildCardItemInfo(cardId)
-    local card = Cards and Cards[cardId]
+    local card, resolvedCardId = ResolveCardDefinition(cardId)
 
     if not card then
         return {
@@ -26,7 +192,7 @@ local function BuildCardItemInfo(cardId)
     end
 
     return {
-        cardId = cardId,
+        cardId = resolvedCardId or cardId,
         inventoryImage = card.inventoryImage,
         label = card.name,
         rarity = card.rarity,
@@ -47,9 +213,10 @@ local function getPlayerCardCounts(Player)
 
     for _, item in pairs(Player.PlayerData.items) do
         if item and item.name == 'bstar_card' and item.info and item.info.cardId then
-            local cardId = item.info.cardId
+            local rawCardId = item.info.cardId
             local amount = item.amount or 1
-            local card = Cards and Cards[cardId]
+            local card, resolvedCardId = ResolveCardDefinition(rawCardId)
+            local cardId = (card and (card.id or resolvedCardId)) or rawCardId
 
             if not results[cardId] then
                 results[cardId] = {
@@ -90,7 +257,7 @@ local function BuildCardCatalog()
     local catalog = {}
 
     for cardId, card in pairs(Cards or {}) do
-        catalog[cardId] = {
+        local payload = {
             cardId = cardId,
             id = card.id or cardId,
             name = card.name,
@@ -110,6 +277,21 @@ local function BuildCardCatalog()
             edition = card.edition,
             inventoryImage = card.inventoryImage
         }
+
+        catalog[cardId] = payload
+
+        local aliases = {
+            card.id,
+            card.setCode,
+            card.setCode and card.name and ("%s_%s"):format(card.setCode, card.name) or nil
+        }
+
+        for _, alias in ipairs(aliases) do
+            alias = normalizeCardLookupKey(alias)
+            if alias ~= '' and not catalog[alias] then
+                catalog[alias] = payload
+            end
+        end
     end
 
     return catalog
@@ -134,7 +316,7 @@ local function validateDeckDataForPlay(deckData, storedCards)
         if amount > 0 then
             totalCards = totalCards + amount
 
-            if not Cards or not Cards[cardId] then
+            if not ResolveCardDefinition(cardId) then
                 issues[#issues + 1] = 'Unknown card'
             end
 
@@ -142,10 +324,7 @@ local function validateDeckDataForPlay(deckData, storedCards)
                 issues[#issues + 1] = 'Too many copies'
             end
 
-            local storedAmount = 0
-            if storedCards and storedCards[cardId] then
-                storedAmount = tonumber(storedCards[cardId].amount) or 0
-            end
+            local storedAmount = getStoredAmountForCard(storedCards, cardId)
 
             if amount > storedAmount then
                 issues[#issues + 1] = 'Missing cards'
@@ -218,29 +397,34 @@ function DeckBox.GetStoredCards(source, deckBoxId, cb)
         local cards = {}
 
         for _, row in pairs(result or {}) do
-            local card = Cards and Cards[row.card_id]
+            local card, resolvedCardId = ResolveCardDefinition(row.card_id)
+            local cardId = (card and (card.id or resolvedCardId)) or row.card_id
 
-            cards[row.card_id] = {
-                cardId = row.card_id,
-                amount = row.amount,
-                inventoryImage = card and card.inventoryImage or nil,
-                name = (card and card.name) or row.card_id,
+            if not cards[cardId] then
+                cards[cardId] = {
+                    cardId = cardId,
+                    amount = 0,
+                    inventoryImage = card and card.inventoryImage or nil,
+                    name = (card and card.name) or row.card_id,
 
-                rarity = card and card.rarity or nil,
-                type = card and card.type or nil,
-                level = card and card.level or nil,
-                attack = card and (card.attack or card.atk) or nil,
-                defense = card and (card.defense or card.def) or nil,
-                health = GetCardHealthText(card),
-                speed = card and (card.speed or card.spd) or nil,
-                effectTitle = card and card.effectTitle or nil,
-                effectText = card and card.effectText or nil,
-                effectTags = DuelEffects and DuelEffects.GetTags(card) or {},
-                continuous = card and (card.continuous == true or card.isContinuous == true) or false,
-                job = card and card.job or nil,
-                setCode = card and card.setCode or nil,
-                edition = card and card.edition or nil
-            }
+                    rarity = card and card.rarity or nil,
+                    type = card and card.type or nil,
+                    level = card and card.level or nil,
+                    attack = card and (card.attack or card.atk) or nil,
+                    defense = card and (card.defense or card.def) or nil,
+                    health = GetCardHealthText(card),
+                    speed = card and (card.speed or card.spd) or nil,
+                    effectTitle = card and card.effectTitle or nil,
+                    effectText = card and card.effectText or nil,
+                    effectTags = DuelEffects and DuelEffects.GetTags(card) or {},
+                    continuous = card and (card.continuous == true or card.isContinuous == true) or false,
+                    job = card and card.job or nil,
+                    setCode = card and card.setCode or nil,
+                    edition = card and card.edition or nil
+                }
+            end
+
+            cards[cardId].amount = cards[cardId].amount + (tonumber(row.amount) or 0)
         end
 
         cb(cards)
@@ -256,11 +440,15 @@ function DeckBox.StoreCard(source, deckBoxId, cardId, cb)
 
     local citizenid = Player.PlayerData.citizenid
     local items = Player.PlayerData.items or {}
+    local currentCardId = getCurrentCardId(cardId) or cardId
 
     local foundSlot = nil
 
     for slot, item in pairs(items) do
-        if item and item.name == 'bstar_card' and item.info and item.info.cardId == cardId then
+        if item
+            and item.name == 'bstar_card'
+            and item.info
+            and getCurrentCardId(item.info.cardId) == currentCardId then
             foundSlot = slot
             break
         end
@@ -282,7 +470,7 @@ function DeckBox.StoreCard(source, deckBoxId, cardId, cb)
         FROM bstar_deckbox_cards
         WHERE citizenid = ? AND deck_box_id = ? AND card_id = ?
         LIMIT 1
-    ]], { citizenid, deckBoxId, cardId }, function(result)
+    ]], { citizenid, deckBoxId, currentCardId }, function(result)
         if result and result[1] then
             exports.oxmysql:update([[
                 UPDATE bstar_deckbox_cards
@@ -295,7 +483,7 @@ function DeckBox.StoreCard(source, deckBoxId, cardId, cb)
             exports.oxmysql:insert([[
                 INSERT INTO bstar_deckbox_cards (citizenid, deck_box_id, card_id, amount)
                 VALUES (?, ?, ?, 1)
-            ]], { citizenid, deckBoxId, cardId }, function()
+            ]], { citizenid, deckBoxId, currentCardId }, function()
                 cb(true)
             end)
         end
@@ -481,7 +669,7 @@ QBCore.Functions.CreateUseableItem('bstar_card', function(source, item)
     end
 
     local cardId = item.info.cardId
-    local card = Cards[cardId]
+    local card = ResolveCardDefinition(cardId)
 
     if not card then
         TriggerClientEvent('QBCore:Notify', source, 'Card data not found: ' .. tostring(cardId), 'error')
@@ -864,7 +1052,8 @@ local function openCoinFlipForDuel(src, duel, tableMode)
         duelId = duel.id,
         tableMode = tableMode == true,
         tableId = duel.tableId,
-        canChooseCoin = true
+        canChooseCoin = true,
+        soloMode = duel.soloMode == true
     })
     sentToSource[src] = true
 
@@ -875,7 +1064,8 @@ local function openCoinFlipForDuel(src, duel, tableMode)
                 duelId = duel.id,
                 tableMode = tableMode == true,
                 tableId = duel.tableId,
-                canChooseCoin = false
+                canChooseCoin = false,
+                soloMode = duel.soloMode == true
             })
             sentToSource[targetSrc] = true
         end
@@ -920,14 +1110,19 @@ RegisterNetEvent('bstar_cards:server:DuelChooseCoin', function(duelId, choice)
         choice = choice,
         result = result,
         playerWon = playerWon,
-        canChooseTurnOrder = playerWon
+        canChooseTurnOrder = playerWon,
+        soloMode = duel.soloMode == true
     })
 
     if not playerWon then
+        local message = duel.soloMode == true
+            and 'Solo opponent won the toss and chose to go first.'
+            or 'Opponent won the toss and chose to go first.'
+
         CreateThread(function()
             Wait(1800)
             if duel and not duel.started then
-                startDuelAfterCoin(duel.id, 2, src, 'Opponent won the toss and chose to go first.')
+                startDuelAfterCoin(duel.id, 2, src, message)
             end
         end)
     end
@@ -1195,9 +1390,9 @@ RegisterNetEvent('bstar_cards:server:DuelResolvePendingEffect', function(duelId,
     end
 end)
 
-RegisterNetEvent('bstar_cards:server:DuelResolvePendingSelection', function(duelId, selectionId, selectedUid)
+RegisterNetEvent('bstar_cards:server:DuelResolvePendingSelection', function(duelId, selectionId, selectedUid, selectedUids)
     local src = source
-    local ok, err = Duel.ResolvePendingSelection(src, duelId, selectionId, selectedUid)
+    local ok, err = Duel.ResolvePendingSelection(src, duelId, selectionId, selectedUid, selectedUids)
 
     if not ok and err then
         TriggerClientEvent('QBCore:Notify', src, err, 'error')
@@ -1239,7 +1434,7 @@ RegisterCommand('givecardtest', function(source, args)
     if not Player then return end
 
     local cardId = args[1] or 'ALPH_LAYLA_HART'
-    local card = Cards[cardId]
+    local card = ResolveCardDefinition(cardId)
 
     if not card then
         TriggerClientEvent('QBCore:Notify', src, 'Card not found: ' .. tostring(cardId), 'error')
@@ -1275,4 +1470,184 @@ RegisterCommand('givecardtest', function(source, args)
 
     TriggerClientEvent('inventory:client:ItemBox', src, notifItem, 'add', 1)
     TriggerClientEvent('QBCore:Notify', src, 'Given card: ' .. card.name, 'success')
+end, false)
+
+RegisterCommand('bstarcarddiag', function(source, args)
+    local src = source
+    local wantedId = args[1] or 'ALPH1_EN001_LAYLA_HART'
+    local count = 0
+
+    for _ in pairs(Cards or {}) do
+        count = count + 1
+    end
+
+    local card = ResolveCardDefinition(wantedId)
+    local message = ('BStar Cards loaded: %s | %s => %s'):format(
+        count,
+        wantedId,
+        card and ((card.name or card.id or 'matched') .. ' / ' .. tostring(card.inventoryImage or 'no image')) or 'NOT FOUND'
+    )
+
+    print('[BStar] ' .. message)
+    if src and src > 0 then
+        TriggerClientEvent('QBCore:Notify', src, message, card and 'success' or 'error')
+    end
+end, false)
+
+RegisterCommand('bstarnormalizeids', function(source, args)
+    local src = source
+    local applyChanges = tostring(args[1] or ''):lower() == 'apply'
+
+    exports.oxmysql:query([[
+        SELECT id, citizenid, deck_box_id, card_id, amount
+        FROM bstar_deckbox_cards
+    ]], {}, function(deckBoxRows)
+        local deleteIds = {}
+        local insertRows = {}
+        local grouped = {}
+        local rowCount = 0
+        local unresolvedRows = 0
+        local movedRows = 0
+
+        for _, row in ipairs(deckBoxRows or {}) do
+            rowCount = rowCount + 1
+            deleteIds[#deleteIds + 1] = row.id
+
+            local currentId = getCurrentCardId(row.card_id)
+            if currentId then
+                local key = ("%s|%s|%s"):format(row.citizenid or '', row.deck_box_id or '', currentId)
+                if not grouped[key] then
+                    grouped[key] = {
+                        citizenid = row.citizenid,
+                        deckBoxId = row.deck_box_id,
+                        cardId = currentId,
+                        amount = 0
+                    }
+                    insertRows[#insertRows + 1] = grouped[key]
+                end
+
+                grouped[key].amount = grouped[key].amount + (tonumber(row.amount) or 0)
+                if tostring(currentId) ~= tostring(row.card_id) then
+                    movedRows = movedRows + 1
+                end
+            else
+                unresolvedRows = unresolvedRows + 1
+            end
+        end
+
+        exports.oxmysql:query([[
+            SELECT id, deck_data
+            FROM bstar_decks
+        ]], {}, function(deckRows)
+            local deckUpdates = {}
+            local deckMoved = 0
+            local deckRemoved = 0
+
+            for _, deck in ipairs(deckRows or {}) do
+                local decoded = nil
+                if deck.deck_data and deck.deck_data ~= '' then
+                    local ok, parsed = pcall(function()
+                        return json.decode(deck.deck_data)
+                    end)
+                    if ok and type(parsed) == 'table' then
+                        decoded = parsed
+                    end
+                end
+
+                decoded = decoded or {}
+                decoded.cards = type(decoded.cards) == 'table' and decoded.cards or {}
+
+                local normalizedCards, changed, moved, removed = normalizeDeckCardMap(decoded.cards)
+                if changed then
+                    decoded.cards = normalizedCards
+                    deckUpdates[#deckUpdates + 1] = {
+                        id = deck.id,
+                        deckData = decoded
+                    }
+                    deckMoved = deckMoved + moved
+                    deckRemoved = deckRemoved + removed
+                end
+            end
+
+            local summary = ('BStar ID normalize %s: deckbox rows=%s, moved=%s, removed=%s, canonical stacks=%s, deck updates=%s, deck moved=%s, deck removed=%s'):format(
+                applyChanges and 'APPLY' or 'DRY-RUN',
+                rowCount,
+                movedRows,
+                unresolvedRows,
+                #insertRows,
+                #deckUpdates,
+                deckMoved,
+                deckRemoved
+            )
+
+            local function finish()
+                print('[BStar] ' .. summary)
+                if src and src > 0 then
+                    TriggerClientEvent('QBCore:Notify', src, summary, applyChanges and 'success' or 'primary')
+                end
+            end
+
+            if not applyChanges then
+                finish()
+                return
+            end
+
+            local function updateDecks()
+                local remaining = #deckUpdates
+                if remaining == 0 then
+                    finish()
+                    return
+                end
+
+                for _, update in ipairs(deckUpdates) do
+                    exports.oxmysql:update([[
+                        UPDATE bstar_decks
+                        SET deck_data = ?
+                        WHERE id = ?
+                    ]], { json.encode(update.deckData), update.id }, function()
+                        remaining = remaining - 1
+                        if remaining <= 0 then
+                            finish()
+                        end
+                    end)
+                end
+            end
+
+            local function insertDeckBoxRows()
+                if #insertRows == 0 then
+                    updateDecks()
+                    return
+                end
+
+                local placeholders = {}
+                local params = {}
+                for _, row in ipairs(insertRows) do
+                    placeholders[#placeholders + 1] = '(?, ?, ?, ?)'
+                    params[#params + 1] = row.citizenid
+                    params[#params + 1] = row.deckBoxId
+                    params[#params + 1] = row.cardId
+                    params[#params + 1] = row.amount
+                end
+
+                exports.oxmysql:insert(([[
+                    INSERT INTO bstar_deckbox_cards (citizenid, deck_box_id, card_id, amount)
+                    VALUES %s
+                ]]):format(table.concat(placeholders, ', ')), params, function()
+                    updateDecks()
+                end)
+            end
+
+            if #deleteIds == 0 then
+                insertDeckBoxRows()
+                return
+            end
+
+            exports.oxmysql:update(([[
+                DELETE FROM bstar_deckbox_cards
+                WHERE id IN (%s)
+            ]]):format(buildPlaceholders(#deleteIds)), deleteIds, function()
+                insertDeckBoxRows()
+            end)
+        end)
+    end)
 end, false)

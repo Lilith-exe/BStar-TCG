@@ -1914,6 +1914,44 @@ button:hover {
   object-fit: contain;
 }
 
+.card-state-badges {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  z-index: 8;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  max-width: calc(100% - 12px);
+  pointer-events: none;
+}
+
+.card-state-badge {
+  padding: 2px 5px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(8, 10, 16, 0.78);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.14);
+}
+
+.card-state-badge.status.burn {
+  border-color: rgba(255, 85, 45, 0.75);
+  color: #ffb29b;
+  box-shadow: 0 0 10px rgba(255, 72, 40, 0.45);
+}
+
+.card-state-badge.counter {
+  border-color: rgba(236, 108, 255, 0.72);
+  color: #f6c4ff;
+  box-shadow: 0 0 10px rgba(210, 80, 255, 0.38);
+}
+
 .duel-hand {
   display: flex;
   gap: 12px;
@@ -2416,6 +2454,29 @@ button:hover {
     inset 0 0 12px rgba(255, 70, 100, 0.08);
   text-shadow: 0 0 12px rgba(255, 80, 110, 0.52);
   pointer-events: none;
+}
+
+.table-action-hint.waiting {
+  color: rgba(226, 255, 244, 0.98);
+  background: linear-gradient(180deg, rgba(12, 52, 42, 0.82), rgba(8, 18, 20, 0.74));
+  border-color: rgba(94, 255, 190, 0.42);
+  box-shadow:
+    0 0 22px rgba(70, 255, 185, 0.28),
+    inset 0 0 14px rgba(70, 255, 185, 0.10);
+  text-shadow: 0 0 14px rgba(86, 255, 190, 0.66);
+  animation: tableWaitingPulse 1.15s ease-in-out infinite;
+}
+
+@keyframes tableWaitingPulse {
+  0%, 100% {
+    opacity: 0.78;
+    transform: translateX(-50%) scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.03);
+  }
 }
 
 .table-lp-wrap {
@@ -3647,6 +3708,12 @@ button.table-card-pile {
 .table-grave-button.active {
   border-color: rgba(180, 140, 255, 0.54);
   box-shadow: 0 0 16px rgba(180, 140, 255, 0.18);
+}
+
+.table-grave-button.banish.active,
+.table-grave-panel.banished .table-grave-list {
+  border-color: rgba(255, 95, 145, 0.48);
+  box-shadow: 0 0 16px rgba(255, 70, 130, 0.18);
 }
 
 .table-grave-button.effect-ready {

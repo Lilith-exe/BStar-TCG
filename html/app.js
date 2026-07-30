@@ -113,7 +113,9 @@ const tablePreviewMeta = document.getElementById('tablePreviewMeta');
 const tablePreviewStats = document.getElementById('tablePreviewStats');
 const tablePreviewEffect = document.getElementById('tablePreviewEffect');
 const tableSelfGraveBtn = document.getElementById('tableSelfGraveBtn');
+const tableSelfBanishBtn = document.getElementById('tableSelfBanishBtn');
 const tableOpponentGraveBtn = document.getElementById('tableOpponentGraveBtn');
+const tableOpponentBanishBtn = document.getElementById('tableOpponentBanishBtn');
 const tableGravePanel = document.getElementById('tableGravePanel');
 const tableGraveList = document.getElementById('tableGraveList');
 const tableNextPhaseBtn = document.getElementById('tableNextPhaseBtn');
@@ -134,6 +136,7 @@ const duelResultCloseBtn = document.getElementById('duelResultCloseBtn');
 let activeModalAction = null;
 let activeModalCancelAction = null;
 let activeModalSelectedChoice = null;
+let activeModalSelectedChoices = [];
 let activeModalCanMinimize = false;
 let activeEffectPromptId = null;
 let activeCardSelectionId = null;
@@ -171,6 +174,7 @@ let selectedAttackerZoneIndex = null;
 let duelTableMode = false;
 let tablePreviewCard = null;
 let openTableGraveSide = null;
+let openTableGraveZone = 'graveyard';
 let tableDrawAnimating = false;
 let tableZoneSnapshot = null;
 let tableGraveSnapshot = null;
@@ -261,6 +265,7 @@ function hideAll() {
   activeModalAction = null;
   activeModalCancelAction = null;
   activeModalSelectedChoice = null;
+  activeModalSelectedChoices = [];
   activeModalCanMinimize = false;
   activeEffectPromptId = null;
   activeCardSelectionId = null;
@@ -358,15 +363,19 @@ function isDeckCardInvalid(cardId) {
 
 // ---------- Modal ----------
 
-function openModal({ title, text, showInput = false, inputValue = '', confirmText = 'Confirm', cancelText = 'Cancel', choices = null, effectOptions = null, minimizable = false, restoreText = 'Pending Prompt', onConfirm = null, onCancel = null, onChoice = null }) {
+function openModal({ title, text, showInput = false, inputValue = '', confirmText = 'Confirm', cancelText = 'Cancel', choices = null, effectOptions = null, minimizable = false, restoreText = 'Pending Prompt', multiSelect = false, minChoices = 1, maxChoices = 1, onConfirm = null, onCancel = null, onChoice = null }) {
   activeModalAction = onConfirm || null;
   activeModalCancelAction = onCancel || null;
   activeModalSelectedChoice = null;
+  activeModalSelectedChoices = [];
   activeModalCanMinimize = minimizable === true;
 
   const modalPanel = uiModalWrap.querySelector('.ui-modal');
   const hasChoices = Array.isArray(choices) && choices.length > 0;
   const hasEffectOptions = Array.isArray(effectOptions) && effectOptions.length > 0;
+  const allowsMultiSelect = hasChoices && multiSelect === true && Number(maxChoices) > 1;
+  const requiredChoices = Math.max(0, Number(minChoices) || 0);
+  const allowedChoices = Math.max(1, Number(maxChoices) || 1);
   modalPanel?.classList.toggle('card-picker', hasChoices);
   uiModalWrap.classList.toggle('card-picker-open', hasChoices);
   modalPanel?.classList.remove('minimizing', 'restoring');
@@ -380,6 +389,7 @@ function openModal({ title, text, showInput = false, inputValue = '', confirmTex
   uiModalText.textContent = text || '';
   uiModalConfirmBtn.textContent = confirmText;
   uiModalCancelBtn.textContent = cancelText;
+  uiModalCancelBtn.classList.toggle('hidden', !cancelText);
   uiModalConfirmBtn.disabled = hasChoices || hasEffectOptions;
 
   if (showInput) {
@@ -438,13 +448,34 @@ function openModal({ title, text, showInput = false, inputValue = '', confirmTex
         uiModalChoicePreview.appendChild(body);
       };
 
+      const updateChoiceConfirmState = () => {
+        const selectedCount = activeModalSelectedChoices.length;
+        uiModalConfirmBtn.disabled = allowsMultiSelect
+          ? selectedCount < requiredChoices || selectedCount > allowedChoices
+          : !activeModalSelectedChoice;
+      };
+
       const selectChoice = (choice, btn) => {
-        activeModalSelectedChoice = choice;
-        uiModalChoices.querySelectorAll('.ui-modal-choice.selected').forEach(el => el.classList.remove('selected'));
-        btn.classList.add('selected');
-        uiModalConfirmBtn.disabled = false;
+        if (allowsMultiSelect) {
+          const existingIndex = activeModalSelectedChoices.findIndex(selected => selected?.uid === choice.uid);
+          if (existingIndex >= 0) {
+            activeModalSelectedChoices.splice(existingIndex, 1);
+            btn.classList.remove('selected');
+          } else if (activeModalSelectedChoices.length < allowedChoices) {
+            activeModalSelectedChoices.push(choice);
+            btn.classList.add('selected');
+          }
+          activeModalSelectedChoice = activeModalSelectedChoices[activeModalSelectedChoices.length - 1] || null;
+        } else {
+          activeModalSelectedChoice = choice;
+          activeModalSelectedChoices = [choice];
+          uiModalChoices.querySelectorAll('.ui-modal-choice.selected').forEach(el => el.classList.remove('selected'));
+          btn.classList.add('selected');
+        }
+
+        updateChoiceConfirmState();
         renderChoicePreview(choice);
-        if (onChoice) onChoice(choice);
+        if (onChoice) onChoice(allowsMultiSelect ? activeModalSelectedChoices : choice);
       };
 
       for (const choice of choices) {
@@ -565,11 +596,13 @@ function closeModal() {
   uiModalChoicePreview?.classList.add('hidden');
   if (uiModalChoicePreview) uiModalChoicePreview.innerHTML = '';
   uiModalConfirmBtn.classList.remove('hidden');
+  uiModalCancelBtn.classList.remove('hidden');
   uiModalConfirmBtn.disabled = false;
   uiModalWrap.querySelector('.ui-modal')?.classList.remove('card-picker', 'minimizing', 'restoring');
   activeModalAction = null;
   activeModalCancelAction = null;
   activeModalSelectedChoice = null;
+  activeModalSelectedChoices = [];
   activeModalCanMinimize = false;
 }
 
@@ -596,6 +629,17 @@ function resolvePendingSelection(selectionId, selectedUid) {
   });
 }
 
+function resolvePendingMultiSelection(selectionId, selectedUids) {
+  fetch(`https://${GetParentResourceName()}/duelResolvePendingSelection`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      selectionId,
+      selectedUids
+    })
+  });
+}
+
 function showPendingEffectPrompt(prompt) {
   if (!prompt || !prompt.id || activeEffectPromptId === prompt.id) return;
 
@@ -609,8 +653,8 @@ function showPendingEffectPrompt(prompt) {
     showInput: !!numberForm,
     inputValue: numberForm?.default ?? '',
     effectOptions: options,
-    confirmText: 'Activate',
-    cancelText: 'Skip',
+    confirmText: prompt.confirmText || 'Activate',
+    cancelText: prompt.cancelText || 'Skip',
     minimizable: true,
     restoreText: `${prompt.cardName || 'Card'} Effect`,
     onConfirm: (value, selectedOption) => {
@@ -647,6 +691,15 @@ function syncPendingEffectPrompt() {
   showPendingEffectPrompt(prompt);
 }
 
+function getWaitingEffectText() {
+  const waiting = currentDuelState?.waitingEffect || null;
+  if (!waiting) return '';
+
+  return waiting.responseWindow
+    ? 'Waiting for opponent response...'
+    : 'Waiting for opponent effect...';
+}
+
 function showPendingCardSelection(selection) {
   if (!selection || !selection.id || activeCardSelectionId === selection.id) return;
 
@@ -659,17 +712,38 @@ function showPendingCardSelection(selection) {
     confirmText: 'Confirm',
     cancelText: 'Cancel',
     choices: selection.choices || [],
+    multiSelect: Number(selection.maxChoices || 1) > 1,
+    minChoices: selection.minChoices ?? 1,
+    maxChoices: selection.maxChoices ?? 1,
     minimizable: true,
     restoreText: selection.title || 'Choose a card',
-    onConfirm: (_value, choice) => {
-      if (!choice) return;
-      resolvePendingSelection(selection.id, choice.uid);
+    onConfirm: (_value, choice, selectedChoices) => {
+      if (Number(selection.maxChoices || 1) > 1) {
+        const selectedUids = (selectedChoices || []).map(selected => selected?.uid).filter(Boolean);
+        if (selectedUids.length < Number(selection.minChoices ?? 1)) return;
+        resolvePendingMultiSelection(selection.id, selectedUids);
+      } else {
+        if (!choice && Number(selection.minChoices ?? 1) > 0) return;
+        resolvePendingSelection(selection.id, choice?.uid || null);
+      }
       activeCardSelectionId = null;
     },
     onCancel: () => {
       resolvePendingSelection(selection.id, null);
       activeCardSelectionId = null;
     }
+  });
+}
+
+function showDuelMessageModal(data = {}) {
+  openModal({
+    title: data.title || 'Effect',
+    text: data.text || '',
+    confirmText: data.confirmText || 'Okay',
+    cancelText: '',
+    minimizable: false,
+    onConfirm: () => {},
+    onCancel: () => {}
   });
 }
 
@@ -772,7 +846,7 @@ function showCoinFlipResult(result) {
     coinFlipTitle.textContent = result.playerWon ? 'You won the toss' : 'Opponent won the toss';
     coinFlipText.textContent = result.playerWon
       ? 'Choose who takes the first turn.'
-      : 'Opponent chooses to go first.';
+      : (result.soloMode ? 'Solo opponent goes first.' : 'Opponent chooses to go first.');
 
     turnChoiceActions.classList.toggle('hidden', !result.canChooseTurnOrder);
   }, revealDelay);
@@ -1951,6 +2025,33 @@ function updateHpDisplay(el, value) {
   el.classList.toggle('low-hp', hp > 0 && hp < 200);
 }
 
+function appendCardBadges(parent, card) {
+  const statuses = Array.isArray(card?.statuses) ? card.statuses : [];
+  const counters = card?.counters && typeof card.counters === 'object' ? card.counters : {};
+  if (statuses.length === 0 && Object.keys(counters).length === 0) return;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'card-state-badges';
+
+  for (const status of statuses) {
+    const badge = document.createElement('span');
+    badge.className = `card-state-badge status ${String(status.id || status.name || '').toLowerCase()}`;
+    const label = status.name || status.id || 'Status';
+    badge.textContent = status.remaining ? `${label} ${status.remaining}` : label;
+    wrap.appendChild(badge);
+  }
+
+  for (const [name, amount] of Object.entries(counters)) {
+    if (!amount) continue;
+    const badge = document.createElement('span');
+    badge.className = `card-state-badge counter ${String(name).toLowerCase()}`;
+    badge.textContent = `${name} ${amount}`;
+    wrap.appendChild(badge);
+  }
+
+  parent.appendChild(wrap);
+}
+
 function renderTableZone(card, side, zoneIndex, equipmentSlot = null) {
   const zone = document.createElement('div');
   zone.className = 'table-zone';
@@ -1994,6 +2095,7 @@ function renderTableZone(card, side, zoneIndex, equipmentSlot = null) {
   const img = document.createElement('img');
   img.src = getCardImagePathFromPayload(card);
   zone.appendChild(img);
+  appendCardBadges(zone, card);
 
   const statStrip = document.createElement('div');
   statStrip.className = 'table-card-stats';
@@ -2171,6 +2273,7 @@ function getGenericPromotionHintText(promotionCard) {
 function closeTableGraveyard() {
   if (!openTableGraveSide) return;
   openTableGraveSide = null;
+  openTableGraveZone = 'graveyard';
   renderTableGraveyard();
 }
 
@@ -2268,17 +2371,25 @@ function renderTableGraveyard() {
 
   const selfGrave = currentDuelState.selfPlayer?.graveyard || [];
   const oppGrave = currentDuelState.opponentPlayer?.graveyard || [];
+  const selfBanish = currentDuelState.selfPlayer?.banished || [];
+  const oppBanish = currentDuelState.opponentPlayer?.banished || [];
   const selfLastGrave = selfGrave[selfGrave.length - 1] || null;
   const oppLastGrave = oppGrave[oppGrave.length - 1] || null;
   const selfGraveHasEffect = hasActivatableCards(selfGrave);
   const oppGraveHasEffect = hasActivatableCards(oppGrave);
 
   tableSelfGraveBtn.textContent = `YOUR CEMETERY ${selfGrave.length}`;
+  if (tableSelfBanishBtn) tableSelfBanishBtn.textContent = `YOUR BANISH ${selfBanish.length}`;
   tableOpponentGraveBtn.textContent = `OPPONENT CEMETERY ${oppGrave.length}`;
+  if (tableOpponentBanishBtn) tableOpponentBanishBtn.textContent = `OPPONENT BANISH ${oppBanish.length}`;
   tableSelfGraveBtn.classList.toggle('hidden', openTableGraveSide !== 'self');
+  tableSelfBanishBtn?.classList.toggle('hidden', openTableGraveSide !== 'self');
   tableOpponentGraveBtn.classList.toggle('hidden', openTableGraveSide !== 'opponent');
-  tableSelfGraveBtn.classList.toggle('active', openTableGraveSide === 'self');
-  tableOpponentGraveBtn.classList.toggle('active', openTableGraveSide === 'opponent');
+  tableOpponentBanishBtn?.classList.toggle('hidden', openTableGraveSide !== 'opponent');
+  tableSelfGraveBtn.classList.toggle('active', openTableGraveSide === 'self' && openTableGraveZone === 'graveyard');
+  tableSelfBanishBtn?.classList.toggle('active', openTableGraveSide === 'self' && openTableGraveZone === 'banished');
+  tableOpponentGraveBtn.classList.toggle('active', openTableGraveSide === 'opponent' && openTableGraveZone === 'graveyard');
+  tableOpponentBanishBtn?.classList.toggle('active', openTableGraveSide === 'opponent' && openTableGraveZone === 'banished');
   tableSelfGraveBtn.classList.toggle('effect-ready', selfGraveHasEffect);
   tableOpponentGraveBtn.classList.toggle('effect-ready', oppGraveHasEffect);
   tableSelfCemeterySlot?.classList.toggle('active', openTableGraveSide === 'self');
@@ -2304,17 +2415,20 @@ function renderTableGraveyard() {
     return;
   }
 
-  const cards = openTableGraveSide === 'self' ? selfGrave : oppGrave;
+  const cards = openTableGraveZone === 'banished'
+    ? (openTableGraveSide === 'self' ? selfBanish : oppBanish)
+    : (openTableGraveSide === 'self' ? selfGrave : oppGrave);
   tableGravePanel?.classList.remove('hidden');
   tableGravePanel?.classList.toggle('self', openTableGraveSide === 'self');
   tableGravePanel?.classList.toggle('opponent', openTableGraveSide === 'opponent');
+  tableGravePanel?.classList.toggle('banished', openTableGraveZone === 'banished');
   tableGraveList.classList.remove('hidden');
   tableGraveList.innerHTML = '';
 
   if (!cards.length) {
     const empty = document.createElement('div');
     empty.className = 'table-grave-empty';
-    empty.textContent = 'No cards';
+    empty.textContent = openTableGraveZone === 'banished' ? 'No banished cards' : 'No cards';
     tableGraveList.appendChild(empty);
     return;
   }
@@ -2857,8 +2971,8 @@ function renderTableDuelUi() {
   updateHpDisplay(tableOpponentLP, currentDuelState.opponentPlayer?.lifePoints ?? 0);
   if (tableOpponentDeckCount) tableOpponentDeckCount.textContent = `OPPONENT DECK ${currentDuelState.opponentPlayer?.deckCount ?? 0}`;
   if (tableSelfDeckCount) tableSelfDeckCount.textContent = `YOUR DECK ${currentDuelState.selfPlayer?.deckCount ?? 0}`;
-  if (tableOpponentCemeteryCount) tableOpponentCemeteryCount.textContent = `OPPONENT CEMETERY ${currentDuelState.opponentPlayer?.graveyardCount ?? 0}`;
-  if (tableSelfCemeteryCount) tableSelfCemeteryCount.textContent = `YOUR CEMETERY ${currentDuelState.selfPlayer?.graveyardCount ?? 0}`;
+  if (tableOpponentCemeteryCount) tableOpponentCemeteryCount.textContent = `OPPONENT CEMETERY ${currentDuelState.opponentPlayer?.graveyardCount ?? 0} / BAN ${currentDuelState.opponentPlayer?.banishedCount ?? 0}`;
+  if (tableSelfCemeteryCount) tableSelfCemeteryCount.textContent = `YOUR CEMETERY ${currentDuelState.selfPlayer?.graveyardCount ?? 0} / BAN ${currentDuelState.selfPlayer?.banishedCount ?? 0}`;
 
   tableOpponentZones.innerHTML = '';
   tableSelfZones.innerHTML = '';
@@ -2881,11 +2995,13 @@ function renderTableDuelUi() {
   const oppEquipmentZones = currentDuelState.opponentPlayer?.equipmentZones || [null, null, null];
   const selfEquipmentZones = currentDuelState.selfPlayer?.equipmentZones || [null, null, null];
   const selectedHandCard = getSelfHandCardByUid(selectedHandCardUid);
-  const genericPromotionHint = canNormalSummon ? getGenericPromotionHintText(selectedHandCard) : '';
+  const waitingEffectText = getWaitingEffectText();
+  const genericPromotionHint = waitingEffectText || (canNormalSummon ? getGenericPromotionHintText(selectedHandCard) : '');
 
   if (tableActionHint) {
     tableActionHint.textContent = genericPromotionHint;
     tableActionHint.classList.toggle('hidden', !genericPromotionHint);
+    tableActionHint.classList.toggle('waiting', !!waitingEffectText);
   }
 
   renderTableSupportRow(tableOpponentItemRow, currentDuelState.opponentPlayer?.itemZones || [], 'opponent', 'item', null, false);
@@ -3183,6 +3299,7 @@ function openDuelUi(duel, tableMode = false) {
   duelTableMode = tableMode;
   tablePreviewCard = null;
   openTableGraveSide = null;
+  openTableGraveZone = 'graveyard';
   tableZoneSnapshot = null;
   tableGraveSnapshot = null;
   tableMovementSnapshot = null;
@@ -3230,6 +3347,7 @@ function closeDuelUi(notifyLua = true) {
   duelTableMode = false;
   tablePreviewCard = null;
   openTableGraveSide = null;
+  openTableGraveZone = 'graveyard';
   tableDrawAnimating = false;
   tableZoneSnapshot = null;
   tableGraveSnapshot = null;
@@ -3269,6 +3387,7 @@ function renderZoneCard(zoneCard, side, zoneIndex, extraClass = '') {
   img.src = getCardImagePathFromPayload(zoneCard);
 
   zone.appendChild(img);
+  appendCardBadges(zone, zoneCard);
   return zone;
 }
 
@@ -3586,14 +3705,15 @@ function renderDuelUi() {
   }
 
   const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
-  duelStatusText.textContent = isMyTurn ? 'Your turn' : 'Opponent turn';
+  const waitingEffectText = getWaitingEffectText();
+  duelStatusText.textContent = waitingEffectText || (isMyTurn ? 'Your turn' : 'Opponent turn');
 
   duelOpponentDeckCount.textContent = `Deck: ${currentDuelState.opponentPlayer?.deckCount || 0}`;
   duelOpponentHandCount.textContent = `Hand: ${currentDuelState.opponentPlayer?.handCount || 0}`;
-  duelOpponentGraveCount.textContent = `GY: ${currentDuelState.opponentPlayer?.graveyardCount || 0} • HP: ${currentDuelState.opponentPlayer?.lifePoints || 0}`;
+  duelOpponentGraveCount.textContent = `GY: ${currentDuelState.opponentPlayer?.graveyardCount || 0} • BAN: ${currentDuelState.opponentPlayer?.banishedCount || 0} • HP: ${currentDuelState.opponentPlayer?.lifePoints || 0}`;
 
   duelSelfDeckCount.textContent = `Deck: ${currentDuelState.selfPlayer?.deckCount || 0}`;
-  duelSelfGraveCount.textContent = `GY: ${currentDuelState.selfPlayer?.graveyardCount || 0} • HP: ${currentDuelState.selfPlayer?.lifePoints || 0}`;
+  duelSelfGraveCount.textContent = `GY: ${currentDuelState.selfPlayer?.graveyardCount || 0} • BAN: ${currentDuelState.selfPlayer?.banishedCount || 0} • HP: ${currentDuelState.selfPlayer?.lifePoints || 0}`;
 
   if (currentDuelState.status === 'finished') {
     if (currentDuelState.winner === currentDuelState.viewerIndex) {
@@ -3605,7 +3725,7 @@ function renderDuelUi() {
     }
   } else {
     const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
-    duelStatusText.textContent = isMyTurn ? 'Your turn' : 'Opponent turn';
+    duelStatusText.textContent = waitingEffectText || (isMyTurn ? 'Your turn' : 'Opponent turn');
   }
 
   const selectedHandCard = getSelfHandCardByUid(selectedHandCardUid);
@@ -3614,7 +3734,9 @@ function renderDuelUi() {
     && isDuelMainPhase(currentDuelState.phase)
     && !currentDuelState.selfPlayer?.hasSummonedThisTurn;
   const genericPromotionHint = canShowGenericPromotionHint ? getGenericPromotionHintText(selectedHandCard) : '';
-  if (genericPromotionHint) {
+  if (waitingEffectText) {
+    duelStatusText.textContent = waitingEffectText;
+  } else if (genericPromotionHint) {
     duelStatusText.textContent = genericPromotionHint;
   }
 
@@ -3843,6 +3965,10 @@ window.addEventListener('message', (event) => {
     showPendingCardSelection(data.selection);
   }
 
+  if (data.action === 'duelMessageModal') {
+    showDuelMessageModal(data);
+  }
+
   if (data.action === 'closeDuelUi') {
     closeDuelUi(false);
   }
@@ -3904,7 +4030,7 @@ uiModalCancelBtn.addEventListener('click', () => {
 
 uiModalConfirmBtn.addEventListener('click', () => {
   if (activeModalAction) {
-    activeModalAction(uiModalInput.value.trim(), activeModalSelectedChoice);
+    activeModalAction(uiModalInput.value.trim(), activeModalSelectedChoice, activeModalSelectedChoices);
   }
   closeModal();
 });
@@ -4188,17 +4314,46 @@ if (duelResultCloseBtn) {
 }
 
 if (tableSelfGraveBtn) {
-  tableSelfGraveBtn.addEventListener('click', (event) => event.stopPropagation());
+  tableSelfGraveBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openTableGraveSide = 'self';
+    openTableGraveZone = 'graveyard';
+    renderTableGraveyard();
+  });
+}
+
+if (tableSelfBanishBtn) {
+  tableSelfBanishBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openTableGraveSide = 'self';
+    openTableGraveZone = 'banished';
+    renderTableGraveyard();
+  });
 }
 
 if (tableOpponentGraveBtn) {
-  tableOpponentGraveBtn.addEventListener('click', (event) => event.stopPropagation());
+  tableOpponentGraveBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openTableGraveSide = 'opponent';
+    openTableGraveZone = 'graveyard';
+    renderTableGraveyard();
+  });
+}
+
+if (tableOpponentBanishBtn) {
+  tableOpponentBanishBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openTableGraveSide = 'opponent';
+    openTableGraveZone = 'banished';
+    renderTableGraveyard();
+  });
 }
 
 if (tableSelfCemeterySlot) {
   tableSelfCemeterySlot.addEventListener('click', (event) => {
     event.stopPropagation();
     openTableGraveSide = openTableGraveSide === 'self' ? null : 'self';
+    openTableGraveZone = 'graveyard';
     renderTableGraveyard();
   });
 }
@@ -4207,6 +4362,7 @@ if (tableOpponentCemeterySlot) {
   tableOpponentCemeterySlot.addEventListener('click', (event) => {
     event.stopPropagation();
     openTableGraveSide = openTableGraveSide === 'opponent' ? null : 'opponent';
+    openTableGraveZone = 'graveyard';
     renderTableGraveyard();
   });
 }
@@ -4226,6 +4382,7 @@ if (tableDuelWrap) {
     const hadOpenGrave = !!openTableGraveSide;
     const hadSelection = clearDuelSelections();
     openTableGraveSide = null;
+    openTableGraveZone = 'graveyard';
 
     if (hadSelection || hadOpenGrave) {
       renderDuelUi();
