@@ -1,0 +1,14 @@
+{
+  "threshold": 0.45,
+  "softness": 0.30,
+  "intensity": 1.0,
+  "width": 384,
+  "artworkPolygon": [[0.081, 0.140], [0.583, 0.140], [0.667, 0.100], [0.924, 0.100], [0.924, 0.648], [0.081, 0.648]],
+  "samples": [
+    "ALPH1-EN001_LAYLA_HART.png",
+    "ALPH1-EN002_MR_BSTAR.png",
+    "ALPH1-EN003_MAX_TURNER_MIRANOVA.png",
+    "ALPH1-EN005_XENA_COUGAR_MIRANOVA.png",
+    "ALPH1-EN008_ALEX_CAVEMAN_ORTIZ.png"
+  ]
+}

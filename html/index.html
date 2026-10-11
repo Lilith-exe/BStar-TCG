@@ -5,13 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BStar UI</title>
   <link rel="stylesheet" href="style.css?v=dev-20260725-piles2" />
+  <link rel="stylesheet" href="foil.css?v=preview-selector1" />
 </head>
 <body>
   <div id="app" class="hidden">
     <!-- Card Viewer -->
     <div id="viewerWrap" class="viewer-wrap hidden">
-      <img id="cardImage" class="card-image" src="" alt="Card Image" />
-      <button id="closeBtn">Close</button>
+      <div id="cardSurface" class="card-surface">
+        <img id="cardImage" class="card-image" src="" alt="Card Image" />
+        <div id="cardFoil" class="card-foil" aria-hidden="true"></div>
+      </div>
+      <div class="viewer-controls">
+        <button id="closeBtn">Close</button>
+        <button id="foilModeBtn" class="hidden" title="Cycle sample foil: DARK, LIGHT, off">Foil: dark</button>
+        <label id="ghostPreviewControl" class="ghost-preview-control hidden">
+          Preview Artwork
+          <select id="ghostPreviewSelect" aria-label="Preview Artwork">
+            <option value="">Original / Reset</option>
+          </select>
+        </label>
+      </div>
     </div>
 
     <!-- Deck Box -->
@@ -365,7 +378,11 @@
     </div>
   </div>
 
-  <script src="app.js?v=dev-20260725-piles2"></script>
+  <script src="foil-samples.js?v=1"></script>
+  <script src="foil-edge.js?v=3"></script>
+  <script src="foil-mask.js?v=1133"></script>
+  <script src="foil.js?v=preview-selector1"></script>
+  <script src="app.js?v=dev-20261008-foil2"></script>
 </body>
 </html>
 

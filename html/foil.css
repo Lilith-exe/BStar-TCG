@@ -1,0 +1,334 @@
+/* The original image and selective reflections share the existing tilt transform. */
+.card-surface {
+  position: relative;
+  flex: 0 0 auto;
+  isolation: isolate;
+  border-radius: 16px;
+  transform-origin: center;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+
+.card-surface .card-image {
+  display: block;
+  transform: none;
+  will-change: auto;
+}
+
+.card-foil {
+  display: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: calc(var(--foil-intensity, 0.55) * (0.3 + var(--foil-energy, 0.18) * 0.7));
+  mix-blend-mode: screen;
+  -webkit-mask-image: var(--foil-mask);
+  mask-image: var(--foil-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  mask-mode: alpha;
+  clip-path: var(--artwork-clip, inset(100%));
+}
+
+/* Fail closed rather than colouring the whole card on a browser without masking. */
+@supports (mask-image: url("")) or (-webkit-mask-image: url("")) {
+  .card-foil.active { display: block; }
+}
+
+.card-foil::before,
+.card-foil::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.card-foil::before {
+  background-image: repeating-linear-gradient(var(--foil-angle, 115deg),
+    rgba(96, 224, 255, 0.65) 0%, rgba(176, 110, 255, 0.65) 12%,
+    rgba(255, 112, 182, 0.65) 24%, rgba(255, 219, 123, 0.65) 36%,
+    rgba(110, 255, 195, 0.65) 48%, rgba(96, 224, 255, 0.65) 60%);
+  background-size: 300% 300%;
+  animation: foilDrift 15s ease-in-out infinite alternate;
+}
+
+.card-foil::after {
+  background: radial-gradient(ellipse at var(--foil-x, 50%) var(--foil-y, 50%),
+    rgba(255, 255, 255, 0.80), rgba(255, 255, 255, 0.12) 25%, transparent 60%);
+}
+
+@keyframes foilDrift {
+  from { background-position: calc(var(--foil-x, 50%) - 20%) var(--foil-y, 50%); }
+  to { background-position: calc(var(--foil-x, 50%) + 20%) var(--foil-y, 50%); }
+}
+
+.viewer-controls { display: flex; gap: 10px; align-items: center; }
+#foilModeBtn { background: #28203e; color: #f2e9ff; border: 1px solid #a995c9; }
+
+/* Small development-only control alongside the existing viewer buttons. */
+.ghost-preview-control { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ded4ef; }
+.ghost-preview-control.hidden { display: none; }
+#ghostPreviewSelect { max-width: 210px; padding: 5px 7px; border: 1px solid #a995c9;
+  border-radius: 4px; background: #28203e; color: #f2e9ff; font: inherit; }
+
+/* Each layer retains its own scope; luminance masks only gate artwork accents. */
+.rarity-full,
+.rarity-border,
+.rarity-starlight,
+.rarity-ghost-art {
+  display: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+@supports (mask-image: url("")) or (-webkit-mask-image: url("")) {
+  .rarity-full.active, .rarity-border.active,
+  .rarity-starlight.active, .rarity-ghost-art.active { display: block; }
+}
+
+/* Developer preview replaces only artwork and cannot intercept viewer input. */
+.ghost-artwork-preview { display: none; position: absolute; inset: 0; pointer-events: none;
+  clip-path: var(--artwork-clip, inset(100%)); }
+.ghost-artwork-preview.active { display: block; }
+.ghost-artwork-preview img { display: block; width: 100%; height: 100%; }
+
+/* Rare and higher: a narrow directional silver sheen on shared metallic bevels. */
+.rarity-border {
+  -webkit-mask: var(--border-mask) center / 100% 100% no-repeat;
+  mask: var(--border-mask) center / 100% 100% no-repeat;
+  mix-blend-mode: hard-light;
+  opacity: calc(var(--foil-intensity, 0.55) * (0.42 + var(--foil-energy, 0.18) * 0.58));
+  background: linear-gradient(var(--foil-angle, 115deg),
+    transparent 28%, rgba(64, 80, 96, 0.48) 40%,
+    rgba(255, 255, 255, 0.95) 48%, rgba(218, 237, 255, 0.9) 51%,
+    rgba(64, 80, 96, 0.48) 59%, transparent 72%);
+  background-size: 220% 220%;
+  background-position: var(--foil-x, 50%) var(--foil-y, 50%);
+}
+
+/* Ultra: broader two-axis interference across the whole face, including its frame. */
+.rarity-full {
+  mix-blend-mode: screen;
+  opacity: calc(var(--foil-intensity, 0.55) * (0.25 + var(--foil-energy, 0.18) * 0.75));
+  background-image:
+    linear-gradient(var(--foil-angle, 115deg), transparent 16%, rgba(95, 240, 230, 0.55) 30%,
+      rgba(154, 99, 255, 0.62) 40%, rgba(255, 97, 177, 0.65) 50%,
+      rgba(255, 218, 94, 0.55) 60%, transparent 78%),
+    repeating-linear-gradient(165deg, transparent 0%, rgba(136, 201, 255, 0.24) 11%, transparent 22%);
+  background-size: 150% 150%, 170% 170%;
+  background-position: var(--foil-x, 50%) var(--foil-y, 50%);
+}
+
+/* Secret: physical grain/glints are fixed alpha textures; only their light field moves. */
+.rarity-starlight {
+  mix-blend-mode: screen;
+  opacity: calc(var(--foil-intensity, 0.55) * (0.52 + var(--foil-energy, 0.18) * 0.48));
+}
+
+.rarity-starlight::before,
+.rarity-starlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-position: 0 0;
+  mask-position: 0 0;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  mask-mode: alpha;
+}
+
+.rarity-starlight::before,
+.secret-facets::before,
+.secret-facets::after {
+  filter: brightness(1.8) contrast(1.4);
+  background-image: linear-gradient(var(--foil-angle, 115deg),
+    transparent 18%, #a0efff 32%, #c7b5ff 40%, #ffffff 47%,
+    #fff0b5 53%, #b7ffec 62%, transparent 78%);
+  background-size: 180% 180%;
+  background-position: var(--foil-x, 50%) var(--foil-y, 50%);
+}
+.rarity-starlight::before {
+  -webkit-mask-image: url("images/foil/secret-grain.png?v=reflect1");
+  mask-image: url("images/foil/secret-grain.png?v=reflect1");
+  opacity: var(--secret-spec-a, 0);
+}
+.secret-facets, .secret-facets::before, .secret-facets::after {
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+}
+.secret-facets::before, .secret-facets::after {
+  content: '';
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-position: 0 0; mask-position: 0 0;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  mask-mode: alpha;
+}
+.secret-facets::before {
+  -webkit-mask-image: url("images/foil/secret-facets-b.png");
+  mask-image: url("images/foil/secret-facets-b.png");
+  opacity: var(--secret-spec-b, 0);
+}
+.secret-facets::after {
+  -webkit-mask-image: url("images/foil/secret-facets-c.png");
+  mask-image: url("images/foil/secret-facets-c.png");
+  opacity: var(--secret-spec-c, 0);
+}
+.rarity-starlight::after {
+  filter: brightness(2);
+  -webkit-mask-image: url("images/foil/secret-glints.png?v=reflect1");
+  mask-image: url("images/foil/secret-glints.png?v=reflect1");
+  background-image: linear-gradient(var(--foil-angle, 115deg),
+    transparent 18%, #d5f4ff 35%, white 43%, white 53%, #ffe7fa 63%, transparent 80%);
+  background-size: 180% 180%;
+  background-position: var(--foil-x, 50%) var(--foil-y, 50%);
+  opacity: var(--secret-glint, 0);
+}
+
+.card-surface[data-rarity="secret"] .rarity-full {
+  /* Low-energy broad reflection; the texture supplies sparkle without a white veil. */
+  opacity: calc(var(--foil-intensity, 0.55) * 0.12);
+  background-image: conic-gradient(from var(--foil-angle, 115deg) at var(--foil-x, 50%) var(--foil-y, 50%),
+    transparent, rgba(146, 226, 255, 0.45), rgba(221, 148, 255, 0.55),
+    rgba(255, 237, 173, 0.45), transparent, rgba(188, 248, 224, 0.5), transparent);
+  background-size: 170% 170%;
+}
+
+.card-surface[data-rarity="secret"] .card-foil::before {
+  /* A faint reflection, never an always-on dot field beneath the facet cohorts. */
+  -webkit-mask: none; mask: none;
+  background-image: linear-gradient(var(--foil-angle, 115deg),
+    transparent 34%, rgba(202, 233, 255, 0.35) 48%, rgba(255, 211, 241, 0.25) 54%, transparent 66%);
+  background-size: 180% 180%;
+  background-position: var(--foil-x, 50%) var(--foil-y, 50%);
+  opacity: calc((var(--secret-spec-a, 0) + var(--secret-spec-b, 0) + var(--secret-spec-c, 0)) * 0.18);
+  animation: none;
+}
+
+.card-surface[data-rarity="secret"] .card-foil::after { display: none; }
+
+/* Ghost: silver relief and broad diffraction share the selected artwork coverage. */
+.rarity-ghost-art {
+  clip-path: var(--artwork-clip, inset(100%));
+  -webkit-mask-image: var(--foil-mask, none);
+  mask-image: var(--foil-mask, none);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  mask-mode: alpha;
+  opacity: calc(var(--ghost-metal, 0.9) * var(--foil-intensity, 0.55) * (0.6 + var(--ghost-conceal, 0.1) * 1.35));
+}
+
+.rarity-ghost-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: grayscale(1) contrast(1.45) brightness(0.94);
+  pointer-events: none;
+}
+
+.card-surface[data-rarity="ghost"] {
+  box-shadow: -3px 0 22px rgba(238, 176, 226, calc(var(--foil-intensity, 0.55) * 0.38)),
+    3px 0 32px rgba(128, 208, 245, calc(var(--foil-intensity, 0.55) * (0.23 + var(--foil-energy, 0.18) * 0.25)));
+}
+
+.rarity-ghost-art::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  mix-blend-mode: hard-light;
+  opacity: calc(0.25 + var(--ghost-conceal, 0.1) * 0.7);
+  background: linear-gradient(var(--spectral-angle, 115deg),
+    transparent 12%, #18222d 28%, #8997a6 39%, #fbfcff 47%,
+    #c4ced9 52%, #f4f8ff 58%, #313e4d 70%, transparent 86%);
+  background-size: 190% 190%;
+  background-position: var(--foil-x, 50%) var(--foil-y, 50%);
+}
+.card-surface[data-rarity="ghost"] .rarity-full {
+  /* Rainbow reflected by the silver artwork; no unrestricted full-card bypass. */
+  clip-path: var(--artwork-clip, inset(100%));
+  -webkit-mask-image: var(--foil-mask, none); mask-image: var(--foil-mask, none);
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  mix-blend-mode: normal;
+  opacity: calc(var(--foil-intensity, 0.55) * var(--ghost-rainbow, 0.2));
+  background-image: linear-gradient(var(--spectral-angle, 115deg),
+    transparent 12%, rgba(96, 209, 239, 0.85) 28%, rgba(111, 237, 187, 0.8) 36%,
+    rgba(245, 218, 125, 0.8) 44%, transparent 51%, rgba(246, 154, 211, 0.8) 59%,
+    rgba(169, 160, 242, 0.8) 67%, rgba(151, 209, 255, 0.8) 75%, transparent 88%);
+  background-size: 190% 190%;
+  background-position: var(--foil-x, 50%) var(--foil-y, 50%);
+}
+
+.card-surface[data-rarity="ghost"] .card-foil {
+  opacity: calc(var(--foil-intensity, 0.55) * var(--ghost-metal, 0.9) * 0.18);
+}
+
+.card-surface[data-rarity="ghost"] .card-foil::before {
+  background-image: linear-gradient(var(--spectral-angle, 120deg),
+    transparent 20%, rgba(206, 230, 247, 0.5) 42%, rgba(213, 232, 255, 0.48) 58%, transparent 80%);
+  animation: none;
+  background-position: var(--foil-x, 50%) var(--foil-y, 50%);
+}
+
+.card-surface[data-rarity="ghost"] .card-foil::after { opacity: 0.15; }
+
+.rarity-ghost-edges {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  clip-path: var(--artwork-clip, inset(100%));
+  -webkit-mask-image: var(--foil-mask, none);
+  mask-image: var(--foil-mask, none);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  mix-blend-mode: normal;
+  opacity: calc(var(--foil-intensity, 0.55) * var(--ghost-metal, 0.9) * 0.36);
+}
+
+@supports (mask-image: url("")) or (-webkit-mask-image: url("")) {
+  .rarity-ghost-edges.active { display: block; }
+}
+
+.rarity-ghost-edges::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  -webkit-mask: var(--spectral-edge) 0 0 / 100% 100% no-repeat;
+  mask: var(--spectral-edge) 0 0 / 100% 100% no-repeat;
+  background: linear-gradient(var(--spectral-angle, 115deg), #384958, #edf8ff, #a3b6c7);
+  filter: drop-shadow(0 -0.6px 0.6px #dcebf7) drop-shadow(0 0.6px 0.6px #344859);
+}
+
+.card-surface[data-rarity="ultra"] .card-foil { opacity: calc(var(--foil-intensity, 0.55) * 0.32); }
+.card-surface[data-rarity="secret"] .card-foil { opacity: calc(var(--foil-intensity, 0.55) * 0.65); }
+
+/* Explicitly defend the original Common appearance, including during mode overrides. */
+.card-surface[data-rarity="common"] .card-foil,
+.card-surface[data-rarity="common"] .rarity-full,
+.card-surface[data-rarity="common"] .rarity-border,
+.card-surface[data-rarity="common"] .rarity-starlight,
+.card-surface[data-rarity="common"] .rarity-ghost-art { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card-foil::before { animation: none; background-position: var(--foil-x, 50%) var(--foil-y, 50%); }
+}
+
+/* Coverage only: existing optical layers/colour/opacity remain unchanged. */
+.card-surface[data-regional="true"] .card-foil { clip-path: none; }
+.card-surface[data-regional="true"] .rarity-full,
+.card-surface[data-regional="true"] .rarity-starlight {
+  -webkit-mask: var(--regional-mask) 0 0 / 100% 100% no-repeat;
+  mask: var(--regional-mask) 0 0 / 100% 100% no-repeat;
+}
+.card-surface[data-regional="true"]:not([data-rarity="super"]) .rarity-border {
+  -webkit-mask-image: var(--border-mask), var(--regional-mask);
+  mask-image: var(--border-mask), var(--regional-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}

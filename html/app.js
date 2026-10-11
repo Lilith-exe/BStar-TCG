@@ -4,6 +4,7 @@ const CARD_BACK_IMAGE_PATH = 'images/assets/card_back_default.png';
 // Viewer refs
 const viewerWrap = document.getElementById('viewerWrap');
 const cardImage = document.getElementById('cardImage');
+const cardSurface = document.getElementById('cardSurface');
 const closeBtn = document.getElementById('closeBtn');
 
 // Deck box refs
@@ -273,7 +274,7 @@ function hideAll() {
   duelWrap.classList.add('hidden');
   tableDuelWrap.classList.add('hidden');
 
-  cardImage.src = '';
+  setViewerImage('');
   cardImage.classList.remove('zoomed');
   isZoomed = false;
   resetTilt();
@@ -867,16 +868,26 @@ function chooseTurnOrder(choice) {
 
 // ---------- Viewer ----------
 
+function setViewerImage(source, card = null) {
+  window.BStarFoil?.setSource(source, card);
+  cardImage.src = source;
+}
+
 function updateCardTransform() {
+  if (viewerWrap.classList.contains('hidden') || app.classList.contains('hidden')) {
+    animationFrame = null;
+    return;
+  }
   const smoothing = 0.12;
 
   currentRotateX += (targetRotateX - currentRotateX) * smoothing;
   currentRotateY += (targetRotateY - currentRotateY) * smoothing;
 
   const scale = getBaseScale();
-  cardImage.style.transform =
+  cardSurface.style.transform =
     `perspective(1200px) rotateX(${currentRotateX}deg) rotateY(${currentRotateY}deg) scale(${scale})`;
 
+  window.BStarFoil?.updateTilt(currentRotateX, currentRotateY);
   animationFrame = requestAnimationFrame(updateCardTransform);
 }
 
@@ -885,7 +896,7 @@ function openFullViewer(card, fromDeckBox = false, fromDeckBuilder = false) {
   viewerOpenedFromDeckBuilder = fromDeckBuilder;
 
   viewerWrap.classList.remove('hidden');
-  cardImage.src = getFullImagePath(card);
+  setViewerImage(getFullImagePath(card), resolveCardData(card));
   cardImage.classList.remove('zoomed');
   isZoomed = false;
   currentRotateX = 0;
@@ -897,7 +908,7 @@ function openFullViewer(card, fromDeckBox = false, fromDeckBuilder = false) {
 
 function closeFullViewer(notifyLua = true) {
   viewerWrap.classList.add('hidden');
-  cardImage.src = '';
+  setViewerImage('');
   cardImage.classList.remove('zoomed');
   isZoomed = false;
   resetTilt();
@@ -1601,6 +1612,7 @@ function setBuilderPreview(card) {
 
   builderPreviewName.textContent = resolved.name || resolved.cardId || 'Card Preview';
   builderPreviewImage.src = getFullImagePath(resolved);
+  builderPreviewImage.dataset.foilRarity = resolved.rarity || 'COMMON';
 
   const type = resolved.type || '-';
   const rarity = resolved.rarity || '-';
@@ -3216,7 +3228,7 @@ function renderTableDuelUi() {
 
 function hideCard() {
   viewerWrap.classList.add('hidden');
-  cardImage.src = '';
+  setViewerImage('');
   cardImage.classList.remove('zoomed');
   isZoomed = false;
   resetTilt();
@@ -3943,7 +3955,7 @@ window.addEventListener('message', (event) => {
 
     hideAll();
     viewerWrap.classList.remove('hidden');
-    cardImage.src = card.image;
+    setViewerImage(card.image, card);
     currentRotateX = 0;
     currentRotateY = 0;
     resetTilt();
@@ -4504,7 +4516,7 @@ if (builderPreviewImage) {
 
     viewerOpenedFromDeckBuilder = true;
     viewerWrap.classList.remove('hidden');
-    cardImage.src = builderPreviewImage.src;
+    setViewerImage(builderPreviewImage.src, { rarity: builderPreviewImage.dataset.foilRarity });
     cardImage.classList.remove('zoomed');
     isZoomed = false;
     currentRotateX = 0;

@@ -45,6 +45,18 @@ RegisterNetEvent('bstar_cards:client:showCard', function(card)
     })
 end)
 
+-- Read-only development catalog for the temporary ghost artwork selector.
+RegisterNUICallback('ghostPreviewCatalog', function(_, cb)
+    if not Config.Debug then cb({ enabled = false, cards = {} }) return end
+    local cards = {}
+    for id, card in pairs(Cards) do
+        if card.inventoryImage and id ~= 'ALPH1_EN144_LUCIAN_LIGHTBRINGER' then
+            cards[#cards + 1] = { id = id, name = card.name, inventoryImage = card.inventoryImage }
+        end
+    end
+    cb({ enabled = true, cards = cards })
+end)
+
 RegisterNUICallback('closeCard', function(_, cb)
     cardOpen = false
     SetNuiFocus(false, false)

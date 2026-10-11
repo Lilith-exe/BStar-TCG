@@ -33,6 +33,12 @@ files {
     'html/index.html',
     'html/style.css',
     'html/app.js',
+    'html/foil.css',
+    'html/foil.js',
+    'html/foil-mask.js',
+    'html/foil-edge.js',
+    'html/foil-samples.js',
+    'html/images/foil/*.png',
     'html/images/assets/card_back_default.png',
     'html/images/assets/*.png',
     'html/images/thumbs/*.png'

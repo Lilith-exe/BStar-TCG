@@ -1,6 +1,7 @@
 # BStar Cards Changelog
 
 ## Latest
+- Introduced first pass rarity effects for cards. (lots of refinement needed)
 
 ## v0.7.0
 - Added a large pass of effect-engine plumbing across the ALPH1 set, including many previously deferred fighter, item, vehicle, weapon, location, and promo-card effects.
