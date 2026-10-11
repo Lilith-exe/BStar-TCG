@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.7.1
 - Introduced first pass rarity effects for cards. (lots of refinement needed)
 
 ## v0.7.0
