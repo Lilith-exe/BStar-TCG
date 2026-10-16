@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.7.3
 - Updated discord dev stats on the update logs
 
 ## v0.7.2
