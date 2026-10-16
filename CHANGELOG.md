@@ -1,6 +1,12 @@
 # BStar Cards Changelog
 
 ## Latest
+- Discord update announcements now include per-update file/line changes and tracked source-file/line totals.
+- Drastically optimised shader loading and efficiency.
+- Compressed 10 masks per card into 1 grayscale mask with encoded instructions to decode. (optimised the required mask images from 1500 down to 300)
+- Added selective masks to rarity shaders so certain sections are foil, others not.
+- Updated cards to align with changes made to the master cards list.
+- Added updated foil shaders for rare, super rare, ultra (damascus rare), secret rare and ghost rare.
 
 ## v0.7.1
 - Introduced first pass rarity effects for cards. (lots of refinement needed)

@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Send Discord webhook and update changelog
         env:
@@ -76,6 +77,11 @@ jobs:
 
           TIMESTAMP=$(date +"%d %B %Y at %H:%M")
 
+          # Count the event commit's Git objects, not the VERSION/changelog edits above.
+          STATS=$(python3 .github/scripts/development-stats.py \
+            --commit "$GITHUB_SHA" --event "$EVENT_NAME" --version "$DISPLAY_VERSION") || \
+            STATS='{"name":"📊 Development Statistics","value":"Statistics unavailable for this update.","inline":false}'
+
           PAYLOAD=$(jq -n \
             --arg changes "$CHANGES" \
             --arg author "${{ github.actor }}" \
@@ -83,6 +89,7 @@ jobs:
             --arg branch "${{ github.ref_name }}" \
             --arg time "$TIMESTAMP" \
             --arg version "$DISPLAY_VERSION" \
+            --argjson stats "$STATS" \
             '{
               username: "LaylaBot",
               avatar_url: "https://cdn.discordapp.com/attachments/1475349571390410833/1509964513850429692/tunerfest_2023-155.jpg?ex=6a1b1789&is=6a19c609&hm=008c181a7b0de1699292cb75aeba6d2461cb1f8ffda98de15b57ca03cfc8ff1f&",
@@ -90,6 +97,7 @@ jobs:
                 title: ("BStar Cards Update " + $version),
                 description: ("**Branch**\n" + $branch + "\n\n**Changes**\n" + $changes),
                 color: 16738740,
+                fields: [$stats],
                 author: {
                   name: $author,
                   icon_url: $avatar

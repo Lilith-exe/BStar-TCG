@@ -1,0 +1,70 @@
+{
+  "name": "Starlight extreme",
+  "settings": {
+    "mode": "DARK",
+    "intensity": 1,
+    "x": 0,
+    "y": 0,
+    "pointer": true,
+    "freeze": false,
+    "maskSource": "blend",
+    "split": 0.11,
+    "softness": 0.33,
+    "metric": "brightness",
+    "rendering": "optimized",
+    "rarityOverride": "",
+    "shader": {
+      "intensity": 1,
+      "density": 1,
+      "size": 1.5,
+      "scale": 0.4,
+      "saturation": 1.3,
+      "brightness": 4,
+      "glow": 0.25,
+      "sensitivity": 1,
+      "blend": "screen",
+      "particleSize": 1,
+      "variant": 0,
+      "sharpness": 0,
+      "preset": "pg-circuit"
+    },
+    "phase2": {
+      "primary": [
+        "artwork",
+        "outer",
+        "inner",
+        "description",
+        "nameplate",
+        "stats",
+        "edition",
+        "other"
+      ],
+      "secondaryRegions": [
+        "artwork",
+        "outer",
+        "inner",
+        "description",
+        "nameplate",
+        "stats",
+        "edition",
+        "other"
+      ],
+      "secondary": {
+        "intensity": 1,
+        "density": 1,
+        "size": 1.5,
+        "scale": 2.1,
+        "saturation": 1.35,
+        "brightness": 4,
+        "glow": 0.25,
+        "sensitivity": 1,
+        "blend": "screen",
+        "particleSize": 1,
+        "variant": 1,
+        "sharpness": 0,
+        "preset": "pg-etching-bright"
+      },
+      "balance": false
+    }
+  }
+}

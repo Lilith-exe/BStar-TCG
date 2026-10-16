@@ -1,8 +1,12 @@
 // One inspected-card surface; rarity controls appearance, artwork masks control coverage.
 (() => {
+ function createLegacy(window, document) {
   const surface = document.getElementById('cardSurface');
   const layer = document.getElementById('cardFoil');
   const modeButton = document.getElementById('foilModeBtn');
+  const modern = window === globalThis && window.BStarRarityRenderer
+    ? window.BStarRarityRenderer.create(surface, document.getElementById('cardImage')) : null;
+  let currentDefinition = null;
   const catalog = window.BSTAR_FOIL_SAMPLES || { cards: {} };
   // Enabled for local testing. Set false before release; also requires Config.Debug.
   const DEV_GHOST_ARTWORK_PREVIEW = true;
@@ -69,7 +73,7 @@
   }
 
   function effectiveRarity() { return settings.rarity || cardRarity; }
-  function regionalRarity() { return ['SUPER','ULTRA','SECRET'].includes(effectiveRarity()); }
+  function regionalRarity() { return (modern ? ['RARE','SUPER','ULTRA','SECRET'] : ['SUPER','ULTRA','SECRET']).includes(effectiveRarity()); }
   function effectiveMode() { return regionalRarity() && settings.maskSource === 'live' && !explicitMode ? 'DARK' : settings.mode; }
   function effectiveIntensity() { return regionalRarity() && !explicitIntensity ? 1 : settings.intensity; }
   function updateSpecialty(rotateX, rotateY) {
@@ -115,7 +119,7 @@
   async function updatePreviewSelector() {
     const isLucian = () => currentFile === 'ALPH1-EN144_LUCIAN_LIGHTBRINGER.png';
     previewControl.classList.add('hidden');
-    if (!DEV_GHOST_ARTWORK_PREVIEW || !isLucian()) return;
+    if (!DEV_GHOST_ARTWORK_PREVIEW || window.BSTAR_DISABLE_GHOST_PREVIEW || !isLucian()) return;
     if (!previewCatalogRequest) {
       previewCatalogRequest = fetch(`https://${GetParentResourceName()}/ghostPreviewCatalog`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
@@ -161,6 +165,7 @@
 
   async function refresh() {
     const request = ++revision;
+    modern?.clear();
     updatePreviewSelector();
     const previewSource = DEV_GHOST_ARTWORK_PREVIEW && previewCard && currentFile === 'ALPH1-EN144_LUCIAN_LIGHTBRINGER.png'
       ? `images/cards/${encodeURIComponent(previewCard.inventoryImage)}` : null;
@@ -183,12 +188,22 @@
     const mode = effectiveMode();
     const visible = !!currentFile && rarity !== 'COMMON';
     modeButton.classList.toggle('hidden', !visible);
-    modeButton.textContent = !settings.enabled ? 'Foil: off' : rarity === 'RARE' ? 'Foil: silver border' : `Foil: ${mode.toLowerCase()}`;
-    modeButton.title = rarity === 'RARE' ? 'Toggle silver border reflection' : 'Cycle artwork coverage: FULL, available DARK/LIGHT, off';
+    modeButton.textContent = !settings.enabled ? 'Foil: off' : rarity === 'RARE' && !modern ? 'Foil: silver border' : `Foil: ${mode.toLowerCase()}`;
+    modeButton.title = rarity === 'RARE' && !modern ? 'Toggle silver border reflection' : 'Cycle artwork coverage: FULL, available DARK/LIGHT, off';
     surface.style.setProperty('--foil-intensity', effectiveIntensity());
     if (rarity === 'SUPER') border.style.setProperty('--foil-intensity', Math.min(DEFAULT_INTENSITY, effectiveIntensity()));
     if (!visible || !settings.enabled) return;
 
+    if (modern && regionalRarity()) {
+      await modern.set(currentSource, currentDefinition, { rarity, mode, threshold: settings.threshold,
+        feather: settings.feather, intensity: effectiveIntensity(), enabled: settings.enabled });
+      if (request !== revision) return;
+      if (['missing', 'unavailable'].includes(modern.getState().status)) {
+        modeButton.textContent = 'Foil: masks unavailable';
+        modeButton.title = 'No verified ten-region mask set is available; displaying the original card without foil.';
+      }
+      return;
+    }
     surface.dataset.rarity = rarity.toLowerCase();
     if (regionalRarity()) {
       const cachedPath = mode === 'CUSTOM' || settings.maskSource === 'cached' ? sample?.[mode] : null;
@@ -282,7 +297,7 @@
 
   modeButton.addEventListener('click', () => {
     if (!settings.enabled) configure({ enabled: true, mode: null });
-    else if (effectiveRarity() === 'RARE') configure({ enabled: false });
+    else if (effectiveRarity() === 'RARE' && !modern) configure({ enabled: false });
     else {
       const available = ['FULL', 'DARK', 'LIGHT'].filter(mode => mode === 'FULL' || (regionalRarity() && settings.maskSource === 'live') || catalog.cards[currentFile]?.[mode]);
       const next = available[available.indexOf(effectiveMode()) + 1];
@@ -297,6 +312,7 @@
       currentFile = filename(source);
       currentSource = source || '';
       const definition = card || Object.values(window.BSTAR_CARD_DEFS || {}).find(item => item.inventoryImage === currentFile);
+      currentDefinition = definition;
       cardRarity = normalizeRarity(definition?.rarity);
       artworkPoints = definition?.artworkPolygon || catalog.cards[currentFile]?.artworkPolygon || catalog.templates?.[definition?.template || definition?.type]?.artworkPolygon || points;
       ghostImage.removeAttribute('src');
@@ -323,8 +339,13 @@
       surface.style.setProperty('--foil-angle', `${115 + rotateY * 3}deg`);
       surface.style.setProperty('--foil-energy', (0.18 + angle * 0.82).toFixed(3));
       surface.style.setProperty('--ghost-strength', (0.08 + angle * 0.84).toFixed(3));
+      modern?.updateTilt(rotateX, rotateY);
       updateSpecialty(rotateX, rotateY);
     },
-    getSettings: () => ({ ...settings, ghost: { ...ghostSettings }, intensity: effectiveIntensity(), mode: effectiveMode(), regionalCoverage: surface.dataset.regional === 'true', effectiveRarity: effectiveRarity(), artworkActive: layer.classList.contains('active'), maskGeneration: catalog.settings })
+    getSettings: () => ({ ...settings, ghost: { ...ghostSettings }, intensity: effectiveIntensity(), mode: effectiveMode(), regionalCoverage: surface.dataset.regional === 'true', effectiveRarity: effectiveRarity(), artworkActive: layer.classList.contains('active') || modern?.getState().status === 'ready', tenMasks: modern?.getState(), maskGeneration: catalog.settings })
   };
+  return window.BStarFoil;
+ }
+ window.BStarLegacyFoilFactory = createLegacy;
+ if (document.getElementById('cardSurface')) createLegacy(window, document);
 })();

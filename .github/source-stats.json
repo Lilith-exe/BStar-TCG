@@ -1,0 +1,16 @@
+{
+  "extensions": [".lua", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".py", ".json", ".yml", ".yaml"],
+  "exclude_path_parts": ["node_modules", "vendor", "vendors", "dependencies", ".venv", "venv", "__pycache__", ".cache", ".pytest_cache", "cache", "caches", "dist", "build", "out", "target", "coverage", "generated", "output", "backups"],
+  "exclude_globs": [
+    "html/images/**",
+    "**/*.min.js",
+    "**/*.min.css",
+    "**/*.bundle.js",
+    "**/*.map",
+    "**/package-lock.json",
+    "**/pnpm-lock.yaml",
+    "shared/cards.lua",
+    "html/foil-registry.js",
+    "html/foil-samples.js"
+  ]
+}

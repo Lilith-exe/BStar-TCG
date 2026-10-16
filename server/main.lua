@@ -222,7 +222,7 @@ local function getPlayerCardCounts(Player)
                 results[cardId] = {
                     cardId = cardId,
                     amount = 0,
-                    inventoryImage = item.info.inventoryImage or (card and card.inventoryImage) or nil,
+                    inventoryImage = (card and card.inventoryImage) or item.info.inventoryImage or nil,
                     name = (card and card.name) or cardId,
 
                     rarity = card and card.rarity or nil,

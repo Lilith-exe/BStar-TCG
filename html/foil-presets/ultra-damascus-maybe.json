@@ -1,0 +1,58 @@
+{
+  "name": "ultra/damascus maybe",
+  "settings": {
+    "mode": "DARK",
+    "intensity": 1,
+    "x": 0,
+    "y": 0,
+    "pointer": true,
+    "freeze": false,
+    "maskSource": "blend",
+    "split": 0.11,
+    "softness": 0.33,
+    "metric": "brightness",
+    "rendering": "optimized",
+    "rarityOverride": "",
+    "shader": {
+      "intensity": 1,
+      "density": 0.85,
+      "size": 1.5,
+      "scale": 0.7,
+      "saturation": 1,
+      "brightness": 2.7,
+      "glow": 0.25,
+      "sensitivity": 1,
+      "blend": "screen",
+      "particleSize": 1,
+      "variant": 0,
+      "sharpness": 0.55,
+      "preset": "pg-damascus"
+    },
+    "phase2": {
+      "primary": [
+        "artwork"
+      ],
+      "secondaryRegions": [
+        "artwork"
+      ],
+      "secondary": {
+        "intensity": 1,
+        "density": 0.5,
+        "size": 1.5,
+        "scale": 1,
+        "saturation": 1,
+        "brightness": 1.4,
+        "glow": 0.25,
+        "sensitivity": 1,
+        "blend": "native",
+        "metallic": 0.9,
+        "diffraction": 0.7,
+        "visibility": 0.85,
+        "preset": "prod-super"
+      },
+      "balance": false,
+      "primaryEnabled": true,
+      "secondaryEnabled": true
+    }
+  }
+}

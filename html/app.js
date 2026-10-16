@@ -221,12 +221,12 @@ function clone(obj) {
 
 function getThumbImagePath(card) {
   const file = card?.inventoryImage || 'default.png';
-  return `nui://bstar_cards/html/images/thumbs/${file}`;
+  return `images/thumbs/${encodeURIComponent(file)}`;
 }
 
 function getFullImagePath(card) {
   const file = card?.inventoryImage || 'default.png';
-  return `nui://bstar_cards/html/images/cards/${file}`;
+  return `images/cards/${encodeURIComponent(file)}`;
 }
 
 function setCardThumbImage(img, card) {
@@ -869,8 +869,9 @@ function chooseTurnOrder(choice) {
 // ---------- Viewer ----------
 
 function setViewerImage(source, card = null) {
-  window.BStarFoil?.setSource(source, card);
-  cardImage.src = source;
+  const displaySource = window.BStarTenRegions?.imageSource(source) || source;
+  cardImage.src = displaySource;
+  window.BStarFoil?.setSource(displaySource, card);
 }
 
 function updateCardTransform() {
@@ -3301,7 +3302,7 @@ function renameSelectedDeck() {
 function getCardImagePathFromPayload(card) {
   if (!card) return '';
   const file = card.inventoryImage || 'default.png';
-  return `nui://bstar_cards/html/images/cards/${file}`;
+  return `images/cards/${encodeURIComponent(file)}`;
 }
 
 function openDuelUi(duel, tableMode = false) {
