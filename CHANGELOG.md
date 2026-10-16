@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.7.2
 - Discord update announcements now include per-update file/line changes and tracked source-file/line totals.
 - Drastically optimised shader loading and efficiency.
 - Compressed 10 masks per card into 1 grayscale mask with encoded instructions to decode. (optimised the required mask images from 1500 down to 300)
