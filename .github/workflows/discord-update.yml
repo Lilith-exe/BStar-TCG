@@ -80,7 +80,7 @@ jobs:
           # Count the event commit's Git objects, not the VERSION/changelog edits above.
           STATS=$(python3 .github/scripts/development-stats.py \
             --commit "$GITHUB_SHA" --event "$EVENT_NAME" --version "$DISPLAY_VERSION") || \
-            STATS='{"name":"📊 Development Statistics","value":"Statistics unavailable for this update.","inline":false}'
+            STATS='{"name":"\u200b","value":"```diff\nDevelopment Statistics\nStatistics unavailable for this update.\n```","inline":false}'
 
           PAYLOAD=$(jq -n \
             --arg changes "$CHANGES" \

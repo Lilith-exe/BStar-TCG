@@ -121,20 +121,20 @@ def statistics(commit, event, version, rules):
     snapshot, baseline, repost = update_range(commit, event, version)
     if not snapshot:
         return "Statistics unavailable: no original archive commit was found for this repost."
-    result = ["**Changes in this update**"]
+    result = ["Changes in this update"]
     try:
         changes = change_counts(baseline, snapshot)
         if changes:
             files, added, removed = changes
-            result += [f"📁 Files changed: **{files:,}**", f"🟢 Lines added: **+{added:,}**", f"🔴 Lines removed: **−{removed:,}**"]
+            result += [f"+ Lines added: {added:,}", f"- Lines removed: {removed:,}", f"  Files changed: {files:,}"]
         else:
             result.append("Change totals unavailable: previous update baseline not found.")
     except (subprocess.CalledProcessError, ValueError, StopIteration):
         result.append("Change totals unavailable for this update.")
-    result += ["", "**Project size at original update**" if repost else "**Current project size**"]
+    result.append("")
     try:
-        files, lines = source_counts(snapshot, rules)
-        result += [f"💻 Source files: **{files:,}**", f"📝 Total source lines: **{lines:,}**"]
+        _, lines = source_counts(snapshot, rules)
+        result.append(f"Total source lines: {lines:,}")
     except (subprocess.CalledProcessError, ValueError, AssertionError):
         result.append("Source totals unavailable for this snapshot.")
     return "\n".join(result)
@@ -152,8 +152,10 @@ def main():
     except (OSError, subprocess.CalledProcessError, ValueError, UnicodeError):
         print("Development statistics unavailable; announcement will continue.", file=sys.stderr)
         value = "Statistics unavailable for this update."
-    # One compact field, separate from the unchanged changelog description.
-    print(json.dumps({"name": "📊 Development Statistics", "value": value[:1024], "inline": False}))
+    # Discord requires a field name; keep it invisible so the only heading is fenced.
+    body = "Development Statistics\n" + value
+    value = "```diff\n" + body[:1000] + "\n```"
+    print(json.dumps({"name": "\u200b", "value": value, "inline": False}))
 
 
 if __name__ == "__main__":
