@@ -9,20 +9,51 @@
     const host = document.createElement('div'); host.className = 'bstar-ten-effects'; host.hidden = true;
     host.setAttribute('aria-hidden', 'true'); surface.appendChild(host);
     let revision = 0, tilt = [0, 0], active = [], source = '', paired = '', status = 'idle';
-    let controller;
+    const viewer = image.id === 'cardImage', retained = new Map();
+    // Temporary local-development diagnostics; set false after the FiveM timing review.
+    const VIEWER_TIMINGS = true;
+    const retainedBudget = 48 * 1024 * 1024;
+    let controller, activeRoot, activeKey = '', timing, decodedSource = '';
+    const dispose = record => {
+      record.layers.forEach(item => {
+        window.BStarTenRegions.release(item.mask);
+        if (item.kind === 'material') item.node.width = item.node.height = 0;
+      });
+      record.root?.remove();
+    };
+    function retain(key) {
+      if (!viewer || retained.has(key)) return;
+      const masks = new Set(active.map(item => item.mask));
+      const bytes = [...masks].reduce((sum, mask) => sum + mask.width * mask.height * 4, 0)
+        + active.filter(item => item.kind === 'material').length * 640 * 864 * 4;
+      retained.set(key, { layers: active, root: activeRoot, bytes });
+      let total = [...retained.values()].reduce((sum, record) => sum + record.bytes, 0);
+      for (const [oldKey, record] of retained) {
+        if (retained.size <= 3 && total <= retainedBudget) break;
+        if (oldKey === key) continue;
+        retained.delete(oldKey); total -= record.bytes; dispose(record);
+      }
+    }
     const unsubscribe = window.BStarFoilMaterials.subscribe(restored => {
-      host.hidden = !restored || !active.length;
+      // Cached snapshots must never survive a lost GPU context.
+      for (const [key, record] of retained) if (key !== activeKey) { dispose(record); retained.delete(key); }
+      if (!restored) retained.delete(activeKey);
+      host.hidden = !restored || status !== 'ready';
       if (restored) { active.forEach(item => { item.signature = ''; }); updateTilt(...tilt); }
     });
     function clear() {
       controller?.abort();
-      active.forEach(item => window.BStarTenRegions.release(item.mask));
-      revision++; host.hidden = true; active = []; host.replaceChildren(); status = 'idle';
+      if (retained.has(activeKey)) activeRoot.hidden = true;
+      else dispose({ layers: active, root: activeRoot });
+      revision++; host.hidden = true; active = []; activeRoot = null; activeKey = ''; status = 'idle';
       paired = ''; surface.dataset.tenMaskState = status;
       for (const key of ['left','top','width','height']) host.style.removeProperty(key);
     }
     async function set(nextSource, card, options = {}) {
       clear(); source = nextSource;
+      const started = performance.now();
+      timing = { reused: false, masksMs: 0, layersMs: 0, artworkWaitMs: 0 };
+      const sample = timing;
       controller = new AbortController();
       const signal = controller.signal, pending = [];
       const request = revision, rarity = options.rarity || String(card?.rarity || '').toUpperCase().replace(/ RARE$/, '');
@@ -36,6 +67,38 @@
         const mode = options.mode || window.BStarRarityConfig.defaults.mode;
         const threshold = options.threshold ?? .11, feather = options.feather ?? .33;
         const thumbnail = image.id !== 'cardImage' && /images\/thumbs\//.test(nextSource);
+        const key = JSON.stringify([entry.indexed?.[thumbnail ? 'thumb' : 'full']?.url, nextSource, definition, mode, threshold, feather, options.intensity ?? 1]);
+        const ready = retained.get(key);
+        // Start artwork readiness alongside mask work, while preserving the artwork-first gate.
+        const artworkReady = viewer && decodedSource === nextSource && image.complete && image.naturalWidth
+          ? null : image.decode().then(() => { if (request === revision) decodedSource = nextSource; });
+        artworkReady?.catch(() => {}); // The original rejection is handled by reveal().
+        async function reveal() {
+          // A cached, already-loaded base image needs no new decode barrier.
+          const waiting = performance.now();
+          if (artworkReady) await artworkReady;
+          if (request !== revision) return;
+          sample.artworkWaitMs = performance.now() - waiting;
+          status = 'ready'; surface.dataset.tenMaskState = status;
+          paired = image.getAttribute('src') || nextSource;
+          activeRoot.hidden = false; host.hidden = false;
+          retain(key); updateTilt(...tilt);
+          sample.readyMs = performance.now() - started;
+          if (viewer && VIEWER_TIMINGS) requestAnimationFrame(() => {
+            if (request !== revision) return;
+            // A frame opportunity, not a GPU completion/physical-display measurement.
+            sample.frameOpportunityMs = performance.now() - started;
+            console.info('[BStar foil timing]', entry.id, JSON.stringify(sample));
+          });
+        }
+        activeKey = key;
+        if (ready) {
+          retained.delete(key); retained.set(key, ready);
+          active = ready.layers; activeRoot = ready.root;
+          sample.reused = true;
+          await reveal(); return;
+        }
+        const masksStarted = performance.now();
         window.BStarTenRegions.prepare(entry, thumbnail ? 'thumb' : 'full', signal);
         if (definition.layers.some(layer => layer.kind === 'material')) window.BStarFoilMaterials.prepare();
         const results = await Promise.allSettled(definition.layers.map(async layer => {
@@ -45,6 +108,8 @@
         if (request !== revision) { pending.forEach(window.BStarTenRegions.release); return; }
         const failed = results.find(result => result.status === 'rejected');
         if (failed) throw failed.reason;
+        sample.masksMs = performance.now() - masksStarted;
+        const layersStarted = performance.now();
         const layers = results.map(result => result.value);
         const fragment = document.createDocumentFragment();
         const globalIntensity = options.intensity ?? 1;
@@ -59,6 +124,7 @@
             item.settings = { ...item.options, intensity: item.options.intensity * globalIntensity };
             node.style.mixBlendMode = item.options.blend || 'screen';
             window.BStarFoilMaterials.draw(node, item.settings, tilt);
+            item.signature = `${tilt[0].toFixed(2)},${tilt[1].toFixed(2)}`;
           } else {
             // native Lab Super does not interpret experimental brightness/glow/density.
             node.style.setProperty('--foil-intensity', (item.options?.intensity ?? item.intensity) * globalIntensity);
@@ -67,20 +133,18 @@
           fragment.appendChild(node);
         }
         if (request !== revision) { pending.forEach(window.BStarTenRegions.release); return; }
-        active = layers; host.replaceChildren(fragment);
+        active = layers;
+        activeRoot = document.createElement('div'); activeRoot.className = 'bstar-ten-effects';
+        activeRoot.appendChild(fragment); host.appendChild(activeRoot);
         pending.length = 0;
-        // The base image owns its URL/lifecycle; foil never reloads or replaces it.
-        paired = image.getAttribute('src') || nextSource;
-        await image.decode();
-        if (request !== revision) return;
-        status = 'ready'; surface.dataset.tenMaskState = status; host.hidden = false;
-        updateTilt(...tilt);
+        sample.layersMs = performance.now() - layersStarted;
+        await reveal();
       } catch (error) {
         pending.forEach(window.BStarTenRegions.release);
         if (request !== revision) return;
         status = 'unavailable'; surface.dataset.tenMaskState = status; host.hidden = true;
-        active.forEach(item => window.BStarTenRegions.release(item.mask));
-        paired = ''; active = []; host.replaceChildren();
+        retained.delete(activeKey); dispose({ layers: active, root: activeRoot });
+        paired = ''; active = []; activeRoot = null; activeKey = '';
         if (error.name !== 'AbortError') warn(entry.image, error);
       }
     }
@@ -102,8 +166,11 @@
         }
       }
     }
-    return { set, clear, updateTilt, getState: () => ({ status, source, displaySource: paired, layers: active.map(item => ({ kind: item.kind, regions: item.regions, settings: item.settings || item.options })) }),
-      destroy() { clear(); unsubscribe(); host.remove(); } };
+    return { set, clear, updateTilt, getState: () => ({ status, source, displaySource: paired,
+      timing: viewer ? timing : undefined, retainedEntries: retained.size,
+      retainedBytes: [...retained.values()].reduce((sum, record) => sum + record.bytes, 0),
+      layers: active.map(item => ({ kind: item.kind, regions: item.regions, settings: item.settings || item.options })) }),
+      destroy() { clear(); retained.forEach(dispose); retained.clear(); unsubscribe(); host.remove(); } };
   }
   window.BStarRarityRenderer = { create };
 

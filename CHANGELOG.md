@@ -1,7 +1,9 @@
 # BStar Cards Changelog
 
 ## Latest
-- Updated discord dev stats on the update logs
+- Added Alpha Pack standard six-card pack opening with configured rarity odds, God Packs, sequential reveals, card inspection, journal-backed recovery and branded pack artwork/inventory icon.
+- Added tearable pack annimation.
+- Added bulk card pile which new opened cards go into to not overfill pockets.
 
 ## v0.7.2
 - Discord update announcements now include per-update file/line changes and tracked source-file/line totals.

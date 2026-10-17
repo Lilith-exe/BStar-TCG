@@ -870,7 +870,8 @@ function chooseTurnOrder(choice) {
 
 function setViewerImage(source, card = null) {
   const displaySource = window.BStarTenRegions?.imageSource(source) || source;
-  cardImage.src = displaySource;
+  // Keep the last decoded artwork while hidden; closing must not reload it on reopen.
+  if (displaySource && cardImage.getAttribute('src') !== displaySource) cardImage.src = displaySource;
   window.BStarFoil?.setSource(displaySource, card);
 }
 
@@ -913,6 +914,9 @@ function closeFullViewer(notifyLua = true) {
   cardImage.classList.remove('zoomed');
   isZoomed = false;
   resetTilt();
+
+  if (window.BStarPackOpening?.returnFromInspection()) return;
+  if (window.BStarBulkUI?.returnFromInspection()) return;
 
   const returningToDeckBox = viewerOpenedFromDeckBox;
   const returningToDeckBuilder = viewerOpenedFromDeckBuilder;

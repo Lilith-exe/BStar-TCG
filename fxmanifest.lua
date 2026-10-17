@@ -15,6 +15,8 @@ shared_scripts {
 
 client_scripts {
     'client/main.lua',
+    'client/packs.lua',
+    'client/bulk-piles.lua',
     'client/duel.lua',
     'client/tables.lua'
 }
@@ -23,7 +25,11 @@ server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/effects.lua',
     'server/duel.lua',
-    'server/main.lua'
+    'server/main.lua',
+    'server/pack-config.lua',
+    'server/pack-rules.lua',
+    'server/bulk-piles.lua',
+    'server/packs.lua'
 }
 
 ui_page 'html/index.html'
@@ -33,6 +39,9 @@ files {
     'html/index.html',
     'html/style.css',
     'html/app.js',
+    'html/packs.js',
+    'html/packs.css',
+    'html/bulk-piles.js',
     'html/foil.css',
     'html/foil.js',
     'html/foil-regions.css',

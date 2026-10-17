@@ -1,0 +1,132 @@
+--- a/server/main.lua
++++ b/server/main.lua
+@@ -286,12 +286,27 @@
+         cb(false)
+         return
+     end
++    local pileBefore
++    local actual = GetItemBySlot(src, tonumber(item.fromSlot))
++    if item.name == 'bstar_bulk_pile' or (actual and actual.name == 'bstar_bulk_pile') then
++        if not actual or actual.name ~= item.name or actual.amount ~= 1 or tonumber(item.amount) ~= 1
++            or type(actual.info) ~= 'table' or type(actual.info.id) ~= 'string' then
++            cb(false); return
++        end
++        pileBefore = json.decode(json.encode(Player.PlayerData.items))
++        item = json.decode(json.encode(actual))
++        item.fromSlot = actual.slot
++    end
+     local playerPed = GetPlayerPed(src)
+     local playerCoords = GetEntityCoords(playerPed)
+     if RemoveItem(src, item.name, item.amount, item.fromSlot, 'dropped item') then
+         if item.type == 'weapon' then checkWeapon(src, item) end
+         TaskPlayAnim(playerPed, 'pickup_object', 'pickup_low', 8.0, -8.0, 2000, 0, 0, false, false, false)
+         local bag = CreateObjectNoOffset(Config.ItemDropObject, playerCoords.x + 0.5, playerCoords.y + 0.5, playerCoords.z, true, true, false)
++        if pileBefore and (bag == 0 or not DoesEntityExist(bag)) then
++            SetInventory(src, pileBefore, 'bstar-pile-drop-rollback')
++            cb(false); return
++        end
+         local dropId = NetworkGetNetworkIdFromEntity(bag)
+         local newDropId = 'drop-' .. dropId
+         local itemsTable = setmetatable({ item }, {
+@@ -404,6 +419,18 @@
+         return
+     end
+ 
++    -- BStar piles: use the server slot snapshot, never client-provided metadata.
++    local pileBefore
++    local actual = GetItemBySlot(source, tonumber(slot))
++    if item == 'bstar_bulk_pile' or (actual and actual.name == 'bstar_bulk_pile') then
++        if not actual or actual.name ~= item or actual.amount ~= 1 or tonumber(amount) ~= 1
++            or type(actual.info) ~= 'table' or type(actual.info.id) ~= 'string' then
++            cb(false); return
++        end
++        info = json.decode(json.encode(actual.info))
++        pileBefore = json.decode(json.encode(player.PlayerData.items))
++    end
++
+     local itemInfo = QBCore.Shared.Items[item:lower()]
+     if not itemInfo then
+         cb(false)
+@@ -436,6 +463,7 @@
+ 
+     local giveItem = AddItem(target, item, giveAmount, false, info, 'Item given from ID #' .. source)
+     if not giveItem then
++        if pileBefore then SetInventory(source, pileBefore, 'bstar-pile-give-rollback') end
+         cb(false)
+         return
+     end
+@@ -507,6 +535,30 @@
+     local fromItem = getItem(fromInventory, src, fromSlot)
+     local toItem = getItem(toInventory, src, toSlot)
+ 
++    local pileMove = (fromItem and fromItem.name == 'bstar_bulk_pile') or (toItem and toItem.name == 'bstar_bulk_pile')
++    local fromId, toId = getIdentifier(fromInventory, src), getIdentifier(toInventory, src)
++    local fromBefore, toBefore
++    local succeeded = true
++    local function snapshot(id)
++        local player = QBCore.Functions.GetPlayer(id)
++        local inventory = player and player.PlayerData.items or (Drops[id] and Drops[id].items) or (Inventories[id] and Inventories[id].items)
++        return inventory and json.decode(json.encode(inventory))
++    end
++    if pileMove then
++        for _, value in pairs({fromItem, toItem}) do
++            if value.name == 'bstar_bulk_pile' and (value.amount ~= 1 or type(value.info) ~= 'table' or type(value.info.id) ~= 'string') then return end
++        end
++        if not fromItem or toAmount ~= 1 or fromAmount ~= fromItem.amount then return end
++        if toItem and fromItem.name == 'bstar_bulk_pile' and toItem.name == 'bstar_bulk_pile' and fromItem.info.id == toItem.info.id then return end
++        fromBefore, toBefore = snapshot(fromId), snapshot(toId)
++        if not fromBefore or not toBefore then return end
++    end
++    local function add(...)
++        local ok = AddItem(...); if pileMove and not ok then succeeded = false end; return ok
++    end
++    local function remove(...)
++        local ok = RemoveItem(...); if pileMove and not ok then succeeded = false end; return ok
++    end
+     if fromItem then
+         if not toItem and toAmount > fromItem.amount then return end
+         if fromInventory == 'player' and toInventory ~= 'player' then checkWeapon(src, fromItem) end
+@@ -514,28 +566,32 @@
+         local fromId = getIdentifier(fromInventory, src)
+         local toId = getIdentifier(toInventory, src)
+ 
+-        if toItem and fromItem.name == toItem.name then
+-            if RemoveItem(fromId, fromItem.name, toAmount, fromSlot, 'stacked item') then
+-                AddItem(toId, toItem.name, toAmount, toSlot, toItem.info, 'stacked item')
++        if toItem and fromItem.name == toItem.name and not pileMove then
++            if remove(fromId, fromItem.name, toAmount, fromSlot, 'stacked item') then
++                add(toId, toItem.name, toAmount, toSlot, toItem.info, 'stacked item')
+             end
+         elseif not toItem and toAmount < fromAmount then
+-            if RemoveItem(fromId, fromItem.name, toAmount, fromSlot, 'split item') then
+-                AddItem(toId, fromItem.name, toAmount, toSlot, fromItem.info, 'split item')
++            if remove(fromId, fromItem.name, toAmount, fromSlot, 'split item') then
++                add(toId, fromItem.name, toAmount, toSlot, fromItem.info, 'split item')
+             end
+         else
+             if toItem then
+                 local fromItemAmount = fromItem.amount
+                 local toItemAmount = toItem.amount
+ 
+-                if RemoveItem(fromId, fromItem.name, fromItemAmount, fromSlot, 'swapped item') and RemoveItem(toId, toItem.name, toItemAmount, toSlot, 'swapped item') then
+-                    AddItem(toId, fromItem.name, fromItemAmount, toSlot, fromItem.info, 'swapped item')
+-                    AddItem(fromId, toItem.name, toItemAmount, fromSlot, toItem.info, 'swapped item')
++                if remove(fromId, fromItem.name, fromItemAmount, fromSlot, 'swapped item') and remove(toId, toItem.name, toItemAmount, toSlot, 'swapped item') then
++                    add(toId, fromItem.name, fromItemAmount, toSlot, fromItem.info, 'swapped item')
++                    add(fromId, toItem.name, toItemAmount, fromSlot, toItem.info, 'swapped item')
+                 end
+             else
+-                if RemoveItem(fromId, fromItem.name, toAmount, fromSlot, 'moved item') then
+-                    AddItem(toId, fromItem.name, toAmount, toSlot, fromItem.info, 'moved item')
++                if remove(fromId, fromItem.name, toAmount, fromSlot, 'moved item') then
++                    add(toId, fromItem.name, toAmount, toSlot, fromItem.info, 'moved item')
+                 end
+             end
+         end
+     end
+-end)
++    if pileMove and not succeeded then
++        SetInventory(fromId, fromBefore, 'bstar-pile-move-rollback')
++        if toId ~= fromId then SetInventory(toId, toBefore, 'bstar-pile-move-rollback') end
++    end
++end)

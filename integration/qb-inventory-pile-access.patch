@@ -1,0 +1,27 @@
+--- a/server/main.lua
++++ b/server/main.lua
+@@ -545,6 +545,17 @@
+         return inventory and json.decode(json.encode(inventory))
+     end
+     if pileMove then
++        -- bstar-pile-access-guard: named inventories from the client are not authority.
++        local function mayAccess(name)
++            if name == 'player' then return true end
++            if name:find('otherplayer-', 1, true) == 1 then return false end -- Use the validated Give action.
++            if name:find('drop-', 1, true) == 1 then
++                local drop = Drops[name]
++                return drop and drop.isOpen and #(GetEntityCoords(GetPlayerPed(src)) - drop.coords) <= 2.5
++            end
++            return Inventories[name] and Inventories[name].isOpen == src
++        end
++        if not mayAccess(fromInventory) or not mayAccess(toInventory) then return end
+         for _, value in pairs({fromItem, toItem}) do
+             if value.name == 'bstar_bulk_pile' and (value.amount ~= 1 or type(value.info) ~= 'table' or type(value.info.id) ~= 'string') then return end
+         end
+@@ -595,3 +606,6 @@
+         if toId ~= fromId then SetInventory(toId, toBefore, 'bstar-pile-move-rollback') end
+     end
+ end)
++
++-- Runtime proof that the pile safety/access handlers above have been loaded.
++exports('BStarPileAdapterVersion', function() return 2 end)

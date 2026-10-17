@@ -204,6 +204,9 @@ local function BuildCardItemInfo(cardId)
     }
 end
 
+-- Pack grants use the same metadata contract as Deck Box withdrawals.
+DeckBox.BuildCardItemInfo = BuildCardItemInfo
+
 local function getPlayerCardCounts(Player)
     local results = {}
 
