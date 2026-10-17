@@ -2,6 +2,9 @@
 
 ## Latest
 
+## v0.7.3
+- Updated discord dev stats on the update logs
+
 ## v0.7.2
 - Discord update announcements now include per-update file/line changes and tracked source-file/line totals.
 - Drastically optimised shader loading and efficiency.
