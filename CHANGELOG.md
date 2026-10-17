@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.7.4
 - Added Alpha Pack standard six-card pack opening with configured rarity odds, God Packs, sequential reveals, card inspection, journal-backed recovery and branded pack artwork/inventory icon.
 - Added tearable pack annimation.
 - Added bulk card pile which new opened cards go into to not overfill pockets.
