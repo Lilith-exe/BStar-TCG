@@ -2,6 +2,7 @@
 
 ## Latest
 
+## v0.7.5
 - Added card condition and degradation system; unprotected cards take damage when played and periodically. 
 - Added protective sleeves which can be applied per card copy to reduce card wear. Sleeves come in packs of 100. They are not visible.
 - Added cosmetic sleeves. These can be applied to an entire deck. Once purchased the design can be used on any deck unlimited times. Purely visual.
@@ -9,7 +10,6 @@
 - Added holo rarity effects to cards in the pockets and on the duel field.
 - Fixed ALPH1-EN027 Wulfrik Chaosbane effect. Crows now summon.
 - Fixed missing inspection view for cards in pockets.
-
 __**How card condition works:**__
 **Unsleeved:**
 - Each completed duel with said card in deck will lose 2% condition.
@@ -17,22 +17,16 @@ __**How card condition works:**__
 - Each day in the binder has a 70% chance to lose 1% condition. 30% chance of no loss.
 - Each day loose in pockets has 75% chance to lose 2%, 20% chance to lose 3% and 5% chance to lose 5% condition.
 - When in a bulk pile, a 3 hour grace period is given, after which cards will lose between 5 and 15% condition every hour awake in city. (bulk piles are not intended for storage)
-
 **Sleeved:**
 - Each day has a 5% chance of losing 1% condition. 95% chance of no loss. (applies to any storage method including in bulk pile).
-
 **Graded/Slabbed:**
 - No degradation forever.
-
 **Card unpack conditions**
 - 80% of new cards start at 87–94%.
 - 12% start at 77–86%.
 - 8% start at 95–100%.
-
 What players can see: Good 70–100%, Played 40–69%, Damaged 0–39%. Exact condition stays private. At 0%, the card remains owned but becomes unplayable.
-
 Grades are 100% = Gem 10, 90–99% = 10, 80–89% = 9, descending to 1–9 = grade 1; 0 = Destroyed. The actual grading station and Binder interface are still pending.
-
 Cosmetic deck sleeves do not provide any protection.
 
 ## v0.7.4
