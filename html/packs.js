@@ -265,6 +265,7 @@
       surface.className = 'pack-frame'; artwork.alt = ''; artwork.draggable = false;
       artwork.src = getFullImagePath(session.cards[cardIndex]);
       surface.appendChild(artwork); node.appendChild(surface); stack.appendChild(node);
+      window.BStarSleeveVisuals?.bind(artwork,session.cards[cardIndex]);
       window.BStarRarityRenderer?.attach(artwork,session.cards[cardIndex]);
       return node;
     }

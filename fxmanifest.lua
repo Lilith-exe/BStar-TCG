@@ -17,19 +17,29 @@ client_scripts {
     'client/main.lua',
     'client/packs.lua',
     'client/bulk-piles.lua',
+    'client/sleeves.lua',
     'client/duel.lua',
     'client/tables.lua'
 }
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
+    'server/condition-config.lua',
+    'server/condition-rules.lua',
+    'server/sleeve-config.lua',
+    'server/card-presentation.lua',
+    'server/deck-cosmetics.lua',
     'server/effects.lua',
     'server/duel.lua',
     'server/main.lua',
     'server/pack-config.lua',
     'server/pack-rules.lua',
     'server/bulk-piles.lua',
-    'server/packs.lua'
+    'server/packs.lua',
+    'server/sleeves.lua',
+    'server/condition.lua',
+    'server/legacy-conversion.lua',
+    'server/sleeve-duel.lua'
 }
 
 ui_page 'html/index.html'
@@ -39,9 +49,17 @@ files {
     'html/index.html',
     'html/style.css',
     'html/app.js',
+    'html/builder-copies.js',
+    'html/builder-copies.css',
+    'html/deck-designs.js',
     'html/packs.js',
     'html/packs.css',
     'html/bulk-piles.js',
+    'html/sleeves.js',
+    'html/sleeves.css',
+    'html/sleeve-visuals.js',
+    'html/sleeve-visuals.css',
+    'html/images/sleeves/*',
     'html/foil.css',
     'html/foil.js',
     'html/foil-regions.css',

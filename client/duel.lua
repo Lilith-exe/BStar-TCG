@@ -14,9 +14,15 @@ local function ForceDuelFocus()
     end)
 end
 
+local function restoreTableView(state)
+    if state.tableMode==true and state.tableId and CurrentDuelTableId~=state.tableId then
+        TriggerEvent('bstar_cards:client:EnterDuelTableView',state.tableId)
+    end
+end
 local function OpenDuelUi(duelState)
     if not duelState or not duelState.duelId then return end
 
+    restoreTableView(duelState)
     currentDuelId = duelState.duelId
     latestDuelState = duelState
     duelUiOpen = true
@@ -81,6 +87,7 @@ end)
 
 RegisterNetEvent('bstar_cards:client:OpenCoinFlip', function(data)
     if not data or not data.duelId then return end
+    restoreTableView(data)
 
     currentDuelId = data.duelId
     duelUiOpen = false

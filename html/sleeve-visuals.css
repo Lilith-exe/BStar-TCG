@@ -1,0 +1,18 @@
+.bstar-sleeve-host { isolation:isolate; }
+.bstar-sleeve-front { position:absolute; pointer-events:none; z-index:0; border-radius:3.3% / 2.4%; background:var(--sleeve-colour); box-shadow:inset 0 0 0 1px #ffffff40,0 1px 2px #0004; }
+.bstar-sleeve-front::after { content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(118deg,#ffffff48,transparent 22%,transparent 80%,#ffffff20); }
+.bstar-sleeve-front[data-style="matte"]::after { opacity:.28; }
+.bstar-sleeve-front[data-style="clear"] { opacity:.75; }
+.bstar-sleeved-art { position:relative;z-index:1; }
+.bstar-card-tooltip { position:fixed;z-index:1000010;pointer-events:none;padding:8px 11px;background:#101623f5;border:1px solid #ffffff25;border-radius:7px;font-size:12px;color:#e2e8f0;box-shadow:0 4px 14px #0005; }
+.bstar-card-tooltip [data-condition="Good"] { color:#79d799; }
+.bstar-card-tooltip [data-condition="Played"] { color:#f3cf70; }
+.bstar-card-tooltip [data-condition="Damaged"] { color:#f18585; }
+.sleeve-browser-filters { display:flex;gap:8px;flex-wrap:wrap;padding:8px 0; }
+.sleeve-browser-filters input,.sleeve-browser-filters select { background:#152031;color:#e2e8f0;border:1px solid #ffffff26;border-radius:5px;padding:7px; }
+
+.bstar-sleeve-host:has(> .bstar-sleeve-front):not(.deckbox-wrap):not(.deckbuilder-wrap) { overflow:visible; }
+.deckbox-card:has(.bstar-sleeve-front),.builder-card:has(.bstar-sleeve-front) { overflow:visible; }
+
+/* Quantity badges stay above artwork when a sleeve adds image stacking. */
+.bstar-sleeve-host > .deckbox-count,.bstar-sleeve-host > .builder-card-count { z-index:3; }

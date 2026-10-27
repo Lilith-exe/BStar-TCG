@@ -74,7 +74,7 @@ RegisterNUICallback('storeCard', function(data, cb)
 end)
 
 RegisterNUICallback('withdrawCard', function(data, cb)
-    TriggerServerEvent('bstar_cards:server:WithdrawCardFromDeckBox', data.deckBoxId, data.cardId)
+    TriggerServerEvent('bstar_cards:server:WithdrawCardFromDeckBox', data.deckBoxId, data.cardId, data.copyId or (data.legacy and 'legacy'))
     cb('ok')
 end)
 

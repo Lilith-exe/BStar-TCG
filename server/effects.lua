@@ -1033,6 +1033,20 @@ function ACTIONS.tribute_opponent_fighters_for_bunny_and_special_summon_self(due
     end
 end
 
+-- Choose one real owned duel instance at a time so each summon retains the
+-- existing response/on-summon continuation before another choice is offered.
+function ACTIONS.select_summon_from_deck_or_graveyard(duel, sourcePlayerIndex, sourceCard, action, api)
+    local player=duel.players[sourcePlayerIndex]
+    if not player or not findOpenFighterZone(player) or not api.queueCardSelection then return end
+    api.queueCardSelection(duel,sourcePlayerIndex,sourceCard,{
+        owner='self',zone='deck_and_graveyard',mode='summon_selected_from_deck_or_graveyard',
+        filter=action.filter or {},minChoices=0,maxChoices=1,
+        title=action.title or 'Choose Fighter',
+        text='Choose 1 card to summon, or confirm without a selection to skip.',
+        emptyMessage='No matching cards remain in your deck or cemetery.'
+    })
+end
+
 function ACTIONS.special_summon_from_deck_or_graveyard(duel, sourcePlayerIndex, sourceCard, action, api)
     local player = duel.players[sourcePlayerIndex]
     if not player then return end

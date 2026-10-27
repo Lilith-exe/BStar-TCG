@@ -50,6 +50,7 @@
             <h3>Deck Box</h3>
             <span class="deckbox-subtext">Drag back to withdraw</span>
           </div>
+          <div class="sleeve-browser-filters"><input id="sleeveBoxSearch" placeholder="Search cards" aria-label="Search Deck Box"><select id="sleeveBoxRarity" aria-label="Deck Box rarity"><option value="">All rarities</option><option>COMMON</option><option>RARE</option><option>SUPER</option><option>ULTRA</option><option>SECRET</option><option>GHOST</option></select><select id="sleeveBoxStatus" aria-label="Deck Box sleeve status"><option value="all">All cards</option><option value="sleeved">Sleeved</option><option value="unsleeved">Unsleeved</option></select><select id="sleeveBoxSort" aria-label="Deck Box sort"><option value="id">Card order</option><option value="name">Name</option><option value="rarity">Rarity</option></select></div>
           <div id="deckBoxCards" class="deckbox-grid"></div>
         </div>
       </div>
@@ -154,6 +155,9 @@
             <div id="currentDeckCount">0 cards</div>
           </div>
 
+          <label class="deck-sleeve-control">Deck back
+            <select id="deckSleeveDesign" aria-label="Deck back" disabled><option value="default">BStar Classic</option></select>
+          </label>
           <div id="savedDeckList" class="saved-deck-list"></div>
           <hr />
           <div id="builderDeckCards" class="builder-deck-grid"></div>
@@ -167,6 +171,7 @@
           </div>
 
           <div class="builder-filters">
+            <select id="builderSleeveStatus" aria-label="Builder sleeve status"><option value="all">All cards</option><option value="sleeved">Sleeved</option><option value="unsleeved">Unsleeved</option></select>
             <select id="filterType">
               <option value="all">All Types</option>
               <option value="FIGHTER">Fighter</option>
@@ -387,11 +392,18 @@
   <script src="foil-regions.js?v=foil3"></script>
   <script src="foil-materials.js?v=foil3"></script>
   <script src="foil-rarities.js?v=foil3"></script>
-  <script src="foil-renderer.js?v=foil4"></script>
+  <script src="foil-renderer.js?v=fixes20261026"></script>
   <script src="foil.js?v=foil3"></script>
-  <script src="app.js?v=pack2"></script>
+  <link rel="stylesheet" href="sleeve-visuals.css?v=2" />
+  <script src="sleeve-visuals.js?v=fixes20261026"></script>
+  <script src="app.js?v=fixes20261026"></script>
+  <script src="deck-designs.js?v=1"></script>
   <script src="packs.js?v=9"></script>
-  <script src="bulk-piles.js?v=2"></script>
+  <script src="bulk-piles.js?v=context4"></script>
+  <link rel="stylesheet" href="sleeves.css?v=context3" />
+  <script src="sleeves.js?v=fixes20261026"></script>
+  <link rel="stylesheet" href="builder-copies.css?v=1" />
+  <script src="builder-copies.js?v=fixes20261026"></script>
 </body>
 </html>
 

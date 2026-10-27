@@ -3,6 +3,8 @@ BStarStorageLocks = {}
 BStarBulk = { item='bstar_bulk_pile', ready=false, status='starting', stage='waiting for database connection',
     error='Card storage is starting. Please try again shortly; no pack has been consumed.' }
 local Bulk, containerLocks, epochs = BStarBulk, {}, {}
+-- Private validation sidecar: never serialize precise condition or derived copy counts.
+Bulk.playableAmounts=setmetatable({}, {__mode='k'})
 local function copy(v)
     if type(v) ~= 'table' then return v end
     local result = {}; for k, x in pairs(v) do result[k] = copy(x) end; return result
@@ -64,11 +66,13 @@ local function validatePile(player,id)
         end
     end
     assert(MySQL.scalar.await('SELECT id FROM bstar_bulk_piles WHERE id=? AND pending_owner IS NULL',{id}),'Pile not delivered or unknown')
+    assert(not MySQL.scalar.await("SELECT id FROM bstar_card_copies WHERE location='sleeving' AND container_id=? LIMIT 1",{id}),'A sleeve transaction for this pile needs recovery; cards retained')
     assert(carried(player,Bulk.item,id),'Pile moved; reopen it from inventory')
 end
 local function cardData(id, info)
-    local card, result = Cards[id] or {name=id}, {id=id,cardId=id,copyInfo=info}
+    local card, result = Cards[id] or {name=id}, {id=id,cardId=id}
     for _, key in ipairs({'name','rarity','type','job','level','speed','attack','defense','effectTitle','effectText','setCode','edition','inventoryImage','effectTags','continuous'}) do result[key]=copy(card[key]) end
+    if BStarCardPresentation then BStarCardPresentation.apply(result,info) end
     result.health=card.health or card.hp or card.defense or card.def
     return result
 end
@@ -77,7 +81,7 @@ function Bulk.pileInfo(id, count)
         description=('Contains %s cards'):format(tostring(count):reverse():gsub('(%d%d%d)', '%1,'):reverse():gsub('^,','')) }
 end
 local function countPile(id)
-    return tonumber(MySQL.scalar.await("SELECT COUNT(*) FROM bstar_card_copies WHERE location='pile' AND container_id=?", {id})) or 0
+    return tonumber(MySQL.scalar.await("SELECT COUNT(*) FROM bstar_card_copies WHERE location IN ('pile','sleeving') AND container_id=?", {id})) or 0
 end
 function Bulk.refresh(player)
     local counts = {}
@@ -136,13 +140,14 @@ end
 
 local function moveQueries(row)
     local op, queries = json.decode(row.operation), {}
+    if op.kind=='sleeve' then return BStarSleeves.commitQueries(row,op) end
     if op.kind == 'retire' then
         holdPile(row.citizenid,op.pile)
         assert(countPile(op.pile)==0,'Cleanup receipt needs review: pile contains cards')
     end
     if op.kind == 'delivery' then
         queries[1] = {query='UPDATE bstar_bulk_piles SET pending_owner=NULL WHERE id=? AND pending_owner=?', values={op.pile,row.citizenid}}
-    elseif op.kind ~= 'retire' then
+    elseif op.kind ~= 'retire' and op.kind ~= 'sleevePack' then
         queries[1] = {query=[[INSERT INTO bstar_card_copies (id,card_id,info,location,container_id,citizenid,entered_at)
             VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE info=VALUES(info),location=VALUES(location),container_id=VALUES(container_id),citizenid=VALUES(citizenid),entered_at=VALUES(entered_at)]],
             values={op.copyId,op.cardId,json.encode(op.info),op.kind == 'store' and 'box' or 'pocket',op.box,
@@ -154,6 +159,7 @@ local function moveQueries(row)
 end
 local function voidMove(row)
     local op, queries=json.decode(row.operation),{}
+    if op.kind=='sleeve' then queries=BStarSleeves.rollbackQueries(op) end
     if op.kind=='withdraw' then
         queries[#queries+1]={query="UPDATE bstar_card_copies SET location='box' WHERE id=? AND location='reserved'",values={op.copyId}}
     end
@@ -166,7 +172,9 @@ local function recoverMoves(player)
         assert(row.status ~= 'review', 'A card transfer requires recovery review: '..row.id)
         local inventory = compact(playerItems(player))
         if equal(inventory,json.decode(row.after_inventory)) then
-            assert(MySQL.transaction.await(moveQueries(row)), 'Transfer recovery failed')
+            local queries=moveQueries(row)
+            assert(equal(inventory,compact(playerItems(player))),'Inventory changed during recovery; journal retained')
+            assert(MySQL.transaction.await(queries), 'Transfer recovery failed')
         elseif equal(inventory,json.decode(row.before_inventory)) then
             local saved = MySQL.scalar.await('SELECT inventory FROM players WHERE citizenid=?',{cid})
             assert(equal(inventory,compact(playerItems(player))) and
@@ -198,10 +206,13 @@ local function run(src, fn, quiet)
     end
     local ok, result = pcall(function()
         for _, duel in pairs(Duel and Duel.Active or {}) do
-            if duel.status ~= 'finished' then for _, member in pairs(duel.players or {}) do assert(member.source ~= src, 'Finish your duel before moving cards') end end
+            if duel.status ~= 'finished' then for _, member in pairs(duel.players or {}) do assert(member.citizenid ~= cid, 'Finish your duel before moving cards') end end
         end
         recoverMoves(player)
+        if BStarCondition then assert(not BStarCondition.pending(cid),'Completed duel condition is waiting to save; try again after recovery') end
         assert(not MySQL.scalar.await("SELECT id FROM bstar_pack_openings WHERE citizenid=? AND status IN ('prepared','review') LIMIT 1",{cid}), 'Recover your pending pack with /bstarpacks first')
+        if BStarSleeves and BStarSleeves.reconcilePocketPrivacy then BStarSleeves.reconcilePocketPrivacy(player) end
+        if BStarCondition then BStarCondition.refresh(player) end
         if reconcileEmpty(player) then
             recoverMoves(player) -- settle a cleanup receipt before any further mutation
         end
@@ -228,23 +239,28 @@ local function executeMove(player, op, mutate, planned)
         -- A prepared withdrawal must no longer count as a playable box copy.
         preparation[#preparation+1]={query="UPDATE bstar_card_copies SET location='reserved' WHERE id=? AND location='box'",values={op.copyId}}
     end
+    if op.kind=='sleeve' then
+        for _,query in ipairs(BStarSleeves.prepareQueries(op)) do preparation[#preparation+1]=query end
+    end
     assert(MySQL.transaction.await(preparation),'Could not prepare transfer')
     if not equal(before,compact(playerItems(player))) then
         voidMove(row); error('Inventory changed; try again')
     end
     local ok=pcall(mutate)
     if not ok then
-        if op.kind=='retire' then
+        if op.kind=='retire' or op.kind=='sleeve' or op.kind=='sleevePack' then
             -- Do not restore a whole snapshot over an external slot move. An
             -- unchanged rejection can be voided; anything ambiguous stays journalled.
             if equal(before,compact(playerItems(player))) then voidMove(row) end
-            error('Empty pile removal deferred; inventory evidence retained')
+            error((op.kind=='sleeve' or op.kind=='sleevePack') and 'Sleeve operation interrupted; reopen sleeve controls to recover before retrying' or 'Empty pile removal deferred; inventory evidence retained')
         end
         player.Functions.SetPlayerData('items',original)
         voidMove(row); error('Inventory rejected transfer; original inventory restored')
     end
     assert(equal(compact(playerItems(player)),compact(planned)), 'Unexpected inventory change; transfer journal retained')
-    assert(MySQL.transaction.await(moveQueries(row)), 'Transfer interrupted; retry to recover before moving more cards')
+    local queries=moveQueries(row)
+    assert(equal(compact(playerItems(player)),compact(planned)),'Inventory changed during commit checks; transfer journal retained')
+    assert(MySQL.transaction.await(queries), 'Transfer interrupted; retry to recover before moving more cards')
     if not equal(compact(playerItems(player)),compact(planned)) then
         MySQL.update.await("UPDATE bstar_card_moves SET status='review' WHERE id=?",{row.id})
         error('Concurrent inventory change; transfer retained for review')
@@ -327,21 +343,33 @@ CreateThread(function()
     end
 end)
 
+Bulk.storage={run=run,items=playerItems,copy=copy,equal=equal,compact=compact,carried=carried,validatePile=validatePile,execute=executeMove,holdPile=holdPile}
+
 local oldStored, oldWithdraw, oldStore = DeckBox.GetStoredCards, DeckBox.WithdrawCard, DeckBox.StoreCard
 DeckBox.GetStoredCards = function(src, box, cb)
     oldStored(src,box,function(cards)
         if not Bulk.ready then cb(cards); return end
         local player=QBCore.Functions.GetPlayer(src); if not player then cb({}); return end
-        MySQL.query("SELECT card_id,COUNT(*) AS amount FROM bstar_card_copies WHERE location='box' AND citizenid=? AND container_id=? GROUP BY card_id",{player.PlayerData.citizenid,box},function(rows)
+        MySQL.query("SELECT card_id,info FROM bstar_card_copies WHERE location='box' AND citizenid=? AND container_id=? ORDER BY id",{player.PlayerData.citizenid,box},function(rows)
+            for _,entry in pairs(cards) do
+                Bulk.playableAmounts[entry]=tonumber(entry.amount) or 0
+                if BStarCardPresentation then BStarCardPresentation.addVariant(entry,{},entry.amount or 0) end
+            end
             for _, row in ipairs(rows or {}) do
                 local entry=cards[row.card_id] or cardData(row.card_id)
-                entry.amount=(entry.amount or 0)+tonumber(row.amount); cards[row.card_id]=entry
+                local info=json.decode(row.info)
+                local playable=Bulk.playableAmounts[entry] or (entry.amount or 0)
+                if not BStarConditionRules or BStarConditionRules.playable(info) then playable=playable+1 end
+                Bulk.playableAmounts[entry]=playable
+                entry.amount=(entry.amount or 0)+1; cards[row.card_id]=entry
+                if BStarCardPresentation then BStarCardPresentation.addVariant(entry,info,1,row.id) end
+                entry.sleeveContext={location='box',id=box}
             end
             cb(cards)
         end)
     end)
 end
-DeckBox.WithdrawCard = function(src, box, cardId, cb)
+DeckBox.WithdrawCard = function(src, box, cardId, cb,selection)
     if not Bulk.ready then
         -- The established path can access only legacy aggregate rows, never overlay copies.
         oldWithdraw(src,box,cardId,cb); return
@@ -350,15 +378,24 @@ DeckBox.WithdrawCard = function(src, box, cardId, cb)
         assert(type(box)=='string' and carried(player,'deck_box',box), 'Carry the selected Deck Box first')
         assert(type(cardId)=='string' and Cards[cardId], 'Unknown card')
         lock('box:'..player.PlayerData.citizenid..':'..box)
-        local row=MySQL.single.await("SELECT * FROM bstar_card_copies WHERE location='box' AND citizenid=? AND container_id=? AND card_id=? ORDER BY id LIMIT 1",{player.PlayerData.citizenid,box,cardId})
+        if selection=='legacy' then return {legacy=true} end
+        assert(selection==nil or (type(selection)=='string' and #selection<=80),'Invalid card selection')
+        local query="SELECT * FROM bstar_card_copies WHERE location='box' AND citizenid=? AND container_id=? AND card_id=?"
+        local args={player.PlayerData.citizenid,box,cardId}
+        if selection then query=query..' AND id=?';args[#args+1]=selection end
+        local row=MySQL.single.await(query..' ORDER BY id LIMIT 1',args)
+        assert(not selection or row,'Selected card moved; refresh the box')
         if not row then return {legacy=true} end
         local info=json.decode(row.info); info.copyId=row.id
+        if BStarCondition then BStarCondition.settle(info,row);BStarConditionRules.mark(info,'pocket',os.time()) end
+        assert(BStarCardPresentation,'Card presentation is unavailable; no withdrawal performed')
+        local pocketInfo=BStarCardPresentation.inventory(info)
         local planned=copy(playerItems(player)); local used,free=exports['qb-inventory']:GetSlots(src)
         local slot; for i=1,used+free do if not planned[i] then slot=i; break end end
         assert(slot,'Inventory full')
-        planned[slot]={name='bstar_card',type='item',amount=1,slot=slot,info=info}
+        planned[slot]={name='bstar_card',type='item',amount=1,slot=slot,info=pocketInfo}
         return executeMove(player,{kind='withdraw',copyId=row.id,cardId=cardId,info=info,box=box},function()
-            assert(exports['qb-inventory']:AddItem(src,'bstar_card',1,slot,info,'bstar-bulk-withdraw'))
+            assert(exports['qb-inventory']:AddItem(src,'bstar_card',1,slot,pocketInfo,'bstar-bulk-withdraw'))
         end,planned)
     end)
     if result.legacy then oldWithdraw(src,box,cardId,cb) else cb(result.ok,result.error) end
@@ -367,18 +404,24 @@ DeckBox.StoreCard = function(src,box,cardId,cb)
     -- Legacy cards without per-copy metadata retain their established path.
     local player=QBCore.Functions.GetPlayer(src); local target
     for _,item in pairs(player and player.PlayerData.items or {}) do
-        if item.name=='bstar_card' and type(item.info)=='table' and item.info.cardId==cardId then target=item; break end
+        if item.name=='bstar_card' and type(item.info)=='table' then
+            local def=DeckBox.ResolveCardDefinition and DeckBox.ResolveCardDefinition(item.info.cardId)
+            if item.info.cardId==cardId or (def and def.id==cardId) then target=item;break end
+        end
     end
     if not target or not target.info.copyId then oldStore(src,box,cardId,cb); return end
     local result=run(src,function(p,lock)
         assert(type(box)=='string' and carried(p,'deck_box',box), 'Carry the selected Deck Box first')
         lock('box:'..p.PlayerData.citizenid..':'..box)
-        local row=MySQL.single.await("SELECT id FROM bstar_card_copies WHERE id=? AND location='pocket'",{target.info.copyId})
+        local row=MySQL.single.await("SELECT * FROM bstar_card_copies WHERE id=? AND location='pocket'",{target.info.copyId})
         assert(row,'This card copy is not available in pockets')
+        local privateInfo=json.decode(row.info)
+        assert(not BStarCardPresentation or BStarCardPresentation.matchesInventory(privateInfo,target.info,equal),'Card metadata needs recovery')
+        if BStarCondition then BStarCondition.settle(privateInfo,row);BStarConditionRules.mark(privateInfo,'box',os.time()) end
         local planned=copy(playerItems(p)); local actual=planned[target.slot]
         assert(actual and equal(actual.info,target.info) and actual.name=='bstar_card' and actual.amount==1,'Card moved')
         planned[target.slot]=nil
-        return executeMove(p,{kind='store',copyId=target.info.copyId,cardId=cardId,info=target.info,box=box},function()
+        return executeMove(p,{kind='store',copyId=target.info.copyId,cardId=cardId,info=privateInfo,box=box},function()
             assert(exports['qb-inventory']:RemoveItem(src,'bstar_card',1,target.slot,'bstar-bulk-store'))
         end,planned)
     end)
@@ -407,7 +450,7 @@ QBCore.Functions.CreateCallback('bstar_cards:server:bulkPage',function(src,cb,da
         local ordered=copy(args); for _,id in ipairs(ids) do ordered[#ordered+1]=id end
         local rows=MySQL.query.await('SELECT * FROM bstar_card_copies WHERE '..where..' ORDER BY FIELD(card_id,'..table.concat(marks,',')..'),id LIMIT 48 OFFSET '..((page-1)*48),ordered)
         assert(carried(player,Bulk.item,data.id),'Pile moved; reopen it from inventory')
-        local cards={}; for _,row in ipairs(rows) do local card=cardData(row.card_id,json.decode(row.info));card.copyId=row.id;cards[#cards+1]=card end
+        local cards={}; for _,row in ipairs(rows) do local card=cardData(row.card_id,json.decode(row.info));card.copyId=row.id;card.sleeveContext={location='pile',id=data.id};cards[#cards+1]=card end
         return {ok=true,cards=cards,total=total,matched=matched,page=page,pages=pages}
     end))
 end)
@@ -427,6 +470,17 @@ QBCore.Functions.CreateCallback('bstar_cards:server:bulkToBox',function(src,cb,b
         local count=tonumber(MySQL.scalar.await("SELECT COUNT(*) FROM bstar_card_copies WHERE location='pile' AND container_id IN ("..table.concat(marks,',')..')',countArgs)) or 0
         for _,id in ipairs(ids) do assert(carried(player,Bulk.item,id),'A pile moved; retry') end
         assert(carried(player,'deck_box',box),'Deck Box moved; retry')
+        if BStarCondition then
+            for _,id in ipairs(ids) do
+                local rows=MySQL.query.await("SELECT id FROM bstar_card_copies WHERE location='pile' AND container_id=? ORDER BY id",{id})
+                for offset=1,#rows,BStarConditionConfig.maxBatch do
+                    local batch={};for i=offset,math.min(#rows,offset+BStarConditionConfig.maxBatch-1) do batch[#batch+1]={copyId=rows[i].id} end
+                    BStarSleeves.updateMetadata(player,{location='pile',id=id},batch,function(info,row)
+                        BStarCondition.settle(info,row);return true
+                    end)
+                end
+            end
+        end
         local args={box,player.PlayerData.citizenid,os.time()};for _,id in ipairs(ids) do args[#args+1]=id end
         -- One atomic UPDATE moves identities, never copies/deletes their metadata.
         assert(MySQL.transaction.await({{query="UPDATE bstar_card_copies SET location='box',container_id=?,citizenid=?,entered_at=? WHERE location='pile' AND container_id IN ("..table.concat(marks,',')..')',values=args}}),'Transfer failed; piles remain unchanged')

@@ -1,0 +1,25 @@
+.sleeve-context { position:fixed;z-index:1000020;box-sizing:border-box;width:330px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;padding:12px;border:1px solid #897197;border-radius:10px;background:#241b30;color:#f6efff;font:13px Arial,sans-serif;box-shadow:0 8px 28px #0008; }
+.sleeve-context > strong { display:block;margin-bottom:8px; }
+.sleeve-context button { display:block;width:100%;text-align:left;margin-top:5px;padding:8px 10px;background:#352c47;color:#f6efff;border:1px solid #ffffff20;font-size:13px; }
+.sleeve-context label { display:block;margin:8px 0; }
+.sleeve-context select { display:block;width:100%;box-sizing:border-box;padding:7px;margin-top:4px;background:#17111f;color:#fff;border:1px solid #897197; }
+.sleeve-context-actions { display:flex;gap:6px; }.sleeve-context-actions button { text-align:center; }
+.sleeve-context-note { font-size:12px;color:#d1c6db; }
+.sleeve-context button:disabled { opacity:.45;cursor:default; }
+.sleeve-back-preview { width:30px;height:41px;object-fit:contain;float:right;margin:0 0 5px 8px; }
+.sleeve-selection-bar { display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 0;flex-shrink:0; }
+.sleeve-selection-bar button,.sleeve-select-toggle { font-size:12px;padding:6px 8px;background:#352c47;color:#fff;border:1px solid #897197; }
+.sleeve-selection-bar button:disabled { opacity:.4; }
+.sleeve-copy-caption { font-size:11px;line-height:1.3;padding:3px 6px;color:#d7cce3; }
+.sleeve-selected { outline:2px solid #e3c790 !important;outline-offset:-2px; }
+.deckbox-panel-header,.deckbuilder-owned-header { flex-wrap:wrap; }
+
+.deckbox-card[data-sleeve-copy],.builder-card[data-sleeve-copy] { height:auto;min-height:284px;flex-basis:auto; }
+[data-sleeve-copy] > .deckbox-card-image-wrap,[data-sleeve-copy] > .builder-card-image-wrap { flex-shrink:0; }
+
+.deckbox-panel-header > button { background:linear-gradient(180deg,#5a468cf2,#2d1e50f2);color:#fff;border:1px solid #ffffff14; }
+
+.deck-sleeve-control { display:flex; align-items:center; gap:10px; padding:8px 0; font-size:13px; }
+.deck-sleeve-control select { flex:1; min-width:0; background:#161c28; color:#eef2ff; border:1px solid #374151; border-radius:5px; padding:6px; }
+
+.deck-sleeve-swatch { width:30px; height:41px; object-fit:cover; border-radius:3px; flex:none; }

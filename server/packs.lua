@@ -70,7 +70,13 @@ local function payload(player, row)
         if not card then error('A recorded reward is missing from the catalogue: ' .. reward.cardId) end
         cards[i] = { id = reward.cardId, cardId = reward.cardId, name = card.name, rarity = card.rarity,
             type = card.type, attack = card.attack, defense = card.defense, speed = card.speed,
-            effectText = card.effectText, inventoryImage = card.inventoryImage, slot = i }
+            effectText = card.effectText, inventoryImage = card.inventoryImage, slot = i,
+            copyId = roll.storage and roll.storage.mode=='physical' and (row.id..':'..i) or nil,
+            sleeveContext = roll.storage and roll.storage.mode=='physical' and {location='pile',id=roll.storage.id} or nil }
+        if BStarCardPresentation and cards[i].copyId then
+            local copy=MySQL.single.await("SELECT * FROM bstar_card_copies WHERE id=?",{cards[i].copyId})
+            if copy and copy.location=='pile' and copy.container_id==roll.storage.id then BStarCardPresentation.apply(cards[i],json.decode(copy.info)) end
+        end
     end
     row.source = player.PlayerData.source
     sessions[row.citizenid] = row
@@ -136,10 +142,12 @@ local function createOpening(player, slot, previous)
     local now = os.time()
     for i, reward in ipairs(roll.rewards) do
         reward.info = DeckBox.BuildCardItemInfo(reward.cardId)
+        if BStarSleeves then BStarSleeves.initialInfo(reward.info) end
         reward.info.copyId = database.id .. ':' .. i
         reward.info.packOpeningId, reward.info.packPull = database.id, i
         reward.info.acquiredAt, reward.info.pileEnteredAt = now, now
-        reward.info.pileGraceUntil = now + 3 * 60 * 60 -- Future wear eligibility, no condition loss in Pass 2.
+        reward.info.pileGraceUntil = now + (BStarConditionConfig and BStarConditionConfig.bulk.graceSeconds or 3*60*60)
+        if BStarConditionRules then BStarConditionRules.initialise(reward.info,now);BStarConditionRules.mark(reward.info,'pile',now) end
     end
     if not equal(before, compact(items(player))) then return {ok=false,error='Inventory changed; pack not consumed.'} end
     local row = { id = database.id, citizenid = citizenid, pack_item = item.name, pack_slot = slot,

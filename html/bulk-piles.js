@@ -49,8 +49,9 @@
         const tile=document.createElement('button'), frame=document.createElement('div'), image=document.createElement('img'), label=document.createElement('div');
         frame.className='pack-thumb';frame.style.position='relative';image.src=getThumbImagePath(card);image.alt=card.name;image.loading='lazy';image.draggable=false;
         label.className='pack-card-label';label.textContent=card.name;
-        frame.appendChild(image);tile.append(frame,label);tile.addEventListener('click',()=>inspect(card));grid.appendChild(tile);
+        frame.appendChild(image);tile.append(frame,label);tile.addEventListener('click',()=>inspect(card));tile.addEventListener('contextmenu',event=>window.BStarSleeves?.menu(event,{card,context:{location:'pile',id},actions:[{label:'Inspect card',run:()=>inspect(card)}]}));grid.appendChild(tile);
         // Existing visibility-managed renderer; never mount more than one 48-card page.
+        window.BStarSleeveVisuals?.bind(image,card);
         window.BStarRarityRenderer?.attach(image,card);
       }
       previous.disabled=page<=1;next.disabled=page>=pages;
@@ -103,7 +104,7 @@
     browse.addEventListener('click',()=>post('bulkOpen').catch(()=>{}));return browse;
   }
   const browse=browseButton(document.querySelector('.deckhub-bottombar'));
-  browseButton(document.querySelector('.deckbox-header'));
+  browseButton(document.querySelector('.deckbox-panel-header'));
 
   document.addEventListener('pointerdown',event=>{if(!menu.contains(event.target))menu.classList.add('hidden');});
   document.addEventListener('keydown',event=>{if(['Escape','Tab'].includes(event.key))menu.classList.add('hidden');},true);
@@ -127,5 +128,5 @@
   }
   const watch=new MutationObserver(()=>{all.classList.toggle('hidden',deckHubMode==='tableSelect');browse.classList.toggle('hidden',deckHubMode==='tableSelect');menu.classList.add('hidden');});
   watch.observe(deckHubWrap,{attributes:true,attributeFilter:['class']});
-  window.BStarBulkUI={returnFromInspection,close};
+  window.BStarBulkUI={returnFromInspection,close,refresh:()=>{if(active&&!inspecting)load(page);},get currentPile(){return id;}};
 })();

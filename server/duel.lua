@@ -3,6 +3,13 @@ local QBCore = exports['qb-core']:GetCoreObject()
 Duel = Duel or {}
 Duel.Active = Duel.Active or {}
 
+local function safeClientEvent(duel,event,src,...)
+    local live=QBCore.Functions.GetPlayer(src)
+    if not live then return end
+    for _,member in pairs(duel and duel.players or {}) do
+        if member.source==src and member.citizenid==live.PlayerData.citizenid and member.license==live.PlayerData.license then TriggerClientEvent(event,src,...);return end
+    end
+end
 local duelCounter = 0
 local getEffectApi
 local moveFieldCardToGraveyard
@@ -148,7 +155,9 @@ local function buildDeckInstancesFromDeckData(deckData, ownerIndex)
             uidCounter = uidCounter + 1
 
             instances[#instances + 1] = {
-                uid = ("%s_%s_%s"):format(ownerIndex, cardId, uidCounter),
+                uid = ("%s_%s"):format(ownerIndex, uidCounter),
+                privateCopyId = deckData.__copies and deckData.__copies[cardId] and deckData.__copies[cardId][i].privateCopyId,
+                presentation = deckData.__copies and deckData.__copies[cardId] and deckData.__copies[cardId][i].presentation or {},
                 cardId = cardId,
                 owner = ownerIndex,
                 controller = ownerIndex,
@@ -172,7 +181,8 @@ local function getPlayerIndexesBySource(duel, src)
     local indexes = {}
 
     for index, player in pairs(duel.players or {}) do
-        if player.source == src then
+        local live=QBCore.Functions.GetPlayer(src)
+        if player.source == src and live and live.PlayerData.citizenid==player.citizenid and live.PlayerData.license==player.license then
             indexes[#indexes + 1] = index
         end
     end
@@ -459,6 +469,11 @@ local function resetFighterHp(card)
 end
 
 local function buildCardPayload(cardInstance, duel, viewerIndex)
+    local presentation=cardInstance.presentation or {}
+    if cardInstance.faceDown or cardInstance.facedown or cardInstance.faceUp==false then
+        -- No identity, rarity, physical copy ID or condition for concealed cards.
+        return {uid=cardInstance.uid,hidden=true,deckSleeveId=presentation.deckSleeveId}
+    end
     local def = getCardDefinition(cardInstance.cardId)
     local cardType = string.upper(tostring(def and def.type or ''))
     local attackText = def and (def.attack or def.atk) or nil
@@ -475,6 +490,9 @@ local function buildCardPayload(cardInstance, duel, viewerIndex)
     return {
         uid = cardInstance.uid,
         cardId = cardInstance.cardId,
+        sleeveId = presentation.sleeveId,
+        deckSleeveId = presentation.deckSleeveId,
+        conditionCategory = presentation.conditionCategory,
         owner = cardInstance.owner,
         controller = cardInstance.controller,
         zone = cardInstance.zone,
@@ -866,6 +884,12 @@ local function resetBattleFlags(playerState)
     end
 end
 
+local function backPayload(card)
+    return {hidden=true,deckSleeveId=card and card.presentation and card.presentation.deckSleeveId}
+end
+local function handBacks(hand)
+    local backs={};for i,card in ipairs(hand) do backs[i]=backPayload(card) end;return backs
+end
 local function buildPrivateStateForPlayer(duel, viewerIndex)
     local selfState = duel.players[viewerIndex]
     local oppIndex = getOpponentIndex(viewerIndex)
@@ -919,6 +943,7 @@ local function buildPrivateStateForPlayer(duel, viewerIndex)
         selfPlayer = {
             source = selfState.source,
             deckCount = #selfState.deck,
+            deckBack = {hidden=true,deckSleeveId=selfState.deckSleeveId},
             hand = buildCardPayloadList(selfState.hand, duel, viewerIndex),
             graveyardCount = #selfState.graveyard,
             banishedCount = #(selfState.banished or {}),
@@ -936,6 +961,8 @@ local function buildPrivateStateForPlayer(duel, viewerIndex)
         opponentPlayer = {
             source = oppState.source,
             deckCount = #oppState.deck,
+            deckBack = {hidden=true,deckSleeveId=oppState.deckSleeveId},
+            handBacks = handBacks(oppState.hand),
             handCount = #oppState.hand,
             graveyardCount = #oppState.graveyard,
             banishedCount = #(oppState.banished or {}),
@@ -966,10 +993,13 @@ local function sendDuelStateToPlayers(duel)
         refreshContinuousModifiers(duel)
     end
 
+    if BStarCondition then BStarCondition.finished(duel) end
+
     for playerIndex, playerState in pairs(duel.players) do
         local src = playerState.source
 
-        if not sentToSource[src] then
+        local live=QBCore.Functions.GetPlayer(src)
+        if live and live.PlayerData.citizenid==playerState.citizenid and live.PlayerData.license==playerState.license and not sentToSource[src] then
             local payloadIndex = playerIndex
 
             -- Solo/self-test duel: same player controls both sides.
@@ -984,7 +1014,7 @@ local function sendDuelStateToPlayers(duel)
                 end
             end
 
-            TriggerClientEvent('bstar_cards:client:OpenDuelUi', src, buildPrivateStateForPlayer(duel, payloadIndex))
+            safeClientEvent(duel,'bstar_cards:client:OpenDuelUi', src, buildPrivateStateForPlayer(duel, payloadIndex))
             sentToSource[src] = true
         end
     end
@@ -998,11 +1028,15 @@ local function createPlayerState(src, ownerIndex, deckId, deckName, deckData)
 
     local deckInstances = buildDeckInstancesFromDeckData(deckData, ownerIndex)
     shuffleList(deckInstances)
+    -- Assign public handles AFTER shuffling so adjacent IDs do not group equal card types.
+    for i,instance in ipairs(deckInstances) do instance.uid=("%s_%s"):format(ownerIndex,i) end
 
     return {
         source = src,
         citizenid = Player.PlayerData.citizenid,
+        license = Player.PlayerData.license,
         deckId = deckId,
+        deckSleeveId = deckData.sleeveDesign or 'default',
         deckName = deckName or ('Deck ' .. tostring(deckId)),
         deck = deckInstances,
         hand = {},
@@ -2385,6 +2419,8 @@ local function cardMatchesSearchFilter(card, filter)
 
     if not def then return false end
 
+    if filter.cardId and tostring(card.cardId) ~= tostring(filter.cardId) then return false end
+
     if filter.notUid and tostring(card.uid or '') == tostring(filter.notUid) then
         return false
     end
@@ -2515,6 +2551,9 @@ local function collectSelectionChoices(duel, playerIndex, zoneName, filter, targ
         for index = 1, math.min(count, #(player.deck or {})) do
             addIfMatch(player.deck[index])
         end
+    elseif zoneName == 'deck_and_graveyard' then
+        for _, card in ipairs(player.deck or {}) do addIfMatch(card) end
+        for _, card in ipairs(player.graveyard or {}) do addIfMatch(card) end
     elseif zoneName == 'graveyard' then
         for _, card in ipairs(player.graveyard or {}) do
             addIfMatch(card)
@@ -2622,7 +2661,7 @@ queueCardSelection = function(duel, playerIndex, sourceCard, options)
             phase = duel.phase,
             message = options.emptyMessage or 'No valid targets found for effect.'
         }
-        TriggerClientEvent('QBCore:Notify', playerState.source, options.emptyMessage or 'No valid targets found.', 'error')
+        safeClientEvent(duel,'QBCore:Notify', playerState.source, options.emptyMessage or 'No valid targets found.', 'error')
         return false
     end
 
@@ -2643,7 +2682,7 @@ queueCardSelection = function(duel, playerIndex, sourceCard, options)
         choices = choices
     }
 
-    TriggerClientEvent('bstar_cards:client:PendingCardSelection', playerState.source, {
+    safeClientEvent(duel,'bstar_cards:client:PendingCardSelection', playerState.source, {
         duelId = duel.id,
         selection = {
             id = duel.pendingSelection.id,
@@ -2697,7 +2736,7 @@ queueDeckSearch = function(duel, playerIndex, sourceCard, filter, prompt)
             phase = duel.phase,
             message = 'No matching cards found for deck search.'
         }
-        TriggerClientEvent('QBCore:Notify', playerState.source, ('No matching cards found in deck for %s.'):format(sourceDef and sourceDef.name or 'this effect'), 'error')
+        safeClientEvent(duel,'QBCore:Notify', playerState.source, ('No matching cards found in deck for %s.'):format(sourceDef and sourceDef.name or 'this effect'), 'error')
         return false
     end
 
@@ -2717,8 +2756,8 @@ queueDeckSearch = function(duel, playerIndex, sourceCard, filter, prompt)
         choices = choices
     }
 
-    TriggerClientEvent('QBCore:Notify', playerState.source, ('Choose from %s matching card(s).'):format(#choices), 'primary')
-    TriggerClientEvent('bstar_cards:client:PendingCardSelection', playerState.source, {
+    safeClientEvent(duel,'QBCore:Notify', playerState.source, ('Choose from %s matching card(s).'):format(#choices), 'primary')
+    safeClientEvent(duel,'bstar_cards:client:PendingCardSelection', playerState.source, {
         duelId = duel.id,
         selection = {
             id = duel.pendingSelection.id,
@@ -3159,7 +3198,7 @@ local function sendBattleEventToPlayers(duel, battleResult)
     for _, playerState in pairs(duel.players or {}) do
         local targetSrc = playerState.source
         if targetSrc and not sentToSource[targetSrc] then
-            TriggerClientEvent('bstar_cards:client:BattleEvent', targetSrc, battleResult)
+            safeClientEvent(duel,'bstar_cards:client:BattleEvent', targetSrc, battleResult)
             sentToSource[targetSrc] = true
         end
     end
@@ -3447,6 +3486,10 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
         return false, 'This fighter already attacked this turn'
     end
 
+    if playerHasStatus(attackerState, 'cannot_attack') then
+        return false, 'You cannot attack this turn'
+    end
+
     if cardHasStatus(attackerCard, 'cannot_attack') then
         return false, 'This fighter cannot attack'
     end
@@ -3574,7 +3617,7 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
         for _, playerState in pairs(duel.players) do
             local targetSrc = playerState.source
             if not sentToSource[targetSrc] then
-                TriggerClientEvent('bstar_cards:client:BattleEvent', targetSrc, battleResult)
+                safeClientEvent(duel,'bstar_cards:client:BattleEvent', targetSrc, battleResult)
                 sentToSource[targetSrc] = true
             end
         end
@@ -3665,7 +3708,7 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
         for _, playerState in pairs(duel.players) do
             local targetSrc = playerState.source
             if not sentToSource[targetSrc] then
-                TriggerClientEvent('bstar_cards:client:BattleEvent', targetSrc, battleResult)
+                safeClientEvent(duel,'bstar_cards:client:BattleEvent', targetSrc, battleResult)
                 sentToSource[targetSrc] = true
             end
         end
@@ -3757,7 +3800,7 @@ function Duel.Attack(src, duelId, attackerZoneIndex, targetType, targetZoneIndex
     for _, playerState in pairs(duel.players) do
         local targetSrc = playerState.source
         if not sentToSource[targetSrc] then
-            TriggerClientEvent('bstar_cards:client:BattleEvent', targetSrc, battleResult)
+            safeClientEvent(duel,'bstar_cards:client:BattleEvent', targetSrc, battleResult)
             sentToSource[targetSrc] = true
         end
     end
@@ -4610,10 +4653,39 @@ function Duel.ResolvePendingSelection(src, duelId, selectionId, selectedUid, sel
         return false, ('Choose between %s and %s card(s)'):format(minChoices, maxChoices)
     end
 
+    if pending.mode == 'summon_selected_from_deck_or_graveyard' and #chosenUids>0 then
+        local card,_,owner,zone=findCardByUid(duel,chosenUids[1])
+        local offered=false
+        for _,choice in ipairs(pending.choices or {}) do if choice.uid==chosenUids[1] then offered=true;break end end
+        if not offered or not card or owner~=playerIndex or (zone~='deck' and zone~='graveyard') or not cardMatchesSearchFilter(card,pending.filter) then
+            return false,'Selected summon target moved or is not valid'
+        end
+        local free=false
+        for i=1,3 do if not duel.players[playerIndex].fighterZones[i] then free=true;break end end
+        if not free then return false,'No open fighter zone' end
+    end
+
     selectedUid = chosenUids[1]
     duel.pendingSelection = nil
 
     local playerState = duel.players[playerIndex]
+
+    if pending.mode == 'summon_selected_from_deck_or_graveyard' then
+        if selectedUid then
+            local card,_,_,zone=findCardByUid(duel,selectedUid)
+            local list=playerState[zone]
+            for i,candidate in ipairs(list) do if candidate.uid==selectedUid then table.remove(list,i);break end end
+            local zoneIndex
+            for i=1,3 do if not playerState.fighterZones[i] then zoneIndex=i;break end end
+            card.zone='fighterZone';card.controller=playerIndex;card.hasAttacked=false
+            card.faceDown=nil;card.facedown=nil;card.faceUp=true
+            resetFighterHp(card);playerState.fighterZones[zoneIndex]=card
+            if zone=='deck' then shuffleList(playerState.deck) end
+            triggerSummonResponseWindow(duel,playerIndex,card,{zoneIndex=zoneIndex,summonType='special',summoningPlayer=playerIndex})
+        end
+        sendDuelStateToPlayers(duel)
+        return true
+    end
 
     if pending.mode == 'move_selected_graveyard_to_deck' then
         for _, uid in ipairs(chosenUids) do
@@ -6008,4 +6080,21 @@ end
 
 function Duel.GetById(duelId)
     return Duel.Active[duelId]
+end
+
+-- Rebind only the same authenticated character/account, never a reused source ID.
+function Duel.Refresh(src)
+    local player=QBCore.Functions.GetPlayer(src);if not player then return end
+    for _,duel in pairs(Duel.Active) do
+        if duel.status~='finished' then
+            local found=false
+            for _,member in pairs(duel.players) do
+                if member.citizenid==player.PlayerData.citizenid and member.license==player.PlayerData.license then member.source=src;found=true end
+            end
+            if found then
+                if not duel.started and Duel.ResumeSetup then Duel.ResumeSetup(duel,src) else sendDuelStateToPlayers(duel) end
+                return
+            end
+        end
+    end
 end

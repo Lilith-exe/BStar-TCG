@@ -102,11 +102,16 @@ local function getCurrentCardId(cardId)
     return nil
 end
 
+local function playableStoredAmount(card)
+    local private=BStarBulk and BStarBulk.playableAmounts and BStarBulk.playableAmounts[card]
+    if private~=nil then return private end
+    return tonumber(card and card.amount) or 0
+end
 local function getStoredAmountForCard(storedCards, cardId)
     if not storedCards then return 0 end
 
     if storedCards[cardId] then
-        return tonumber(storedCards[cardId].amount) or 0
+        return playableStoredAmount(storedCards[cardId])
     end
 
     local wantedId = getResolvedCardIdentity(cardId)
@@ -115,7 +120,7 @@ local function getStoredAmountForCard(storedCards, cardId)
     local amount = 0
     for storedCardId, storedCard in pairs(storedCards or {}) do
         if getResolvedCardIdentity(storedCardId) == wantedId then
-            amount = amount + (tonumber(storedCard and storedCard.amount) or 0)
+            amount = amount + playableStoredAmount(storedCard)
         end
     end
 
@@ -206,6 +211,7 @@ end
 
 -- Pack grants use the same metadata contract as Deck Box withdrawals.
 DeckBox.BuildCardItemInfo = BuildCardItemInfo
+DeckBox.ResolveCardDefinition = ResolveCardDefinition
 
 local function getPlayerCardCounts(Player)
     local results = {}
@@ -246,6 +252,11 @@ local function getPlayerCardCounts(Player)
             end
 
             results[cardId].amount = results[cardId].amount + amount
+            if BStarCardPresentation then
+                local ok,info=pcall(BStarCardPresentation.pocketInfo,item)
+                if ok then BStarCardPresentation.addVariant(results[cardId],info,amount,item.info.copyId) end
+                results[cardId].sleeveContext={location='pocket',id=''}
+            end
 
             if not results[cardId].inventoryImage and item.info.inventoryImage then
                 results[cardId].inventoryImage = item.info.inventoryImage
@@ -626,6 +637,13 @@ local function SaveDeckForBox(source, deckBoxId, deckId, deckName, deckData, cb)
         deckData.cards = {}
     end
 
+    local carriedBox=false
+    for _,item in pairs(Player.PlayerData.items or {}) do
+        if item.name=='deck_box' and item.amount==1 and type(item.info)=='table' and item.info.id==deckBoxId then carriedBox=true;break end
+    end
+    if not carriedBox then cb(false);return end
+    -- Only the server grants designs. Do not persist client-injected copy handles.
+    deckData = { cards=deckData.cards, sleeveDesign=BStarDeckCosmetics.resolve(citizenid,deckData.sleeveDesign) }
     exports.oxmysql:update([[
         UPDATE bstar_decks
         SET name = ?, deck_data = ?
@@ -679,11 +697,31 @@ QBCore.Functions.CreateUseableItem('bstar_card', function(source, item)
         return
     end
 
+    local ok,privateInfo=pcall(function()
+        if BStarCondition and BStarConditionConfig.enabled then
+            local result=BStarCondition.touchPocket(source,item);assert(result.ok,result.error);item=result.item
+        end
+        return BStarCardPresentation.pocketInfo(item)
+    end)
+    if not ok then TriggerClientEvent('QBCore:Notify',source,'Card metadata needs recovery. Reopen card storage first.','error');return end
+    -- Cross-resource QBCore exports may return a fresh table on every call.
+    -- Revalidate the character and exact carried item after the SQL yield.
+    local live = QBCore.Functions.GetPlayer(source)
+    if not live or live.PlayerData.citizenid ~= Player.PlayerData.citizenid or
+        live.PlayerData.license ~= Player.PlayerData.license then return end
+    local actual = live.PlayerData.items and live.PlayerData.items[item.slot]
+    if not actual or actual.name ~= 'bstar_card' or actual.amount ~= 1 or
+        not BStarBulk.storage.equal(actual.info, item.info) then return end
+    exports['qb-inventory']:CloseInventory(source)
     TriggerClientEvent('bstar_cards:client:showCard', source, {
         id = card.id,
         name = card.name,
         rarity = card.rarity,
-        image = 'nui://bstar_cards/html/images/cards/' .. card.inventoryImage
+        inventoryImage = card.inventoryImage,
+        image = 'images/cards/' .. card.inventoryImage,
+        cardId = card.id or cardId, copyId = item.info.copyId, slot = item.slot,
+        sleeveId = BStarCardPresentation and BStarCardPresentation.sleeveId(privateInfo),
+        conditionCategory = BStarCardPresentation and BStarCardPresentation.condition(privateInfo), sleeveContext = { location='pocket', id='' }
     })
 end)
 
@@ -748,7 +786,7 @@ RegisterNetEvent('bstar_cards:server:StoreCardInDeckBox', function(deckBoxId, ca
     end)
 end)
 
-RegisterNetEvent('bstar_cards:server:WithdrawCardFromDeckBox', function(deckBoxId, cardId)
+RegisterNetEvent('bstar_cards:server:WithdrawCardFromDeckBox', function(deckBoxId, cardId, selection)
     local src = source
 
     DeckBox.WithdrawCard(src, deckBoxId, cardId, function(success, err)
@@ -757,7 +795,7 @@ RegisterNetEvent('bstar_cards:server:WithdrawCardFromDeckBox', function(deckBoxI
         else
             TriggerClientEvent('QBCore:Notify', src, err or 'Failed to withdraw card.', 'error')
         end
-    end)
+    end, selection)
 end)
 
 RegisterNetEvent('bstar_cards:server:DevFillDeckBox', function(deckBoxId)
@@ -992,7 +1030,8 @@ local function GetDeckByIdForPlayer(source, deckBoxId, deckId, cb)
         cb({
             id = row.id,
             name = row.name,
-            deck_data = decoded
+            deck_data = decoded,
+            boxId = deckBoxId
         })
     end)
 end
@@ -1077,6 +1116,15 @@ local function openCoinFlipForDuel(src, duel, tableMode)
     notifyDuelPlayers(duel, 'Duel matched. Player 1 is calling the coin toss.', 'primary')
 end
 
+-- Resume the existing coin result; reconnect never rerolls it or changes rewards/rules.
+function Duel.ResumeSetup(duel,src)
+    local coin=duel.coinFlip or {};local chooser=duel.players[coin.chooser or 1]
+    local canChoose=chooser and chooser.source==src
+    TriggerClientEvent('bstar_cards:client:OpenCoinFlip',src,{duelId=duel.id,tableMode=duel.tableId~=nil,tableId=duel.tableId,canChooseCoin=canChoose,soloMode=duel.soloMode==true})
+    if canChoose and coin.result then
+        TriggerClientEvent('bstar_cards:client:CoinFlipResult',src,{choice=coin.choice,result=coin.result,playerWon=coin.playerWon,canChooseTurnOrder=coin.playerWon,soloMode=duel.soloMode==true})
+    end
+end
 RegisterNetEvent('bstar_cards:server:DuelChooseCoin', function(duelId, choice)
     local src = source
     local duel = Duel.GetById(duelId)
@@ -1090,7 +1138,8 @@ RegisterNetEvent('bstar_cards:server:DuelChooseCoin', function(duelId, choice)
     end
 
     local chooserIndex = duel.coinFlip and duel.coinFlip.chooser or 1
-    if not duel.players[chooserIndex] or duel.players[chooserIndex].source ~= src then
+    local actor=QBCore.Functions.GetPlayer(src);local chooser=duel.players[chooserIndex]
+    if not actor or not chooser or chooser.source~=src or chooser.citizenid~=actor.PlayerData.citizenid or chooser.license~=actor.PlayerData.license then
         TriggerClientEvent('QBCore:Notify', src, 'Waiting for the coin toss caller.', 'error')
         return
     end
@@ -1101,6 +1150,7 @@ RegisterNetEvent('bstar_cards:server:DuelChooseCoin', function(duelId, choice)
         return
     end
 
+    if duel.coinFlip and duel.coinFlip.result then Duel.ResumeSetup(duel,src);return end
     local result = math.random(1, 2) == 1 and 'heads' or 'tails'
     local playerWon = result == choice
 
@@ -1144,7 +1194,8 @@ RegisterNetEvent('bstar_cards:server:DuelChooseTurnOrder', function(duelId, choi
     end
 
     local chooserIndex = duel.coinFlip and duel.coinFlip.chooser or 1
-    if not duel.players[chooserIndex] or duel.players[chooserIndex].source ~= src then
+    local actor=QBCore.Functions.GetPlayer(src);local chooser=duel.players[chooserIndex]
+    if not actor or not chooser or chooser.source~=src or chooser.citizenid~=actor.PlayerData.citizenid or chooser.license~=actor.PlayerData.license then
         TriggerClientEvent('QBCore:Notify', src, 'Waiting for the coin toss caller.', 'error')
         return
     end

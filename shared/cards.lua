@@ -918,9 +918,18 @@ Cards = {
         legality = '',
         inventoryImage = 'ALPH1-EN027_WULFRIK_CHAOSBANE.png',
         cardTags = {},
-        effectTags = {},
-        effects = {},
-        pendingEffectReview = true,
+        effectTags = { 'on_summon', 'special_summon' },
+        effects = {
+            {
+                trigger = 'on_summon', optional = true,
+                promptText = 'Summon up to 2 Crows from your deck or cemetery? You cannot attack this turn.',
+                actions = {
+                    { action = 'add_player_status', target = 'self', status = 'cannot_attack', name = 'Wulfrik: No Attacks', timing = 'end_turn', turns = 1 },
+                    { action = 'select_summon_from_deck_or_graveyard', filter = { type = 'Fighter', cardId = 'ALPH1_EN028_CROW' }, title = 'Wulfrik: First Crow' },
+                    { action = 'select_summon_from_deck_or_graveyard', filter = { type = 'Fighter', cardId = 'ALPH1_EN028_CROW' }, title = 'Wulfrik: Second Crow' }
+                }
+            }
+        },
     },
     ['ALPH1_EN028_CROW'] = {
         id = 'ALPH1_EN028_CROW',

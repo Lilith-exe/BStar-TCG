@@ -1,0 +1,31 @@
+#builderPoolCards > .builder-card[aria-expanded="true"] { outline:2px solid #c5a5ed; outline-offset:-2px; }
+#builderPoolCards > .builder-card:focus-visible { outline:2px solid #e4ccff; }
+#builderPoolCards .builder-copy-drawer { grid-column:1 / -1; min-width:0; padding:12px; border:1px solid #a78bca55; border-radius:12px; background:#171222f0; color:#f2eafa; animation:builderCopiesOpen .18s ease-out; }
+.builder-copy-header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.builder-copy-header > strong { min-width:0; font-size:13px; overflow-wrap:anywhere; }
+.builder-copy-navigation { display:flex; gap:5px; flex-shrink:0; }
+.builder-copy-navigation button { padding:3px 9px; font-size:18px; line-height:1.1; }
+.builder-copy-navigation button:disabled { opacity:.3; }
+.builder-copy-note { font-size:11px; line-height:1.4; color:#c6bad6; margin:6px 0 10px; }
+.builder-copy-track { display:flex; align-items:stretch; gap:10px; overflow-x:auto; overflow-y:hidden; padding:3px 2px 10px; overscroll-behavior-x:contain; scroll-snap-type:x proximity; scrollbar-width:thin; scrollbar-color:#8663a6 #211a2b; }
+.builder-copy-track:focus-visible { outline:1px solid #c5a5ed; outline-offset:2px; }
+.builder-copy { flex:0 0 118px; width:118px; min-width:0; padding:7px; box-sizing:border-box; background:#ffffff09; border:1px solid #ffffff12; border-radius:8px; scroll-snap-align:start; }
+.builder-copy-number { display:block; font-size:10px; color:#cbbbd8; margin-bottom:5px; }
+.builder-copy-art { display:block; position:relative; width:100%; height:139px; padding:0; border:0; background:none; border-radius:4px; overflow:hidden; cursor:pointer; }
+.builder-copy-art img { display:block; width:100%; height:100%; object-fit:contain; }
+.builder-copy-status { display:flex; align-items:center; justify-content:space-between; gap:4px; margin:7px 0; }
+.builder-copy-condition { font-size:11px; font-weight:600; color:#b5adbf; }
+.builder-copy-condition[data-condition="Good"] { color:#8be3a9; }
+.builder-copy-condition[data-condition="Played"] { color:#f2d28d; }
+.builder-copy-condition[data-condition="Damaged"] { color:#ef9a9a; }
+.builder-copy-sleeve { display:inline-flex; color:#958d9e; flex-shrink:0; }
+.builder-copy-sleeve.is-sleeved { color:#98d7ba; }
+.builder-copy-sleeve svg { width:17px; height:19px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.builder-copy-actions { display:flex; gap:4px; }
+.builder-copy-actions button { flex:1; min-width:0; padding:5px 3px; font-size:10px; border-radius:5px; }
+.builder-copy-more { flex:0 0 110px; align-self:center; padding:10px; white-space:normal; }
+.builder-copy-empty { font-size:12px; color:#c6bad6; margin:8px; }
+.builder-copy-legacy { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; text-align:center; font-size:12px; min-height:220px; }
+.builder-copy-legacy small { font-size:10px; color:#c6bad6; line-height:1.5; }
+@keyframes builderCopiesOpen { from { opacity:0; transform:translateY(-5px); } to { opacity:1; transform:translateY(0); } }
+@media (prefers-reduced-motion:reduce) { #builderPoolCards .builder-copy-drawer { animation:none; } }

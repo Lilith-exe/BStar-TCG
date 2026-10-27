@@ -200,6 +200,8 @@
       surface.style.left = image.offsetLeft + 'px'; surface.style.top = image.offsetTop + 'px';
       surface.style.width = image.offsetWidth + 'px'; surface.style.height = image.offsetHeight + 'px';
       surface.style.transform = getComputedStyle(image).transform;
+      // Field/cemetery artwork has its own stacking level. Keep its foil above it.
+      surface.style.zIndex = String((Number.parseInt(getComputedStyle(image).zIndex,10)||0)+1);
     }
     function refresh() {
       const current = image.getAttribute('src') || '';
@@ -245,7 +247,12 @@
     instances.set(image, instance); observer.observe(image); layout(); return instance;
   }
   function scan() {
-    for (const [image, instance] of instances) if (!image.isConnected) instance.destroy();
+    for (const [image, instance] of instances) {
+      if (!image.isConnected) instance.destroy();
+      // Reused field images can switch to a concealed back outside the front
+      // selector. Refresh them too, so an old foil cannot survive concealment.
+      else instance.refresh();
+    }
     for (const image of document.querySelectorAll('img[src*="images/cards/"],img[src*="images/thumbs/"]')) {
       const instance = attach(image); if (instance) instance.refresh();
     }

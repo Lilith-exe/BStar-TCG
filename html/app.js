@@ -1,4 +1,5 @@
 const app = document.getElementById('app');
+let uiNavigationRevision = 0;
 const CARD_BACK_IMAGE_PATH = 'images/assets/card_back_default.png';
 
 // Viewer refs
@@ -220,20 +221,26 @@ function clone(obj) {
 }
 
 function getThumbImagePath(card) {
+  if(window.BStarSleeveVisuals?.hidden(card)) return window.BStarSleeveVisuals.back(card);
   const file = card?.inventoryImage || 'default.png';
   return `images/thumbs/${encodeURIComponent(file)}`;
 }
 
 function getFullImagePath(card) {
+  if(window.BStarSleeveVisuals?.hidden(card)) return window.BStarSleeveVisuals.back(card);
+  if (!card?.inventoryImage && card?.image) return card.image;
   const file = card?.inventoryImage || 'default.png';
   return `images/cards/${encodeURIComponent(file)}`;
 }
 
 function setCardThumbImage(img, card) {
+  window.BStarSleeveVisuals?.bind(img,card);
   img.src = getThumbImagePath(card);
+    window.BStarSleeveVisuals?.bind(img,card);
   img.onerror = () => {
     img.onerror = null;
     img.src = getCardImagePathFromPayload(card);
+    window.BStarSleeveVisuals?.bind(img,card);
   };
 }
 
@@ -253,6 +260,8 @@ function resetTilt() {
 }
 
 function hideAll() {
+  uiNavigationRevision++;
+  window.BStarBuilderCopies?.close();
   clearCoinResultTimer();
   app.classList.add('hidden');
   viewerWrap.classList.add('hidden');
@@ -420,6 +429,7 @@ function openModal({ title, text, showInput = false, inputValue = '', confirmTex
 
         const img = document.createElement('img');
         img.src = getCardImagePathFromPayload(choice);
+    window.BStarSleeveVisuals?.bind(img,choice);
         img.alt = choice.name || choice.cardId || 'Card';
         uiModalChoicePreview.appendChild(img);
 
@@ -486,6 +496,7 @@ function openModal({ title, text, showInput = false, inputValue = '', confirmTex
 
         const img = document.createElement('img');
         img.src = getCardImagePathFromPayload(choice);
+    window.BStarSleeveVisuals?.bind(img,choice);
         img.alt = choice.name || choice.cardId || 'Card';
         btn.appendChild(img);
 
@@ -869,6 +880,7 @@ function chooseTurnOrder(choice) {
 // ---------- Viewer ----------
 
 function setViewerImage(source, card = null) {
+  window.BStarSleeveVisuals?.bind(cardImage,card);
   const displaySource = window.BStarTenRegions?.imageSource(source) || source;
   // Keep the last decoded artwork while hidden; closing must not reload it on reopen.
   if (displaySource && cardImage.getAttribute('src') !== displaySource) cardImage.src = displaySource;
@@ -894,6 +906,7 @@ function updateCardTransform() {
 }
 
 function openFullViewer(card, fromDeckBox = false, fromDeckBuilder = false) {
+  window.dispatchEvent(new CustomEvent('bstar:cardOpened', { detail: { card, fromDeckBox, fromDeckBuilder } }));
   viewerOpenedFromDeckBox = fromDeckBox;
   viewerOpenedFromDeckBuilder = fromDeckBuilder;
 
@@ -1002,11 +1015,17 @@ function renderDeckBox() {
 function renderCardGrid(container, cards, side) {
   container.innerHTML = '';
 
-  const sortedIds = Object.keys(cards).sort();
-  if (!sortedIds.length) return;
-
-  for (const cardId of sortedIds) {
-    const card = cards[cardId];
+  const status=side==='deckbox'?document.getElementById('sleeveBoxStatus').value:'all';
+  const search=side==='deckbox'?document.getElementById('sleeveBoxSearch').value.toLowerCase():'';
+  const rarity=side==='deckbox'?document.getElementById('sleeveBoxRarity').value:'';
+  const sort=side==='deckbox'?document.getElementById('sleeveBoxSort').value:'id';
+  const entries=Object.keys(cards).sort().flatMap(cardId=>{
+    const card=cards[cardId];
+    return (card.variants?.length?card.variants:[{}]).map(variant=>({...card,...variant,cardId,variants:undefined}));
+  }).filter(card=>(status==='all'||(status==='sleeved')===!!card.sleeveId)&&(!rarity||card.rarity===rarity)&&String(card.name||card.cardId).toLowerCase().includes(search));
+  if(sort!=='id')entries.sort((a,b)=>String(a[sort]||'').localeCompare(String(b[sort]||'')));
+  for (const card of entries) {
+    const cardId=card.cardId;
 
     const div = document.createElement('div');
     div.className = 'deckbox-card';
@@ -1018,6 +1037,7 @@ function renderCardGrid(container, cards, side) {
 
     const img = document.createElement('img');
     img.src = getThumbImagePath(card);
+    window.BStarSleeveVisuals?.bind(img,card);
     img.loading = 'lazy';
     img.onerror = () => {
       img.onerror = null;
@@ -1048,6 +1068,7 @@ function renderCardGrid(container, cards, side) {
       }
 
       if (e.button === 2) {
+        window.BStarSleeves?.menu(e,{card,context:side==='player'?{location:'pocket',id:''}:{location:'box',id:currentDeckBoxId},actions:[{label:side==='player'?'Store in Deck Box':'Withdraw card',run:()=>{
         if (side === 'player') {
           fetch(`https://${GetParentResourceName()}/storeCard`, {
             method: 'POST',
@@ -1065,17 +1086,18 @@ function renderCardGrid(container, cards, side) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               deckBoxId: currentDeckBoxId,
-              cardId
+              cardId, copyId:card.copyId, legacy:card.legacy
             })
           }).then(() => {
             setTimeout(refreshDeckBox, 120);
           });
-        }
+        }}}]});
       }
     });
 
     container.appendChild(div);
   }
+  window.BStarSleeves?.browser(container,entries,side==='player'?{location:'pocket',id:''}:{location:'box',id:currentDeckBoxId},{status,refresh:renderDeckBox});
 }
 
 function refreshDeckBox() {
@@ -1369,6 +1391,7 @@ function hookFilterInputs() {
       const filterRarity = document.getElementById('filterRarity');
       if (filterType) filterType.value = 'all';
       if (filterRarity) filterRarity.value = 'all';
+      document.getElementById('builderSleeveStatus').value='all';
 
       ['minAtk', 'maxAtk', 'minDef', 'maxDef', 'minSpd', 'maxSpd', 'minLevel', 'maxLevel'].forEach(id => {
         const input = document.getElementById(id);
@@ -1450,12 +1473,22 @@ function renderSavedDeckList() {
   });
 }
 
+function sleeveFilteredCard(card) {
+  const status=document.getElementById('builderSleeveStatus')?.value||'all';
+  const variants=card.variants?.filter(v=>status==='all'||(status==='sleeved')===!!v.sleeveId);
+  if(!variants)return status==='sleeved'?null:card;
+  if(!variants.length)return null;
+  const amount=variants.reduce((n,v)=>n+v.amount,0);
+  // A builder entry represents an aggregate count, not a new physical copy.
+  return {...card,...variants[0],amount,copyId:undefined,variants};
+}
 function renderBuilderPoolCards() {
   builderPoolCardsEl.innerHTML = '';
 
   const sortedIds = Object.keys(builderOwnedCards)
     .filter((cardId) => {
-      const card = builderOwnedCards[cardId];
+      const card = sleeveFilteredCard(builderOwnedCards[cardId]);
+      if(!card)return false;
       const resolved = resolveCardData(card);
       if (!resolved) return false;
 
@@ -1495,12 +1528,13 @@ function renderBuilderPoolCards() {
     .sort();
 
   for (const cardId of sortedIds) {
-    const card = builderOwnedCards[cardId];
+    const card = sleeveFilteredCard(builderOwnedCards[cardId]);
     const deckCount = getSelectedDeckCardCount(cardId);
     const dimmed = isOwnedCardDimmed(cardId);
 
     const div = document.createElement('div');
     div.className = 'builder-card';
+    div.dataset.cardId = cardId;
     if (dimmed) div.classList.add('dimmed');
 
     const imageWrap = document.createElement('div');
@@ -1508,6 +1542,7 @@ function renderBuilderPoolCards() {
 
     const img = document.createElement('img');
     img.src = getThumbImagePath(card);
+    window.BStarSleeveVisuals?.bind(img,card);
     img.loading = 'lazy';
     img.onerror = () => {
       img.onerror = null;
@@ -1529,6 +1564,7 @@ function renderBuilderPoolCards() {
 
     div.addEventListener('contextmenu', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       setBuilderPreview(card);
       addCardToSelectedDeck(cardId);
     });
@@ -1539,9 +1575,11 @@ function renderBuilderPoolCards() {
 
     builderPoolCardsEl.appendChild(div);
   }
+  window.BStarBuilderCopies?.bindGrid(builderPoolCardsEl,sortedIds.map(id=>sleeveFilteredCard(builderOwnedCards[id])),{box:currentDeckBoxId,status:document.getElementById('builderSleeveStatus').value,signature:JSON.stringify([builderSearchTerm,builderFilters,selectedDeck?.id,document.getElementById('builderSleeveStatus').value])});
 }
 
 function renderBuilderDeckCards() {
+  window.BStarDeckDesigns?.refresh();
   builderDeckCardsEl.innerHTML = '';
 
   if (!selectedDeck) return;
@@ -1552,7 +1590,7 @@ function renderBuilderDeckCards() {
   const sortedIds = Object.keys(cards).sort();
 
   if (!sortedIds.length) {
-    builderDeckCardsEl.innerHTML = '<div style="opacity:.6;padding:10px;">Right-click cards on the right to add them</div>';
+    builderDeckCardsEl.innerHTML = '<div style="opacity:.6;padding:10px;">Right-click cards on the right and choose Add to deck</div>';
     return;
   }
 
@@ -1580,6 +1618,7 @@ function renderBuilderDeckCards() {
 
       const img = document.createElement('img');
       img.src = getThumbImagePath(ownedCard);
+    window.BStarSleeveVisuals?.bind(img,ownedCard);
       img.loading = 'lazy';
       img.onerror = () => {
         img.onerror = null;
@@ -1596,8 +1635,7 @@ function renderBuilderDeckCards() {
 
       div.addEventListener('contextmenu', (e) => {
         e.preventDefault();
-        setBuilderPreview(ownedCard);
-        removeCardFromSelectedDeck(cardId);
+        window.BStarSleeves?.menu(e,{card:ownedCard,context:{location:'box',id:currentDeckBoxId},actions:[{label:'Remove from deck',run:()=>{setBuilderPreview(ownedCard);removeCardFromSelectedDeck(cardId);}}]});
       });
 
       div.addEventListener('click', () => {
@@ -1617,6 +1655,8 @@ function setBuilderPreview(card) {
 
   builderPreviewName.textContent = resolved.name || resolved.cardId || 'Card Preview';
   builderPreviewImage.src = getFullImagePath(resolved);
+  builderPreviewImage._bstarCard=resolved;
+  window.BStarSleeveVisuals?.bind(builderPreviewImage,resolved);
   builderPreviewImage.dataset.foilRarity = resolved.rarity || 'COMMON';
 
   const type = resolved.type || '-';
@@ -1682,6 +1722,8 @@ function updateBuilderPreviewFromSelectedDeck() {
 
   builderPreviewName.textContent = 'Card Preview';
   builderPreviewImage.src = '';
+  builderPreviewImage._bstarCard=null;
+  window.BStarSleeveVisuals?.bind(builderPreviewImage,null);
   builderPreviewMeta.textContent = '';
 }
 
@@ -2111,6 +2153,7 @@ function renderTableZone(card, side, zoneIndex, equipmentSlot = null) {
 
   const img = document.createElement('img');
   img.src = getCardImagePathFromPayload(card);
+    window.BStarSleeveVisuals?.bind(img,card);
   zone.appendChild(img);
   appendCardBadges(zone, card);
 
@@ -2329,6 +2372,7 @@ function renderTablePreview() {
   if (!tablePreviewCard) {
     tablePreviewPanel.classList.add('empty');
     if (tablePreviewImage) tablePreviewImage.src = '';
+    window.BStarSleeveVisuals?.bind(tablePreviewImage,null);
     if (tablePreviewName) tablePreviewName.textContent = 'Select a card';
     if (tablePreviewMeta) tablePreviewMeta.textContent = 'Field cards and hand cards appear here.';
     if (tablePreviewStats) tablePreviewStats.innerHTML = '';
@@ -2339,6 +2383,7 @@ function renderTablePreview() {
   const card = tablePreviewCard;
   tablePreviewPanel.classList.remove('empty');
   if (tablePreviewImage) tablePreviewImage.src = getCardImagePathFromPayload(card);
+  window.BStarSleeveVisuals?.bind(tablePreviewImage,card);
   if (tablePreviewName) tablePreviewName.textContent = card.name || card.cardId || 'Unknown Card';
   if (tablePreviewMeta) {
     const meta = [
@@ -2417,11 +2462,13 @@ function renderTableGraveyard() {
   if (tableSelfCemeteryImage) {
     tableSelfCemeteryImage.src = selfLastGrave ? getCardImagePathFromPayload(selfLastGrave) : '';
     tableSelfCemeteryImage.classList.toggle('hidden', !selfLastGrave);
+    window.BStarSleeveVisuals?.bind(tableSelfCemeteryImage,selfLastGrave);
   }
 
   if (tableOpponentCemeteryImage) {
     tableOpponentCemeteryImage.src = oppLastGrave ? getCardImagePathFromPayload(oppLastGrave) : '';
     tableOpponentCemeteryImage.classList.toggle('hidden', !oppLastGrave);
+    window.BStarSleeveVisuals?.bind(tableOpponentCemeteryImage,oppLastGrave);
   }
 
   if (!openTableGraveSide) {
@@ -2460,6 +2507,7 @@ function renderTableGraveyard() {
 
     const img = document.createElement('img');
     img.src = getCardImagePathFromPayload(card);
+    window.BStarSleeveVisuals?.bind(img,card);
     row.appendChild(img);
 
     const label = document.createElement('span');
@@ -2481,9 +2529,11 @@ function renderTableOpponentHandBacks() {
     const back = document.createElement('div');
     back.className = 'table-opponent-hand-card';
     const img = document.createElement('img');
-    img.src = CARD_BACK_IMAGE_PATH;
+    const card=currentDuelState.opponentPlayer?.handBacks?.[i]||currentDuelState.opponentPlayer?.deckBack||{hidden:true};
+    img.src = window.BStarSleeveVisuals?.back(card)||CARD_BACK_IMAGE_PATH;
     img.alt = '';
     back.appendChild(img);
+    window.BStarSleeveVisuals?.bind(img,card);
     tableOpponentHandBacks.appendChild(back);
   }
 }
@@ -2599,6 +2649,7 @@ function addEquipmentMovementEntries(snapshot, slot, side, zoneIndex) {
 function buildTableMovementSnapshot(duelState) {
   const snapshot = {
     cards: {},
+    opponentDeckBack:duelState?.opponentPlayer?.deckBack,
     counts: {
       self: {
         deck: duelState?.selfPlayer?.deckCount || 0,
@@ -2722,9 +2773,11 @@ function animateTableCardTravelBetweenRects(fromRect, toRect, card, options = {}
   if (card) {
     const img = document.createElement('img');
     img.src = getThumbImagePath(card);
+    window.BStarSleeveVisuals?.bind(img,card);
     img.onerror = () => {
       img.onerror = null;
       img.src = getCardImagePathFromPayload(card);
+    window.BStarSleeveVisuals?.bind(img,card);
     };
     img.alt = '';
     ghost.appendChild(img);
@@ -2782,7 +2835,7 @@ function playTableMovementAnimations(prevSnapshot, nextSnapshot) {
       animateTableCardTravelBetweenRects(
         getElementCenterRect(getTableDeckElementForSide(side)),
         getElementCenterRect(tableOpponentHandBacks),
-        null,
+        prevSnapshot.opponentDeckBack||{hidden:true},
         { variant: 'cardback', width: 92 }
       );
     }
@@ -2791,7 +2844,7 @@ function playTableMovementAnimations(prevSnapshot, nextSnapshot) {
       animateTableCardTravelBetweenRects(
         getElementCenterRect(tableOpponentHandBacks),
         getElementCenterRect(getTableDeckElementForSide(side)),
-        null,
+        prevSnapshot.opponentDeckBack||{hidden:true},
         { variant: 'cardback', width: 92 }
       );
     }
@@ -2869,7 +2922,7 @@ function reconcileDuelSelections() {
   const isMyTurn = currentDuelState.turnPlayer === currentDuelState.viewerIndex;
   const isMainPhase = isDuelMainPhase(currentDuelState.phase);
   const isBattlePhase = currentDuelState.phase === 'battle';
-  const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState.turnNumber === 1 && currentDuelState.firstTurnPlayer === currentDuelState.viewerIndex);
+  const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState.turnNumber === 1 && currentDuelState.firstTurnPlayer === currentDuelState.viewerIndex) && !(currentDuelState?.selfPlayer?.statuses||[]).some(status=>String(status.id).toLowerCase()==='cannot_attack');
 
   const selectedHandCard = getSelfHandCardByUid(selectedHandCardUid);
   const selectedNonFighter = selectedHandCard
@@ -2955,7 +3008,7 @@ function renderTableDuelUi() {
   const isDiscardPhase = currentDuelState.phase === 'discard';
   const canAttackThisTurn = isMyTurn
     && isBattlePhase
-    && !(currentDuelState.turnNumber === 1 && currentDuelState.firstTurnPlayer === currentDuelState.viewerIndex);
+    && !(currentDuelState.turnNumber === 1 && currentDuelState.firstTurnPlayer === currentDuelState.viewerIndex) && !(currentDuelState?.selfPlayer?.statuses||[]).some(status=>String(status.id).toLowerCase()==='cannot_attack');
   const hasValidSelectedAttacker = canAttackWithSelectedAttacker(canAttackThisTurn);
   if (selectedAttackerZoneIndex && !hasValidSelectedAttacker) {
     selectedAttackerZoneIndex = null;
@@ -3005,6 +3058,9 @@ function renderTableDuelUi() {
     }
   }
   renderTableOpponentHandBacks();
+  for(const [selector,player]of [['#tableSelfDeckSlot',currentDuelState.selfPlayer],['#tableOpponentDeckSlot',currentDuelState.opponentPlayer]]){
+    const image=document.querySelector(selector+' img');if(image){const card=player?.deckBack||{hidden:true};image.src=window.BStarSleeveVisuals?.back(card)||CARD_BACK_IMAGE_PATH;window.BStarSleeveVisuals?.bind(image,card);}
+  }
   renderDuelResultOverlay();
 
   const oppZones = currentDuelState.opponentPlayer?.fighterZones || [null, null, null];
@@ -3241,6 +3297,7 @@ function hideCard() {
 
 function refreshDeckBuilder(selectDeckId = null) {
   if (!currentDeckBoxId) return;
+  const requestBox=currentDeckBoxId, requestRevision=uiNavigationRevision, requestDeck=selectedDeck?.id;
 
   fetch(`https://${GetParentResourceName()}/refreshDeckBuilder`, {
     method: 'POST',
@@ -3249,6 +3306,7 @@ function refreshDeckBuilder(selectDeckId = null) {
   })
     .then(res => res.json())
     .then(data => {
+      if (requestRevision!==uiNavigationRevision || requestBox!==currentDeckBoxId || deckBuilderWrap.classList.contains('hidden') || selectedDeck?.id!==requestDeck) return;
       window.BSTAR_CARD_DEFS = data.cardCatalog || window.BSTAR_CARD_DEFS || {};
       builderOwnedCards = data.storedCards || {};
       currentDecks = (data.decks || []).map(d => normalizeDeck(clone(d)));
@@ -3267,7 +3325,7 @@ function refreshDeckBuilder(selectDeckId = null) {
 
       renderDeckBuilder();
       hookFilterInputs();
-    });
+    }).catch(error=>console.warn('[BStar] Deck builder refresh failed:',error));
 }
 
 function renameSelectedDeck() {
@@ -3305,6 +3363,7 @@ function renameSelectedDeck() {
 
 function getCardImagePathFromPayload(card) {
   if (!card) return '';
+  if(window.BStarSleeveVisuals?.hidden(card)) return window.BStarSleeveVisuals.back(card);
   const file = card.inventoryImage || 'default.png';
   return `images/cards/${encodeURIComponent(file)}`;
 }
@@ -3402,6 +3461,7 @@ function renderZoneCard(zoneCard, side, zoneIndex, extraClass = '') {
 
   const img = document.createElement('img');
   img.src = getCardImagePathFromPayload(zoneCard);
+    window.BStarSleeveVisuals?.bind(img,zoneCard);
 
   zone.appendChild(img);
   appendCardBadges(zone, zoneCard);
@@ -3414,7 +3474,7 @@ function renderOpponentZones() {
   const zones = currentDuelState?.opponentPlayer?.fighterZones || [null, null, null];
   const isMyTurn = currentDuelState?.turnPlayer === currentDuelState?.viewerIndex;
   const isBattlePhase = currentDuelState?.phase === 'battle';
-  const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState?.turnNumber === 1 && currentDuelState?.firstTurnPlayer === currentDuelState?.viewerIndex);
+  const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState?.turnNumber === 1 && currentDuelState?.firstTurnPlayer === currentDuelState?.viewerIndex) && !(currentDuelState?.selfPlayer?.statuses||[]).some(status=>String(status.id).toLowerCase()==='cannot_attack');
   const hasValidSelectedAttacker = canAttackWithSelectedAttacker(canAttackThisTurn);
   if (selectedAttackerZoneIndex && !hasValidSelectedAttacker) {
     selectedAttackerZoneIndex = null;
@@ -3482,7 +3542,7 @@ function renderSelfZones() {
   const isMyTurn = currentDuelState?.turnPlayer === currentDuelState?.viewerIndex;
   const isMainPhase = isDuelMainPhase(currentDuelState?.phase);
   const isBattlePhase = currentDuelState?.phase === 'battle';
-  const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState?.turnNumber === 1 && currentDuelState?.firstTurnPlayer === currentDuelState?.viewerIndex);
+  const canAttackThisTurn = isMyTurn && isBattlePhase && !(currentDuelState?.turnNumber === 1 && currentDuelState?.firstTurnPlayer === currentDuelState?.viewerIndex) && !(currentDuelState?.selfPlayer?.statuses||[]).some(status=>String(status.id).toLowerCase()==='cannot_attack');
   const hasValidSelectedAttacker = canAttackWithSelectedAttacker(canAttackThisTurn);
   if (selectedAttackerZoneIndex && !hasValidSelectedAttacker) {
     selectedAttackerZoneIndex = null;
@@ -3956,11 +4016,14 @@ window.addEventListener('message', (event) => {
 
   if (data.action === 'showCard') {
     const card = data.card;
-    if (!card || !card.image) return;
+    if (!card || (!card.image && !card.inventoryImage)) return;
+    window.dispatchEvent(new CustomEvent('bstar:cardOpened',{detail:{card,fromDeckBox:false,fromDeckBuilder:false}}));
 
     hideAll();
     viewerWrap.classList.remove('hidden');
-    setViewerImage(card.image, card);
+    viewerOpenedFromDeckBox = false;
+    viewerOpenedFromDeckBuilder = false;
+    setViewerImage(getFullImagePath(card), card);
     currentRotateX = 0;
     currentRotateY = 0;
     resetTilt();
@@ -4072,6 +4135,8 @@ closeBtn.addEventListener('click', () => {
 });
 
 deckboxCloseBtn.addEventListener('click', () => {
+  const closingBox=currentDeckBoxId;
+  hideAll();app.classList.remove('hidden');deckHubWrap.classList.remove('hidden');renderDeckHub();
   fetch(`https://${GetParentResourceName()}/refreshDeckBuilder`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -4079,6 +4144,7 @@ deckboxCloseBtn.addEventListener('click', () => {
   })
     .then(res => res.json())
     .then(data => {
+      if(currentDeckBoxId!==closingBox||deckHubWrap.classList.contains('hidden'))return;
       currentDecks = (data.decks || []).map(d => normalizeDeck(clone(d)));
 
       if (selectedHubDeckId) {
@@ -4088,11 +4154,8 @@ deckboxCloseBtn.addEventListener('click', () => {
         selectedHubDeckId = currentDecks[0]?.id || null;
       }
 
-      hideAll();
-      app.classList.remove('hidden');
-      deckHubWrap.classList.remove('hidden');
       renderDeckHub();
-    });
+    }).catch(error=>console.warn('[BStar] Deck refresh failed after closing:',error));
 });
 
 deckHubCloseBtn.addEventListener('click', () => {
@@ -4143,6 +4206,7 @@ deckHubEditBtn.addEventListener('click', () => {
   const deck = getSelectedHubDeck();
   if (!deck) return;
 
+  const requestBox=currentDeckBoxId, requestRevision=uiNavigationRevision;
   selectedDeck = normalizeDeck(clone(deck));
 
   fetch(`https://${GetParentResourceName()}/refreshDeckBuilder`, {
@@ -4152,6 +4216,7 @@ deckHubEditBtn.addEventListener('click', () => {
   })
     .then(res => res.json())
     .then(data => {
+      if (requestRevision!==uiNavigationRevision || requestBox!==currentDeckBoxId || deckHubWrap.classList.contains('hidden') || selectedHubDeckId!==deck.id) return;
       window.BSTAR_CARD_DEFS = data.cardCatalog || window.BSTAR_CARD_DEFS || {};
       builderOwnedCards = data.storedCards || {};
       currentDecks = (data.decks || []).map(d => normalizeDeck(clone(d)));
@@ -4164,7 +4229,7 @@ deckHubEditBtn.addEventListener('click', () => {
       deckBuilderWrap.classList.remove('hidden');
       renderDeckBuilder();
       hookFilterInputs();
-    });
+    }).catch(error=>console.warn('[BStar] Deck editor refresh failed:',error));
 });
 
 deckHubDeleteBtn.addEventListener('click', () => {
@@ -4497,6 +4562,8 @@ if (deleteDeckBtn) {
 
 if (closeDeckBuilderBtn) {
   closeDeckBuilderBtn.addEventListener('click', () => {
+    const closingBox=currentDeckBoxId;
+    hideAll();app.classList.remove('hidden');deckHubWrap.classList.remove('hidden');renderDeckHub();
     fetch(`https://${GetParentResourceName()}/refreshDeckBuilder`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4504,24 +4571,23 @@ if (closeDeckBuilderBtn) {
     })
       .then(res => res.json())
       .then(data => {
+        if(currentDeckBoxId!==closingBox||deckHubWrap.classList.contains('hidden'))return;
         currentDecks = (data.decks || []).map(d => normalizeDeck(clone(d)));
         selectedHubDeckId = selectedDeck ? selectedDeck.id : (currentDecks[0]?.id || null);
 
-        hideAll();
-        app.classList.remove('hidden');
-        deckHubWrap.classList.remove('hidden');
         renderDeckHub();
-      });
+      }).catch(error=>console.warn('[BStar] Deck refresh failed after closing:',error));
   });
 }
 
 if (builderPreviewImage) {
   builderPreviewImage.addEventListener('click', () => {
     if (!builderPreviewImage.src) return;
+    window.dispatchEvent(new CustomEvent('bstar:cardOpened',{detail:{card:builderPreviewImage._bstarCard||{rarity:builderPreviewImage.dataset.foilRarity},fromDeckBox:false,fromDeckBuilder:true}}));
 
     viewerOpenedFromDeckBuilder = true;
     viewerWrap.classList.remove('hidden');
-    setViewerImage(builderPreviewImage.src, { rarity: builderPreviewImage.dataset.foilRarity });
+    setViewerImage(builderPreviewImage.src, builderPreviewImage._bstarCard || { rarity: builderPreviewImage.dataset.foilRarity });
     cardImage.classList.remove('zoomed');
     isZoomed = false;
     currentRotateX = 0;
@@ -4562,6 +4628,7 @@ document.getElementById('clearFiltersBtn').addEventListener('click', () => {
   document.querySelectorAll('.builder-filters input').forEach(i => i.value = '');
   document.getElementById('filterType').value = 'all';
   document.getElementById('filterRarity').value = 'all';
+  document.getElementById('builderSleeveStatus').value='all';
 
   renderBuilderPoolCards();
 });
@@ -4615,6 +4682,9 @@ document.addEventListener('keydown', (e) => {
       return;
     }
 
+    if (!deckboxWrap.classList.contains('hidden')) { deckboxCloseBtn.click(); return; }
+    if (!deckBuilderWrap.classList.contains('hidden')) { closeDeckBuilderBtn.click(); return; }
+    if (!deckHubWrap.classList.contains('hidden')) { deckHubCloseBtn.click(); return; }
     hideAll();
     fetch(`https://${GetParentResourceName()}/closeCard`, {
       method: 'POST',
@@ -4624,3 +4694,8 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+
+for(const id of ['sleeveBoxSearch','sleeveBoxRarity','sleeveBoxStatus','sleeveBoxSort']){
+    document.getElementById(id).addEventListener(id==='sleeveBoxSearch'?'input':'change',renderDeckBox);
+}
+document.getElementById('builderSleeveStatus').addEventListener('change',renderBuilderPoolCards);
