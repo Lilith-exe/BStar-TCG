@@ -2,6 +2,19 @@
 
 ## Latest
 
+## v0.7.6
+- Added first pass binder. Binders have can hold 180 cards or slabs. Each page has a 3x3 grid on either side. More binder designs will come in future updates.
+- Added binder animation when turning pages.
+- Added a library to add and remove cards from the binder. Library can see cards in bulk piles, your deck box and loose in your pockets.
+- Plumbed previously defined condition degradation rules into binder stored cards.
+- Added moving cards logic. Drag cards too and from binder OR right click left click cards to and from binder. Swap cards with each other by dragging or right click. (needs revising)
+- Added sorting filters and search to library UI.
+- Fixed cards in a binder not counting towards decks.
+- Fixed rarity shaders not showing in various locations.
+- Added first pass card grading bench. Temporary bench prop for testing next to temporary duelling table.
+- Added first pass card grading and slabbing system. (ui needs to be reworked heavily as does entire deckbox UI.)
+- Added visual graded card slabs and plumbed condition degradation rules in. (0 degradation once slabbed).
+
 ## v0.7.5
 - Added card condition and degradation system; unprotected cards take damage when played and periodically. 
 - Added protective sleeves which can be applied per card copy to reduce card wear. Sleeves come in packs of 100. They are not visible.

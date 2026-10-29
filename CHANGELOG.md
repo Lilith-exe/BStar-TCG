@@ -2,6 +2,7 @@
 
 ## Latest
 
+## v0.7.6
 - Added first pass binder. Binders have can hold 180 cards or slabs. Each page has a 3x3 grid on either side. More binder designs will come in future updates.
 - Added binder animation when turning pages.
 - Added a library to add and remove cards from the binder. Library can see cards in bulk piles, your deck box and loose in your pockets.
