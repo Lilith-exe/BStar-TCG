@@ -116,7 +116,10 @@ function R.duel(info,duelId)
     if not R.graded(info) and not R.protected(info) then info.condition=math.max(0,info.condition-C.duelWear) end
     info.conditionLastDuel=duelId;return true
 end
-function R.playable(info) return not finite(info.condition) or info.condition>0 end
+function R.playable(info)
+    if Config and Config.Collectibles and Config.Collectibles.grading.sealedUnplayable and info.slabbed==true then return false end
+    return not finite(info.condition) or info.condition>0
+end
 function R.category(info)
     if not finite(info.condition) then return nil end
     return info.condition>=C.public.goodMin and 'Good' or info.condition>=C.public.playedMin and 'Played' or 'Damaged'

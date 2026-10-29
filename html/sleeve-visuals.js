@@ -11,7 +11,7 @@
     if(hidden(card)){tooltip.classList.add('hidden');return;}
     const variants=!hidden(card)&&card.variants?.length?card.variants:[card];
     for(const variant of variants){
-      const label=document.createElement('div');label.textContent=(variants.length>1?variant.amount+' × ':'')+(variant.sleeveId?'Protected':'Unprotected');tooltip.appendChild(label);
+      const label=document.createElement('div');label.textContent=(variants.length>1?variant.amount+' × ':'')+(variant.slab?'Graded slab · Grade '+(variant.slab.label||variant.slab.grade):(variant.sleeveId?'Protected':'Unprotected'));tooltip.appendChild(label);
       if(!hidden(card)&&['Good','Played','Damaged'].includes(variant.conditionCategory)){const condition=document.createElement('div');condition.dataset.condition=variant.conditionCategory;condition.textContent=variant.conditionCategory;tooltip.appendChild(condition);}
     }
     tooltip.classList.remove('hidden');tooltip.style.left=Math.max(4,Math.min(event.clientX+14,innerWidth-tooltip.offsetWidth-8))+'px';tooltip.style.top=Math.max(4,Math.min(event.clientY+14,innerHeight-tooltip.offsetHeight-8))+'px';

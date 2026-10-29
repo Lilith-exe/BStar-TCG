@@ -187,7 +187,7 @@
     }
   });
   function attach(image, card = null) {
-    if (image.id === 'cardImage' || image.closest('.ghost-artwork-preview,.rarity-ghost-art')) return null;
+    if (image.id === 'cardImage' || image.closest('.ghost-artwork-preview,.rarity-ghost-art,[data-bstar-foil-snapshot]')) return null;
     if (instances.has(image)) return instances.get(image);
     const parent = image.parentElement;
     if (!parent) return null;

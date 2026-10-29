@@ -493,6 +493,7 @@ local function buildCardPayload(cardInstance, duel, viewerIndex)
         sleeveId = presentation.sleeveId,
         deckSleeveId = presentation.deckSleeveId,
         conditionCategory = presentation.conditionCategory,
+        slab = presentation.slab,
         owner = cardInstance.owner,
         controller = cardInstance.controller,
         zone = cardInstance.zone,

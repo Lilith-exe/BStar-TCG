@@ -10,6 +10,7 @@ version '0.6.11'
 
 shared_scripts {
     'config.lua',
+    'shared/collectibles-config.lua',
     'shared/cards.lua'
 }
 
@@ -18,6 +19,7 @@ client_scripts {
     'client/packs.lua',
     'client/bulk-piles.lua',
     'client/sleeves.lua',
+    'client/collectibles.lua',
     'client/duel.lua',
     'client/tables.lua'
 }
@@ -38,6 +40,7 @@ server_scripts {
     'server/packs.lua',
     'server/sleeves.lua',
     'server/condition.lua',
+    'server/collectibles.lua',
     'server/legacy-conversion.lua',
     'server/sleeve-duel.lua'
 }
@@ -49,6 +52,10 @@ files {
     'html/index.html',
     'html/style.css',
     'html/app.js',
+    'html/collectibles.js',
+    'html/collectibles.css',
+    'html/images/assets/bstar_binder.svg',
+    'html/images/slabs/*.svg',
     'html/builder-copies.js',
     'html/builder-copies.css',
     'html/deck-designs.js',

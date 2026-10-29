@@ -880,6 +880,7 @@ function chooseTurnOrder(choice) {
 // ---------- Viewer ----------
 
 function setViewerImage(source, card = null) {
+  window.BStarSlabs?.decorate(cardSurface,card,true);
   window.BStarSleeveVisuals?.bind(cardImage,card);
   const displaySource = window.BStarTenRegions?.imageSource(source) || source;
   // Keep the last decoded artwork while hidden; closing must not reload it on reopen.
@@ -930,6 +931,7 @@ function closeFullViewer(notifyLua = true) {
 
   if (window.BStarPackOpening?.returnFromInspection()) return;
   if (window.BStarBulkUI?.returnFromInspection()) return;
+  if (window.BStarCollectors?.returnFromInspection()) return;
 
   const returningToDeckBox = viewerOpenedFromDeckBox;
   const returningToDeckBuilder = viewerOpenedFromDeckBuilder;
@@ -1482,6 +1484,19 @@ function sleeveFilteredCard(card) {
   // A builder entry represents an aggregate count, not a new physical copy.
   return {...card,...variants[0],amount,copyId:undefined,variants};
 }
+let builderDrag=null;
+function bindBuilderDrag(tile,cardId,source){
+  tile.draggable=true;tile.querySelectorAll('img').forEach(img=>img.draggable=false);
+  tile.addEventListener('dragstart',event=>{builderDrag={cardId,source,deck:selectedDeck?.id,box:currentDeckBoxId};event.dataTransfer.setData('application/x-bstar-deck',cardId);event.dataTransfer.effectAllowed='copyMove';tile.classList.add('dragging');});
+  tile.addEventListener('dragend',()=>{builderDrag=null;tile.classList.remove('dragging');});
+}
+for(const [grid,target]of [[builderDeckCardsEl,'deck'],[builderPoolCardsEl,'pool']]){
+  grid.addEventListener('dragover',event=>{if(builderDrag&&builderDrag.source!==target)event.preventDefault();});
+  grid.addEventListener('drop',event=>{if(!builderDrag||builderDrag.source===target)return;event.preventDefault();event.stopPropagation();const dragged=builderDrag;builderDrag=null;if(dragged.deck!==selectedDeck?.id||dragged.box!==currentDeckBoxId)return;
+    if(target==='deck')addCardToSelectedDeck(dragged.cardId);else removeCardFromSelectedDeck(dragged.cardId);
+  });
+}
+
 function renderBuilderPoolCards() {
   builderPoolCardsEl.innerHTML = '';
 
@@ -1573,6 +1588,7 @@ function renderBuilderPoolCards() {
       setBuilderPreview(card);
     });
 
+    bindBuilderDrag(div,cardId,'pool');
     builderPoolCardsEl.appendChild(div);
   }
   window.BStarBuilderCopies?.bindGrid(builderPoolCardsEl,sortedIds.map(id=>sleeveFilteredCard(builderOwnedCards[id])),{box:currentDeckBoxId,status:document.getElementById('builderSleeveStatus').value,signature:JSON.stringify([builderSearchTerm,builderFilters,selectedDeck?.id,document.getElementById('builderSleeveStatus').value])});
@@ -1635,13 +1651,14 @@ function renderBuilderDeckCards() {
 
       div.addEventListener('contextmenu', (e) => {
         e.preventDefault();
-        window.BStarSleeves?.menu(e,{card:ownedCard,context:{location:'box',id:currentDeckBoxId},actions:[{label:'Remove from deck',run:()=>{setBuilderPreview(ownedCard);removeCardFromSelectedDeck(cardId);}}]});
+        e.stopPropagation();setBuilderPreview(ownedCard);removeCardFromSelectedDeck(cardId);
       });
 
       div.addEventListener('click', () => {
         setBuilderPreview(ownedCard);
       });
 
+      bindBuilderDrag(div,cardId,'deck');
       builderDeckCardsEl.appendChild(div);
     }
   }
@@ -1692,6 +1709,10 @@ function setBuilderPreview(card) {
     </div>
   `;
 
+  let sleeveActions=document.getElementById('builderPreviewSleeves');
+  if(!sleeveActions){sleeveActions=document.createElement('button');sleeveActions.id='builderPreviewSleeves';builderPreviewMeta.after(sleeveActions);}
+  sleeveActions.textContent='Protective sleeve actions';
+  sleeveActions.onclick=event=>window.BStarSleeves?.menu(event,{card:resolved,context:{location:'box',id:currentDeckBoxId},copyListing:'deckCopies'});
   const effectTitleEl = document.getElementById('effectTitle');
   const effectEl = document.getElementById('builderPreviewEffect');
 

@@ -6,6 +6,12 @@ local function resolve(player,lock,deck)
     local design=BStarDeckCosmetics.resolve(cid,deck.deck_data.sleeveDesign)
     lock('box:'..cid..':'..deck.boxId)
     local rows=MySQL.query.await("SELECT id,card_id,info FROM bstar_card_copies WHERE location='box' AND citizenid=? AND container_id=? ORDER BY id",{cid,deck.boxId})
+    local function withBinders(list)
+        for _,row in ipairs(list) do row.location='box';row.container_id=deck.boxId end
+        if BStarCollectibles then for _,row in ipairs(BStarCollectibles.binderDeckRows(player)) do list[#list+1]=row end end
+        return list
+    end
+    rows=withBinders(rows)
     local legacy=MySQL.query.await('SELECT card_id,amount FROM bstar_deckbox_cards WHERE citizenid=? AND deck_box_id=?',{cid,deck.boxId})
     if BStarCondition and BStarConditionConfig.enabled then
         -- Only this deck's card types need a forced checkpoint before allocation.
@@ -18,17 +24,20 @@ local function resolve(player,lock,deck)
             if wanted[def and def.id or key or row.card_id] then candidates[#candidates+1]=row end
         end
         for offset=1,#candidates,BStarConditionConfig.maxBatch do
-            local batch={};for i=offset,math.min(#candidates,offset+BStarConditionConfig.maxBatch-1) do batch[#batch+1]={copyId=candidates[i].id} end
-            BStarCondition.selections(player,{location='box',id=deck.boxId},batch,true)
+            local batches={}
+            for i=offset,math.min(#candidates,offset+BStarConditionConfig.maxBatch-1) do local row=candidates[i];local groupKey=row.location..':'..row.container_id
+                local group=batches[groupKey] or {context={location=row.location,id=row.container_id},copies={}};batches[groupKey]=group;group.copies[#group.copies+1]={copyId=row.id}
+            end
+            for _,group in pairs(batches) do BStarCondition.selections(player,group.context,group.copies,true) end
         end
-        rows=MySQL.query.await("SELECT id,card_id,info FROM bstar_card_copies WHERE location='box' AND citizenid=? AND container_id=? ORDER BY id",{cid,deck.boxId})
+        rows=withBinders(MySQL.query.await("SELECT id,card_id,info FROM bstar_card_copies WHERE location='box' AND citizenid=? AND container_id=? ORDER BY id",{cid,deck.boxId}))
     end
     local copies,old,used={},{},{}
     for _,row in ipairs(rows) do
         local def,key=DeckBox.ResolveCardDefinition(row.card_id);key=def and def.id or key or row.card_id
         local info=json.decode(row.info)
         if not BStarConditionRules or BStarConditionRules.playable(info) then
-            copies[key]=copies[key] or {};copies[key][#copies[key]+1]={privateCopyId=row.id,presentation=BStarCardPresentation.public(info)}
+            copies[key]=copies[key] or {};copies[key][#copies[key]+1]={privateCopyId=row.id,privateContext={location=row.location,id=row.container_id},presentation=BStarCardPresentation.public(info)}
         end
     end
     for _,row in ipairs(legacy) do
@@ -59,13 +68,14 @@ local function attachCondition(duel,a,b,receipt)
     duel.conditionCopies={}
     local seen={}
     for index,deck in ipairs({a,b}) do
-        local group={box=deck.boxId,copies={}}
+        local groups={};duel.conditionCopies[index]={}
         for _,list in pairs(deck.deck_data.__copies or {}) do for _,card in ipairs(list) do
             if card.privateCopyId and not seen[card.privateCopyId] then
-                seen[card.privateCopyId]=true;group.copies[#group.copies+1]={copyId=card.privateCopyId}
+                seen[card.privateCopyId]=true;local ctx=card.privateContext or {location='box',id=deck.boxId};local key=ctx.location..':'..ctx.id
+                local group=groups[key];if not group then group={box=ctx.id,location=ctx.location,copies={}};groups[key]=group;duel.conditionCopies[index][#duel.conditionCopies[index]+1]=group end
+                group.copies[#group.copies+1]={copyId=card.privateCopyId}
             end
         end end
-        duel.conditionCopies[index]={group}
     end
     if duel.soloMode then
         for _,group in ipairs(duel.conditionCopies[2]) do table.insert(duel.conditionCopies[1],group) end

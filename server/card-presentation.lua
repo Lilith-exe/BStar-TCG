@@ -13,17 +13,33 @@ function P.condition(info)
     local limits=BStarSleeveConfig.condition
     if value>=limits.goodMin then return 'Good' elseif value>=limits.playedMin then return 'Played' else return 'Damaged' end
 end
-function P.public(info) return {sleeveId=P.sleeveId(info),conditionCategory=P.condition(info)} end
+function P.slab(info)
+    local slab=type(info)=='table' and info.slab
+    if type(slab)~='table' or slab.version~=1 or type(slab.certificate)~='string' or type(slab.grade)~='number' or slab.grade<0 or slab.grade>10 then return nil end
+    return {version=1,certificate=slab.certificate,grade=slab.grade,label=slab.label,brand=slab.brand,at=slab.at}
+end
+function P.public(info) return {sleeveId=P.sleeveId(info),conditionCategory=P.condition(info),slab=P.slab(info)} end
 function P.apply(card,info)
-    card.sleeveId=P.sleeveId(info);card.conditionCategory=P.condition(info);return card
+    card.sleeveId=P.sleeveId(info);card.conditionCategory=P.condition(info);card.slab=P.slab(info);return card
+end
+local slabImages={}
+function P.slabImage(info)
+    if not P.slab(info) then return nil end
+    local def=DeckBox and DeckBox.ResolveCardDefinition and DeckBox.ResolveCardDefinition(info.cardId)
+    local image=def and def.inventoryImage or info.inventoryImage
+    if type(image)~='string' or not image:match('^[^/\\]+%.png$') or image:find('..',1,true) then return nil end
+    local relative='html/images/slabs/'..image:gsub('[^%w_%-%.]','_'):gsub('%.png$','.svg')
+    if slabImages[relative]==nil then slabImages[relative]=LoadResourceFile(GetCurrentResourceName(),relative)~=nil end
+    if slabImages[relative] then return 'nui://'..GetCurrentResourceName()..'/'..relative end
 end
 function P.inventory(info)
     local result={}
     for _,key in ipairs({'cardId','copyId','inventoryImage','label','rarity','type','effectTags','continuous','setCode','edition','image'}) do result[key]=info[key] end
     P.apply(result,info)
+    result.image=P.slabImage(info) or result.image
     -- qb-inventory honours display=false instead of dumping every metadata key.
     result.display=false
-    result.description=(result.conditionCategory and (result.conditionCategory..' · ') or '')..(result.sleeveId and 'Protected card' or 'Unprotected card')
+    result.description=result.slab and ('Hardcore graded slab · Grade '..tostring(result.slab.label or result.slab.grade)) or ((result.conditionCategory and (result.conditionCategory..' · ') or '')..(result.sleeveId and 'Protected card' or 'Unprotected card'))
     return result
 end
 function P.matchesInventory(info,token,equal)
@@ -32,8 +48,8 @@ function P.matchesInventory(info,token,equal)
     if equal(info,token) then return true end
     -- Display fields are derived from the current server configuration. A
     -- threshold/design update must not invalidate an otherwise valid token.
-    local expected=P.inventory(info);expected.sleeveId=nil;expected.conditionCategory=nil;expected.display=nil;expected.description=nil
-    local actual={};for key,value in pairs(token or {}) do if key~='sleeveId' and key~='conditionCategory' and key~='display' and key~='description' then actual[key]=value end end
+    local expected=P.inventory(info);expected.sleeveId=nil;expected.conditionCategory=nil;expected.display=nil;expected.description=nil;expected.image=nil
+    local actual={};for key,value in pairs(token or {}) do if key~='sleeveId' and key~='conditionCategory' and key~='display' and key~='description' and key~='image' then actual[key]=value end end
     return equal(expected,actual)
 end
 function P.catalog()
@@ -71,14 +87,14 @@ end
 function P.addVariant(card,info,amount,copyId)
     local public=P.public(info);card.variants=card.variants or {}
     for _,variant in ipairs(card.variants) do
-        if variant.sleeveId==public.sleeveId and variant.conditionCategory==public.conditionCategory and variant.legacy==(not copyId) then variant.amount=variant.amount+amount;return end
+        if variant.sleeveId==public.sleeveId and variant.conditionCategory==public.conditionCategory and variant.legacy==(not copyId) and (variant.slab and variant.slab.certificate)==(public.slab and public.slab.certificate) then variant.amount=variant.amount+amount;return end
     end
     public.amount=amount;public.copyId=copyId;public.legacy=not copyId;card.variants[#card.variants+1]=public
 end
 
-local publicTokenKeys={display=true,description=true,cardId=true,copyId=true,inventoryImage=true,label=true,rarity=true,type=true,effectTags=true,continuous=true,setCode=true,edition=true,image=true,sleeveId=true,conditionCategory=true}
+local publicTokenKeys={display=true,description=true,cardId=true,copyId=true,inventoryImage=true,label=true,rarity=true,type=true,effectTags=true,continuous=true,setCode=true,edition=true,image=true,sleeveId=true,conditionCategory=true,slab=true}
 function P.needsProjection(info)
-    if type(info)=='table' and info.display~=false then return true end
+    if type(info)=='table' and (info.display~=false or (P.slab(info) and P.slabImage(info) and info.image~=P.slabImage(info))) then return true end
     for key in pairs(info or {}) do if not publicTokenKeys[key] then return true end end
     return false
 end

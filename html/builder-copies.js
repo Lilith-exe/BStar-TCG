@@ -27,10 +27,10 @@
     return icon;
   }
   function actions(state,card,event){
-    window.BStarSleeves?.menu(event,{card,context:state.context,actions:[{label:'Add to deck',run:()=>{setBuilderPreview(card);addCardToSelectedDeck(card.cardId);}}]});
+    window.BStarSleeves?.menu(event,{card,context:card.sleeveContext||state.context,actions:[{label:'Add to deck',run:()=>{setBuilderPreview(card);addCardToSelectedDeck(card.cardId);}}]});
   }
   function copyTile(state,copy,index){
-    const card={...state.card,sleeveId:undefined,sleeve:undefined,conditionCategory:undefined,copyId:undefined,...copy,variants:undefined,amount:1,sleeveContext:state.context};
+    const card={...state.card,sleeveId:undefined,sleeve:undefined,conditionCategory:undefined,copyId:undefined,...copy,variants:undefined,amount:1,sleeveContext:copy.sleeveContext||state.context};
     const tile=element('article',null,'builder-copy');tile.setAttribute('role','listitem');
     tile.append(element('span',`Copy ${index+1}`,'builder-copy-number'));
     const preview=button(tile,'',()=>setBuilderPreview(card),`Preview copy ${index+1}`);preview.className='builder-copy-art';
@@ -44,7 +44,7 @@
     button(controls,'Inspect',()=>openFullViewer(card,false,true),`Inspect copy ${index+1}`);
     button(controls,'Actions',event=>actions(state,card,event),`Actions for copy ${index+1}`);tile.append(controls);
     tile.addEventListener('contextmenu',event=>actions(state,card,event));
-    window.BStarSleeveVisuals?.bind(image,card);return tile;
+    window.BStarSleeveVisuals?.bind(image,card);bindBuilderDrag(tile,card.cardId,'pool');return tile;
   }
   function render(state){
     state.track.replaceChildren();
@@ -73,7 +73,7 @@
     const stamp=revision,controller=new AbortController();state.controller=controller;
     const timer=setTimeout(()=>controller.abort(),15000);
     try{
-      const response=await fetch(`https://${resource()}/sleeveList`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context:state.context,cardIds:[state.card.cardId||state.card.id],sleeveStatus:state.status,page:more?state.page+1:1}),signal:controller.signal});
+      const response=await fetch(`https://${resource()}/deckCopies`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context:state.context,cardIds:[state.card.cardId||state.card.id],sleeveStatus:state.status,page:more?state.page+1:1}),signal:controller.signal});
       if(!response.ok)throw Error('Copies unavailable');const result=await response.json();
       if(active!==state||stamp!==revision||!state.tile.isConnected)return;
       if(!result.ok)throw Error(result.error||'Copies unavailable');

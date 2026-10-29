@@ -150,8 +150,15 @@ function Sleeves.commitQueries(receipt,op)
         local reserved=MySQL.single.await('SELECT * FROM bstar_card_copies WHERE id=?',{r.id})
         assert(reserved and reserved.location=='sleeving' and reserved.card_id==r.card_id and reserved.info==r.info,
             'Sleeve reservation needs recovery review')
-        queries[#queries+1]={query="UPDATE bstar_card_copies SET info=?,location=? WHERE id=? AND location='sleeving' AND info=?",
-            values={change.info,r.location,r.id,r.info}}
+        if change.destination then
+            local dest=change.destination
+            assert((dest.location=='binder' or dest.location=='box' or dest.location=='pocket') and type(dest.container_id)=='string' and dest.citizenid==receipt.citizenid,'Invalid journalled collector destination')
+            queries[#queries+1]={query="UPDATE bstar_card_copies SET info=?,location=?,container_id=?,citizenid=?,entered_at=? WHERE id=? AND location='sleeving' AND info=?",
+                values={change.info,dest.location,dest.container_id,dest.citizenid,os.time(),r.id,r.info}}
+        else
+            queries[#queries+1]={query="UPDATE bstar_card_copies SET info=?,location=? WHERE id=? AND location='sleeving' AND info=?",
+                values={change.info,r.location,r.id,r.info}}
+        end
     end
     queries[#queries+1]={query='UPDATE players SET inventory=? WHERE citizenid=?',values={receipt.after_inventory,receipt.citizenid}}
     queries[#queries+1]={query="UPDATE bstar_card_moves SET status='complete' WHERE id=? AND status='prepared'",values={receipt.id}}
@@ -287,6 +294,7 @@ function Sleeves.updateMetadata(player,ctx,selections,transform,duelPermit)
             local row=MySQL.single.await('SELECT * FROM bstar_card_copies WHERE id=?',{change.row.id})
             assert(row and row.location=='sleeving' and row.info==change.row.info,'Metadata reservation needs recovery')
         end
+        if duelPermit then requireContext() end
         assert(equal(before,store.compact(items(player))),'Inventory changed; metadata receipt retained')
         player.Functions.SetPlayerData('items',planned)
     end,planned)
@@ -315,8 +323,8 @@ function Sleeves.reconcilePocketPrivacy(player)
 end
 QBCore.Functions.CreateCallback('bstar_cards:server:sleeveChange',function(src,cb,request) cb(Sleeves.change(src,request)) end)
 
-QBCore.Functions.CreateCallback('bstar_cards:server:sleeveList',function(src,cb,request)
-    cb(store.run(src,function(player)
+function Sleeves.list(src,request)
+    return store.run(src,function(player)
         requireReady();request=type(request)=='table' and request or {}
         local contexts={{location='pocket',id='',label='Pocket cards'}}
         for _,item in pairs(items(player)) do
@@ -348,7 +356,14 @@ QBCore.Functions.CreateCallback('bstar_cards:server:sleeveList',function(src,cb,
             local pockets={};for _,item in pairs(items(player)) do if item.name=='bstar_card' and item.amount==1 and type(item.info)=='table' and (not wanted or wanted[pocketIdentity(item)]) and (not request.copyId or item.info.copyId==request.copyId) then
                 local info=BStarCardPresentation.pocketInfo(item);if matches(info) then pockets[#pockets+1]=item end
             end end
-            table.sort(pockets,function(a,b)return a.slot<b.slot end);total=#pockets
+            local order={};for index,id in ipairs(request.cardIds or {}) do order[id]=index end
+            table.sort(pockets,function(a,b)
+                if request.orderByCards then
+                    local first,second=order[pocketIdentity(a)] or 0,order[pocketIdentity(b)] or 0
+                    if first~=second then return first<second end
+                end
+                return a.slot<b.slot
+            end);total=#pockets
             page=math.min(page,math.max(1,math.ceil(total/config.pageSize)))
             for i=(page-1)*config.pageSize+1,math.min(total,page*config.pageSize) do
                 local item=pockets[i];cards[#cards+1]={copyId=item.info.copyId,slot=item.slot,cardId=item.info.cardId,info=BStarCardPresentation and BStarCardPresentation.pocketInfo(item) or copy(item.info)}
@@ -389,7 +404,7 @@ QBCore.Functions.CreateCallback('bstar_cards:server:sleeveList',function(src,cb,
             local definition,resolved=DeckBox.ResolveCardDefinition(card.cardId)
             definition=definition or Cards[card.cardId] or {}
             card.cardId=definition.id or resolved or card.cardId
-            card.name=definition.name or card.cardId;card.rarity=definition.rarity;card.inventoryImage=definition.inventoryImage
+            card.name=definition.name or card.cardId;card.rarity=definition.rarity;card.inventoryImage=definition.inventoryImage;card.setCode=definition.setCode;card.edition=definition.edition
             if BStarCardPresentation then
                 BStarCardPresentation.apply(card,card.info)
                 card.sleeve=card.sleeveId and {version=1,type=card.sleeveId} or (card.info.sleeve and card.info.sleeve.version~=1 and {legacy=true} or nil)
@@ -397,8 +412,9 @@ QBCore.Functions.CreateCallback('bstar_cards:server:sleeveList',function(src,cb,
             else card.sleeve=nil;card.info=nil end
         end
         return {ok=true,contexts=contexts,context=ctx,cards=cards,types=types,page=page,pages=math.max(1,math.ceil(total/config.pageSize)),total=total,maxBatch=config.maxBatch}
-    end))
-end)
+    end)
+end
+QBCore.Functions.CreateCallback('bstar_cards:server:sleeveList',function(src,cb,request) cb(Sleeves.list(src,request)) end)
 
 -- Pending receipts survive reconnects/restarts. Reconcile online owners only;
 -- ambiguous external inventory changes remain review-held, never replay grants.
@@ -449,3 +465,7 @@ for id,t in pairs(config.types) do
         TriggerClientEvent('QBCore:Notify',src,result.ok and ('Received '..t.pack.quantity..' '..t.label..'s.') or result.error,result.ok and 'success' or 'error')
     end) end
 end
+
+-- Server-only collector integrations reuse the exact custody/identity checks.
+Sleeves.selectCopy=selectedCopy
+Sleeves.context=context

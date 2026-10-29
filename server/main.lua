@@ -721,6 +721,7 @@ QBCore.Functions.CreateUseableItem('bstar_card', function(source, item)
         image = 'images/cards/' .. card.inventoryImage,
         cardId = card.id or cardId, copyId = item.info.copyId, slot = item.slot,
         sleeveId = BStarCardPresentation and BStarCardPresentation.sleeveId(privateInfo),
+        slab = BStarCardPresentation and BStarCardPresentation.slab and BStarCardPresentation.slab(privateInfo),
         conditionCategory = BStarCardPresentation and BStarCardPresentation.condition(privateInfo), sleeveContext = { location='pocket', id='' }
     })
 end)
@@ -746,7 +747,7 @@ QBCore.Functions.CreateCallback('bstar_cards:server:GetDeckBoxData', function(so
 end)
 
 QBCore.Functions.CreateCallback('bstar_cards:server:GetDeckBuilderData', function(source, cb, deckBoxId)
-    DeckBox.GetStoredCards(source, deckBoxId, function(storedCards)
+    DeckBox.GetDeckCards(source, deckBoxId, function(storedCards)
         GetDecksForBox(source, deckBoxId, function(decks)
             decks = addDeckValidationForPlay(decks, storedCards)
 
@@ -764,7 +765,7 @@ QBCore.Functions.CreateCallback('bstar_cards:server:GetDecksForTestDuel', functi
     print('[BStar Duel] source:', source)
     print('[BStar Duel] deckBoxId:', deckBoxId)
 
-    DeckBox.GetStoredCards(source, deckBoxId, function(storedCards)
+    DeckBox.GetDeckCards(source, deckBoxId, function(storedCards)
         GetDecksForBox(source, deckBoxId, function(decks)
             decks = addDeckValidationForPlay(decks, storedCards)
 
@@ -1226,7 +1227,7 @@ RegisterNetEvent('bstar_cards:server:StartTestDuel', function(deckBoxId, myDeckI
             return
         end
 
-        DeckBox.GetStoredCards(src, deckBoxId, function(storedCards)
+        DeckBox.GetDeckCards(src, deckBoxId, function(storedCards)
             local valid, message = validateDeckDataForPlay(deckA.deck_data, storedCards)
             if not valid then
                 TriggerClientEvent('QBCore:Notify', src, 'Deck is invalid: ' .. tostring(message), 'error')
@@ -1267,7 +1268,7 @@ RegisterNetEvent('bstar_cards:server:StartTableTestDuel', function(tableId, deck
             return
         end
 
-        DeckBox.GetStoredCards(src, deckBoxId, function(storedCards)
+        DeckBox.GetDeckCards(src, deckBoxId, function(storedCards)
             local valid, message = validateDeckDataForPlay(deckA.deck_data, storedCards)
             if not valid then
                 TriggerClientEvent('QBCore:Notify', src, 'Deck is invalid: ' .. tostring(message), 'error')
@@ -1334,7 +1335,7 @@ RegisterNetEvent('bstar_cards:server:StartTableSoloTestDuel', function(tableId, 
             return
         end
 
-        DeckBox.GetStoredCards(src, deckBoxId, function(storedCards)
+        DeckBox.GetDeckCards(src, deckBoxId, function(storedCards)
             local valid, message = validateDeckDataForPlay(deckA.deck_data, storedCards)
             if not valid then
                 TriggerClientEvent('QBCore:Notify', src, 'Deck is invalid: ' .. tostring(message), 'error')

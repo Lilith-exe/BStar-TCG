@@ -24,7 +24,7 @@ local loaded,problem=pcall(function()
             assert(type(member.citizenid)=='string' and type(member.license)=='string','Completed-duel character identity needs review')
         end
         for _,groups in pairs(record.conditionCopies) do for _,group in ipairs(groups) do
-            assert(type(group.box)=='string' and type(group.copies)=='table','Completed-duel allocation needs review')
+            assert(type(group.box)=='string' and (group.location==nil or group.location=='box' or group.location=='binder') and type(group.copies)=='table','Completed-duel allocation needs review')
             for _,copy in ipairs(group.copies) do assert(type(copy.copyId)=='string','Invalid completed-duel copy') end
         end end
         record.status='finished';record.started=true;record.conditionSettling=nil;record.conditionSettled=nil
@@ -217,9 +217,9 @@ function C.finished(duel)
                 settling[member.citizenid]=true
                 local result=store.run(member.source,function(player)
                     for _,group in ipairs(expected) do
-                        C.selections(player,{location='box',id=group.box},group.copies,true,duel.conditionReceipt,function(p,ctx,list)
+                        C.selections(player,{location=group.location or 'box',id=group.box},group.copies,true,duel.conditionReceipt,function(p,ctx,list)
                             return duel.conditionSettling and duel.status=='finished' and p.PlayerData.citizenid==member.citizenid and
-                                ctx.location=='box' and ctx.id==group.box and list==group.copies
+                                ctx.location==(group.location or 'box') and ctx.id==group.box and list==group.copies
                         end)
                     end
                     return {ok=true}
@@ -273,3 +273,54 @@ CreateThread(function()
         end
     end
 end)
+
+-- Read-only operator diagnostics. No copy metadata, custody changes, SQL or KVP
+-- writes; this reports the running resource rather than a possibly edited file.
+function C.status()
+    local receipts,pending,unpersisted={},0,0
+    for receipt in pairs(completions) do receipts[receipt]=true end
+    for _,duel in pairs(Duel and Duel.Active or {}) do
+        if duel.started and duel.status=='finished' and not duel.conditionSettled and duel.conditionReceipt and duel.conditionCopies then
+            receipts[duel.conditionReceipt]=true
+        end
+    end
+    for receipt in pairs(receipts) do
+        pending=pending+1
+        if not durable[receipt] then unpersisted=unpersisted+1 end
+    end
+    local observed=0;for _ in pairs(presence) do observed=observed+1 end
+    return {enabled=config.enabled==true,storageReady=BStarBulk.ready==true,
+        sleevesReady=BStarSleeves and BStarSleeves.ready==true or false,
+        recoveryHeld=recoveryError~=nil,pendingCompletions=pending,unpersistedCompletions=unpersisted,
+        observedPiles=observed,sweepSeconds=config.sweepSeconds,checkpointSeconds=config.checkpointSeconds,maxBatch=config.maxBatch}
+end
+RegisterCommand('bstarcondition',function(src,args)
+    if src~=0 then return end
+    args=args or {};local mode=args[1] or 'status'
+    local function report(message) print('[BStar condition] '..message) end
+    if #args>1 or (mode~='status' and mode~='rates') then report('Usage: bstarcondition [status|rates]');return end
+    if mode=='status' then
+        local health=C.status()
+        report(('Enabled: %s | Storage ready: %s | Sleeves ready: %s'):format(tostring(health.enabled),tostring(health.storageReady),tostring(health.sleevesReady)))
+        report(('Recovery held: %s | Pending completed duels: %d | Not durably saved yet: %d'):format(tostring(health.recoveryHeld),health.pendingCompletions,health.unpersistedCompletions))
+        report(('Sweep: %ss | Checkpoint: %ss | Batch: %d | Observed pile tokens this session: %d'):format(health.sweepSeconds,health.checkpointSeconds,health.maxBatch,health.observedPiles))
+        report('Read-only runtime status; no card data changed. Counts do not replace transfer/pack journal review. Use bstarcondition rates for active settings.')
+        return
+    end
+    report(('Active settings | Enabled: %s | Losses are percentage points | Day: %ss | Hour: %ss'):format(tostring(config.enabled),config.daySeconds,config.hourSeconds))
+    local starting={}
+    for _,range in ipairs(config.starting) do starting[#starting+1]=('%s%% at %s-%s condition'):format(range.weight,range.min,range.max) end
+    report('New cards: '..table.concat(starting,'; '))
+    report(('Unsleeved completed duel: -%s | Sleeved/graded/slabbed: no duel wear'):format(config.duelWear))
+    for _,location in ipairs({'box','binder'}) do
+        local rate=config.daily[location]
+        report(('%s daily: -%s with %s%% chance; no wear %s%%'):format(location,rate.loss,100-rate.noWearChance,rate.noWearChance))
+    end
+    local loose={}
+    for _,rate in ipairs(config.daily.loose) do loose[#loose+1]=('-%s with %s%% chance'):format(rate.loss,rate.weight) end
+    report('Loose/pocket daily: '..table.concat(loose,'; '))
+    report(('Protective sleeve, every location: daily -%s with %s%% chance; no bulk hourly wear'):format(config.daily.protected.loss,config.daily.protected.wearChance))
+    report(('Unsleeved bulk: %ss grace, then -%s to -%s per eligible carried-online hour; no offline hourly loss'):format(config.bulk.graceSeconds,config.bulk.minLoss,config.bulk.maxLoss))
+    report(('Public categories: Good %s-100; Played %s-%s; Damaged 0-%s'):format(config.public.goodMin,config.public.playedMin,config.public.goodMin-1,config.public.playedMin-1))
+    report('Daily wear includes offline time. Graded/slabbed cards never degrade. Cosmetic deck backs do not protect cards. At 0, cards stay owned but cannot play.')
+end,true)

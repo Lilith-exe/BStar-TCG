@@ -22,6 +22,7 @@
     for(const b of browsers.values())if(b.context.location===context.location&&b.context.id===context.id){b.selected.clear();b.refresh?.();}
     if((context.location==='box'&&currentDeckBoxId===context.id)||context.location==='pocket'){if(!deckboxWrap.classList.contains('hidden'))refreshDeckBox();else if(!deckBuilderWrap.classList.contains('hidden'))refreshDeckBuilder(selectedDeck?.id);}
     if(context.location==='pile')window.BStarBulkUI?.refresh?.();
+    if(context.location==='binder')window.BStarCollectors?.refresh?.();
   }
   function menu(event,options){
     if(currentDuelState||window.BStarSleeveVisuals?.hidden(options.card))return;
@@ -39,7 +40,7 @@
     const status=node('p','Checking available copies and sleeves…');status.setAttribute('role','status');pop.append(status);button(pop,'Cancel',close);position(anchor||options.anchor);
     try{
       const hint=options.card,exact=hint?.copyId&&(!hint.amount||hint.amount===1);
-      let result=await post('sleeveList',{context:options.context,cardIds:(hint?.cardId||hint?.id)?[hint.cardId||hint.id]:undefined,copyId:exact?hint.copyId:undefined,page:1});
+      let result=await post(options.copyListing||'sleeveList',{context:options.context,cardIds:(hint?.cardId||hint?.id)?[hint.cardId||hint.id]:undefined,copyId:exact?hint.copyId:undefined,page:1});
       if(stamp!==revision)return;if(!result.ok)throw Error(result.error||'Cards unavailable');
       const state=picker;state.types=result.types;state.maxBatch=result.maxBatch;
       pop.replaceChildren(title);const copyLabel=node('label','Physical copy');const copySelect=node('select');copySelect.setAttribute('aria-label','Physical copy');copyLabel.append(copySelect);
@@ -50,7 +51,7 @@
         appendRows(result.cards);
         if(exact){const index=state.rows.findIndex(c=>c.copyId===hint.copyId);if(index>=0)copySelect.value=String(index);}
         else if(state.rows.length===1&&result.pages===1)copySelect.value='0';
-        if(result.pages>1){let page=1;const more=button(pop,'More copies',async()=>{more.disabled=true;try{const response=await post('sleeveList',{context:options.context,cardIds:[hint.cardId||hint.id],page:page+1});if(stamp!==revision)return;if(!response.ok)throw Error(response.error);appendRows(response.cards);page=response.page;more.hidden=page>=response.pages;update();}catch(error){if(stamp===revision)status.textContent=error.message;}finally{more.disabled=false;}});}
+        if(result.pages>1){let page=1;const more=button(pop,'More copies',async()=>{more.disabled=true;try{const response=await post(options.copyListing||'sleeveList',{context:options.context,cardIds:[hint.cardId||hint.id],page:page+1});if(stamp!==revision)return;if(!response.ok)throw Error(response.error);appendRows(response.cards);page=response.page;more.hidden=page>=response.pages;update();}catch(error){if(stamp===revision)status.textContent=error.message;}finally{more.disabled=false;}});}
       }
       const typeLabel=node('label','Protective sleeve'),types=node('select');types.setAttribute('aria-label','Protective sleeve');typeLabel.append(types);
       const preview=node('img',null,'sleeve-back-preview');preview.alt='Sleeve back';
@@ -60,7 +61,7 @@
       const confirm=button(controls,'Confirm',async()=>{
         if(state.busy||state.failed||(!selected&&copySelect.value===''))return;const cards=selected||[state.rows[Number(copySelect.value)]];if(!cards.length||!cards[0])return;
         state.busy=true;confirm.disabled=true;types.disabled=copySelect.disabled=true;status.textContent='Saving…';
-        try{const response=await post('sleeveChange',{context:options.context,action,sleeveType:types.value,cards:cards.map(identity)});
+        try{const response=await post('sleeveChange',{context:options.copyListing?cards[0].sleeveContext:options.context,action,sleeveType:types.value,cards:cards.map(identity)});
           if(response.ok){
             refresh(options.context);
             const updated=response.cards?.find(c=>c.copyId===viewed?.card?.copyId);
