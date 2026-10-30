@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.7.7
 - Refactor dev commands and add developer console for easier testing in one place
 - Cleanup tasks
 
