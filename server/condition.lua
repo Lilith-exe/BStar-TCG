@@ -294,33 +294,3 @@ function C.status()
         recoveryHeld=recoveryError~=nil,pendingCompletions=pending,unpersistedCompletions=unpersisted,
         observedPiles=observed,sweepSeconds=config.sweepSeconds,checkpointSeconds=config.checkpointSeconds,maxBatch=config.maxBatch}
 end
-RegisterCommand('bstarcondition',function(src,args)
-    if src~=0 then return end
-    args=args or {};local mode=args[1] or 'status'
-    local function report(message) print('[BStar condition] '..message) end
-    if #args>1 or (mode~='status' and mode~='rates') then report('Usage: bstarcondition [status|rates]');return end
-    if mode=='status' then
-        local health=C.status()
-        report(('Enabled: %s | Storage ready: %s | Sleeves ready: %s'):format(tostring(health.enabled),tostring(health.storageReady),tostring(health.sleevesReady)))
-        report(('Recovery held: %s | Pending completed duels: %d | Not durably saved yet: %d'):format(tostring(health.recoveryHeld),health.pendingCompletions,health.unpersistedCompletions))
-        report(('Sweep: %ss | Checkpoint: %ss | Batch: %d | Observed pile tokens this session: %d'):format(health.sweepSeconds,health.checkpointSeconds,health.maxBatch,health.observedPiles))
-        report('Read-only runtime status; no card data changed. Counts do not replace transfer/pack journal review. Use bstarcondition rates for active settings.')
-        return
-    end
-    report(('Active settings | Enabled: %s | Losses are percentage points | Day: %ss | Hour: %ss'):format(tostring(config.enabled),config.daySeconds,config.hourSeconds))
-    local starting={}
-    for _,range in ipairs(config.starting) do starting[#starting+1]=('%s%% at %s-%s condition'):format(range.weight,range.min,range.max) end
-    report('New cards: '..table.concat(starting,'; '))
-    report(('Unsleeved completed duel: -%s | Sleeved/graded/slabbed: no duel wear'):format(config.duelWear))
-    for _,location in ipairs({'box','binder'}) do
-        local rate=config.daily[location]
-        report(('%s daily: -%s with %s%% chance; no wear %s%%'):format(location,rate.loss,100-rate.noWearChance,rate.noWearChance))
-    end
-    local loose={}
-    for _,rate in ipairs(config.daily.loose) do loose[#loose+1]=('-%s with %s%% chance'):format(rate.loss,rate.weight) end
-    report('Loose/pocket daily: '..table.concat(loose,'; '))
-    report(('Protective sleeve, every location: daily -%s with %s%% chance; no bulk hourly wear'):format(config.daily.protected.loss,config.daily.protected.wearChance))
-    report(('Unsleeved bulk: %ss grace, then -%s to -%s per eligible carried-online hour; no offline hourly loss'):format(config.bulk.graceSeconds,config.bulk.minLoss,config.bulk.maxLoss))
-    report(('Public categories: Good %s-100; Played %s-%s; Damaged 0-%s'):format(config.public.goodMin,config.public.playedMin,config.public.goodMin-1,config.public.playedMin-1))
-    report('Daily wear includes offline time. Graded/slabbed cards never degrade. Cosmetic deck backs do not protect cards. At 0, cards stay owned but cannot play.')
-end,true)

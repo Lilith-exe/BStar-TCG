@@ -21,7 +21,8 @@ client_scripts {
     'client/sleeves.lua',
     'client/collectibles.lua',
     'client/duel.lua',
-    'client/tables.lua'
+    'client/tables.lua',
+    'client/DEV_console.lua'
 }
 
 server_scripts {
@@ -42,7 +43,9 @@ server_scripts {
     'server/condition.lua',
     'server/collectibles.lua',
     'server/legacy-conversion.lua',
-    'server/sleeve-duel.lua'
+    'server/sleeve-duel.lua',
+    'server/dev-commands.lua',
+    'server/DEV_console.lua'
 }
 
 ui_page 'html/index.html'
@@ -52,6 +55,8 @@ files {
     'html/index.html',
     'html/style.css',
     'html/app.js',
+    'html/DEV_console.js',
+    'html/DEV_console.css',
     'html/collectibles.js',
     'html/collectibles.css',
     'html/images/assets/bstar_binder.svg',

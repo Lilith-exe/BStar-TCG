@@ -29,7 +29,7 @@ function C.catalog(cid)
     end
     return result
 end
--- Operator tooling only: no network event can grant a permanent unlock.
+-- Console operator tooling; DEV_console also calls the same server grant service.
 RegisterCommand('bstarunlockdesign',function(src,args)
     if src~=0 then return end
     local target=tonumber(args[1])

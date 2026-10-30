@@ -49,11 +49,10 @@
   function render(state){
     state.track.replaceChildren();
     state.rows.forEach((copy,index)=>state.track.append(copyTile(state,copy,index)));
-    const legacyVariants=state.card.variants?.filter(v=>v.legacy)||[];
-    const legacy=state.card.variants?legacyVariants.reduce((sum,v)=>sum+(v.amount||0),0):Math.max(0,(state.card.amount||0)-state.total);
+    const legacy=Math.max(0,Number(state.legacyTotal)||0);
     if(legacy>0){
       const tile=element('article',null,'builder-copy builder-copy-legacy');tile.setAttribute('role','listitem');
-      tile.append(element('strong',`${legacy} older ${legacy===1?'copy':'copies'}`),shield(false,true),element('span','Condition untracked'),element('small','Withdraw these copies to track them individually.'));
+      tile.append(element('strong',`${legacy} older ${legacy===1?'copy':'copies'}`),shield(false,true),element('span','Condition untracked'),element('small','Existing quantity records; individual condition and protection are untracked.'));
       state.track.append(tile);
     }
     if(!state.rows.length&&!legacy)state.track.append(element('p','No matching physical copies. Refresh the collection if cards have moved.','builder-copy-empty'));
@@ -83,7 +82,7 @@
         if(row.cardId!==(state.card.cardId||state.card.id)||!row.copyId||seen.has(row.copyId))continue;
         seen.add(row.copyId);state.rows.push(row);
       }
-      state.total=Number(result.total)||0;state.page=Number(result.page)||1;state.pages=Number(result.pages)||1;state.loading=false;
+      state.total=Number(result.total)||0;state.legacyTotal=Number(result.legacyTotal)||0;state.page=Number(result.page)||1;state.pages=Number(result.pages)||1;state.loading=false;
       render(state);state.track.scrollLeft=scroll;
     }catch(error){
       if(active!==state||stamp!==revision)return;
@@ -98,7 +97,7 @@
     const header=element('div',null,'builder-copy-header');header.append(element('strong',card.name||'Card copies'));
     const navigation=element('div',null,'builder-copy-navigation');header.append(navigation);drawer.append(header);
     const track=element('div',null,'builder-copy-track');track.setAttribute('role','list');track.setAttribute('aria-label','Physical copies');track.tabIndex=0;
-    const state={tile,card,context,drawer,track,status:view.status,rows:[],page:0,pages:1,total:0,loading:false};active=state;
+    const state={tile,card,context,drawer,track,status:view.status,rows:[],legacyTotal:0,page:0,pages:1,total:0,loading:false};active=state;
     const scroll=direction=>track.scrollBy({left:direction*Math.max(120,track.clientWidth*.8),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
     state.previous=button(navigation,'‹',()=>scroll(-1),'Previous copies');state.next=button(navigation,'›',()=>scroll(1),'Next copies');
     button(navigation,'×',()=>close(true),'Collapse copies');

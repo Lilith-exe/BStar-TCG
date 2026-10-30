@@ -205,7 +205,7 @@ local function locked(src, fn)
     if not current(player) then return { ok = false, error = 'Player disconnected. Any completed opening remains saved.' } end
     if not ok then
         print('[BStar packs] Recoverable opening error for ' .. cid .. ': ' .. tostring(result))
-        return { ok = false, error = 'Pack processing interrupted. Use /bstarpacks to recover before opening another pack.' }
+        return { ok = false, error = 'Pack processing interrupted. Recover the retained opening before opening another pack.' }
     end
     return result
 end

@@ -2,6 +2,8 @@ local QBCore = exports['qb-core']:GetCoreObject()
 
 local duelUiOpen = false
 local currentDuelId = nil
+-- Server validates participation; console reads only this client duel context.
+BStarDevDuelId = function() return currentDuelId end
 local latestDuelState = nil
 
 local function ForceDuelFocus()
@@ -275,15 +277,7 @@ RegisterNUICallback('duelDebugSpawnFighter', function(data, cb)
     cb({ ok = true })
 end)
 
-RegisterCommand('fixduelcam', function()
-    TriggerEvent('bstar_cards:client:ExitDuelTableView')
-    SetNuiFocus(false, false)
-    SetNuiFocusKeepInput(false)
-end, false)
 
-RegisterCommand('closeduelui', function()
-    CloseDuelUi()
-end, false)
 
 RegisterCommand('duelspawnopp', function(_, args)
     if not currentDuelId then
@@ -336,47 +330,3 @@ CreateThread(function()
         end
     end
 end)
-
-RegisterCommand('testduel', function()
-    local deckBoxId = CurrentDeckBoxId
-
-    print('[BStar Duel] /testduel fired')
-    print('[BStar Duel] CurrentDeckBoxId:', deckBoxId)
-
-    if not deckBoxId then
-        QBCore.Functions.Notify('Use a deck box first so I know which one to use.', 'error')
-        return
-    end
-
-    QBCore.Functions.Notify('Fetching decks for test duel...', 'primary')
-
-    QBCore.Functions.TriggerCallback('bstar_cards:server:GetDecksForTestDuel', function(decks)
-        print('[BStar Duel] Callback returned')
-        print('[BStar Duel] decks:', json.encode(decks))
-
-        if not decks or #decks < 1 then
-            QBCore.Functions.Notify('No saved decks found in this deck box.', 'error')
-            return
-        end
-
-        local myDeck = nil
-        for _, deck in ipairs(decks) do
-            if deck.isValid ~= false then
-                myDeck = deck
-                break
-            end
-        end
-
-        if not myDeck then
-            QBCore.Functions.Notify('No legal decks found in this deck box.', 'error')
-            return
-        end
-
-        local oppDeck = myDeck
-
-        print('[BStar Duel] Starting test duel with decks:', myDeck.id, oppDeck.id)
-        QBCore.Functions.Notify('Starting test duel...', 'success')
-
-        TriggerServerEvent('bstar_cards:server:StartTestDuel', deckBoxId, myDeck.id, oppDeck.id)
-    end, deckBoxId)
-end, false)

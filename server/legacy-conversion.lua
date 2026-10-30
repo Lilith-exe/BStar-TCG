@@ -18,7 +18,7 @@ AddEventHandler('playerConnecting', function(_, _, deferrals)
 end)
 
 local function plan()
-    assert(BStarBulk and BStarBulk.ready, 'Card storage must be ready; check /bstarstorage.')
+    assert(BStarBulk and BStarBulk.ready, 'Card storage must be ready; check the [BStar bulk] server startup log for setup errors.')
     assert(BStarConditionRules and DeckBox and DeckBox.ResolveCardDefinition and DeckBox.BuildCardItemInfo, 'Card rules unavailable.')
     local rows = MySQL.query.await([[SELECT id,citizenid,deck_box_id,card_id,amount
         FROM bstar_deckbox_cards ORDER BY id]])

@@ -185,6 +185,23 @@ CreateThread(function()
                     print('[BStar Tables] solo qb-target action fired for table:', tableId)
                     UseDuelTable(tableId, 'solo')
                 end
+                },
+                {
+                icon = "fas fa-box-open",
+                label = "Resume interrupted pack",
+                canInteract = function() return CurrentDuelTableId == nil end,
+                action = function()
+                    -- Allow qb-target to release its own NUI focus first.
+                    CreateThread(function() Wait(150);BStarRecovery.resumePack() end)
+                end
+                },
+                {
+                icon = "fas fa-layer-group",
+                label = "Collect pending card pile",
+                canInteract = function() return CurrentDuelTableId == nil end,
+                action = function()
+                    CreateThread(function() Wait(150);BStarRecovery.claimPendingPile() end)
+                end
                 }
             },
             distance = 2.0

@@ -254,6 +254,7 @@
       else instance.refresh();
     }
     for (const image of document.querySelectorAll('img[src*="images/cards/"],img[src*="images/thumbs/"]')) {
+      if (image.closest('[data-bstar-foil-managed]')) continue; // Explicitly pooled contexts attach themselves.
       const instance = attach(image); if (instance) instance.refresh();
     }
   }

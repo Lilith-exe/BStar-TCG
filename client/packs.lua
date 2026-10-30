@@ -25,7 +25,7 @@ local function pending()
         if active and generation == request and awaiting then
             awaiting = false
             SendNUIMessage({ action = 'packResult', result = { ok = false,
-                error = 'The server has not confirmed this opening. Exit and use /bstarpacks to recover; do not open another pack to retry.' } })
+                error = 'The server has not confirmed this opening. Exit and choose Resume interrupted pack at a duel table; do not open another pack to retry.' } })
         end
     end)
     SendNUIMessage({ action = 'packPending' })
@@ -44,6 +44,21 @@ local function result(data, generation)
     awaiting = false
     SendNUIMessage({ action = 'packResult', result = data })
 end
+-- Explicit table interaction; reuse the same pending/result lifecycle as pack use.
+BStarRecovery = BStarRecovery or {}
+function BStarRecovery.isPackBusy() return active end
+function BStarRecovery.resumePack()
+    if active or (BStarRecovery.isPileBusy and BStarRecovery.isPileBusy()) or IsNuiFocused() or CurrentDuelTableId then
+        QBCore.Functions.Notify('Close your current interface and finish your duel before resuming a pack.', 'error')
+        return
+    end
+    pending()
+    local generation = request
+    QBCore.Functions.TriggerCallback('bstar_cards:server:packResume', function(data)
+        result(data or {ok=false,error='No recovery response received.'}, generation)
+    end)
+end
+
 RegisterNetEvent('bstar_cards:client:packPending', pending)
 RegisterNetEvent('bstar_cards:client:packResult', function(data) result(data) end)
 RegisterNUICallback('packClose', function(data, cb) close(data.keepFocus == true); cb({ ok = true }) end)
@@ -69,12 +84,6 @@ RegisterNUICallback('packViewed', function(data, cb)
     if not active or data.id ~= opening then cb({ ok = false, error = 'Pack session closed.' }); return end
     QBCore.Functions.TriggerCallback('bstar_cards:server:packViewed', cb, opening)
 end)
-RegisterCommand('bstarpacks', function()
-    if active then return end
-    pending()
-    local generation = request
-    QBCore.Functions.TriggerCallback('bstar_cards:server:packResume', function(data) result(data, generation) end)
-end, false)
 AddEventHandler('onClientResourceStop', function(name) if name == GetCurrentResourceName() and active then close() end end)
 RegisterNetEvent('QBCore:Client:OnPlayerUnload', function() close() end)
 -- If another inventory is opened while the presentation is active, release our UI.
@@ -86,7 +95,7 @@ CreateThread(function()
         if active then
             if GetGameTimer() - heartbeat > 12000 then
                 close()
-                QBCore.Functions.Notify('Pack interface stopped responding. Use /bstarpacks to resume safely.', 'error')
+                QBCore.Functions.Notify('Pack interface stopped responding. Choose Resume interrupted pack at a duel table to recover.', 'error')
             end
             DisableControlAction(0, 37, true) -- Do not open weapon wheel / inventory behind the pack.
             DisablePlayerFiring(PlayerId(), true)

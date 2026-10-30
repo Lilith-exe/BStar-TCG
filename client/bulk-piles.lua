@@ -55,14 +55,40 @@ local function openCarriedPile(cb,id)
         if cb then cb(result) end
     end,id)
 end
-RegisterCommand('bstarpiles',function()
-    QBCore.Functions.TriggerCallback('bstar_cards:server:bulkClaim',function(result)
-        if not result or not result.ok then openCarriedPile() end
+-- Pending delivery has no inventory token to use. The existing table target
+-- offers an explicit claim without changing carried-pile inventory use.
+BStarRecovery = BStarRecovery or {}
+local claiming, claimRequest = false, 0
+function BStarRecovery.isPileBusy() return active or claiming end
+function BStarRecovery.claimPendingPile()
+    if active or claiming or (BStarRecovery.isPackBusy and BStarRecovery.isPackBusy()) or IsNuiFocused() or CurrentDuelTableId then
+        QBCore.Functions.Notify('Close your current interface and finish your duel before collecting a pile.', 'error')
+        return
+    end
+    claiming=true;claimRequest=claimRequest+1;local stamp=claimRequest
+    QBCore.Functions.TriggerCallback('bstar_cards:server:bulkClaim',function(response)
+        if stamp~=claimRequest then return end
+        claiming=false
+        if not response or not response.ok then
+            QBCore.Functions.Notify(response and response.error or 'No delivery response received.', 'error')
+        end
+        -- Successful claims already open bulk UI through the server's bulkOpen event.
     end)
-end,false)
+    CreateThread(function()
+        Wait(15000)
+        if claiming and stamp==claimRequest then
+            claiming=false;claimRequest=claimRequest+1
+            QBCore.Functions.Notify('Delivery is not yet confirmed. Check your inventory before retrying recovery.', 'error')
+        end
+    end)
+end
+
 RegisterNUICallback('bulkOpen',function(data,cb) openCarriedPile(cb,data.id) end)
 AddEventHandler('onClientResourceStop',function(name) if name==GetCurrentResourceName() and active then close() end end)
-RegisterNetEvent('QBCore:Client:OnPlayerUnload',function() if active then close() end end)
+RegisterNetEvent('QBCore:Client:OnPlayerUnload',function()
+    claiming=false;claimRequest=claimRequest+1
+    if active then close() end
+end)
 RegisterNetEvent('qb-inventory:client:openInventory',function() if active then close(true) end end)
 CreateThread(function()
     while true do

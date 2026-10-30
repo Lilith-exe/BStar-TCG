@@ -212,6 +212,7 @@ end
 -- Pack grants use the same metadata contract as Deck Box withdrawals.
 DeckBox.BuildCardItemInfo = BuildCardItemInfo
 DeckBox.ResolveCardDefinition = ResolveCardDefinition
+DeckBox.GetCardHealthText = GetCardHealthText
 
 local function getPlayerCardCounts(Player)
     local results = {}
@@ -799,60 +800,6 @@ RegisterNetEvent('bstar_cards:server:WithdrawCardFromDeckBox', function(deckBoxI
     end, selection)
 end)
 
-RegisterNetEvent('bstar_cards:server:DevFillDeckBox', function(deckBoxId)
-    local src = source
-
-    if Config and Config.Debug ~= true then
-        TriggerClientEvent('QBCore:Notify', src, 'BStar dev commands are disabled.', 'error')
-        return
-    end
-
-    deckBoxId = tostring(deckBoxId or '')
-    if deckBoxId == '' then
-        TriggerClientEvent('QBCore:Notify', src, 'Missing deck box id.', 'error')
-        return
-    end
-
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then return end
-
-    local citizenid = Player.PlayerData.citizenid
-    local cardIds = {}
-
-    for cardId in pairs(Cards or {}) do
-        cardIds[#cardIds + 1] = cardId
-    end
-
-    table.sort(cardIds)
-
-    if #cardIds == 0 then
-        TriggerClientEvent('QBCore:Notify', src, 'No BStar card definitions found.', 'error')
-        return
-    end
-
-    exports.oxmysql:update([[
-        DELETE FROM bstar_deckbox_cards
-        WHERE citizenid = ? AND deck_box_id = ?
-    ]], { citizenid, deckBoxId }, function()
-        local placeholders = {}
-        local params = {}
-
-        for _, cardId in ipairs(cardIds) do
-            placeholders[#placeholders + 1] = '(?, ?, ?, ?)'
-            params[#params + 1] = citizenid
-            params[#params + 1] = deckBoxId
-            params[#params + 1] = cardId
-            params[#params + 1] = 3
-        end
-
-        exports.oxmysql:insert(([[
-            INSERT INTO bstar_deckbox_cards (citizenid, deck_box_id, card_id, amount)
-            VALUES %s
-        ]]):format(table.concat(placeholders, ', ')), params, function()
-            TriggerClientEvent('QBCore:Notify', src, ('Deck box filled with 3 copies of %s cards.'):format(#cardIds), 'success')
-        end)
-    end)
-end)
 
 RegisterNetEvent('bstar_cards:server:CreateDeck', function(deckBoxId, deckName)
     local src = source
@@ -899,50 +846,7 @@ RegisterNetEvent('bstar_cards:server:DeleteDeck', function(deckBoxId, deckId)
 end)
 
 
-RegisterCommand('givedeckbox', function(source)
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
 
-    if not Player then return end
-
-    -- generate unique ID
-    local uniqueId = "DB-" .. os.time() .. "-" .. math.random(1000, 9999)
-
-    local success = Player.Functions.AddItem('deck_box', 1, false, {
-        id = uniqueId
-    })
-
-    if success then
-        TriggerClientEvent('QBCore:Notify', src, 'Deck box received!', 'success')
-    else
-        TriggerClientEvent('QBCore:Notify', src, 'Inventory full!', 'error')
-    end
-end, false)
-
-local function FindFirstDeckBoxItem(src)
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then return nil end
-
-    for _, item in pairs(Player.PlayerData.items or {}) do
-        if item and item.name == 'deck_box' and item.info and item.info.id then
-            return item
-        end
-    end
-
-    return nil
-end
-
-RegisterCommand('bstaropenbox', function(source)
-    local src = source
-    local item = FindFirstDeckBoxItem(src)
-
-    if not item then
-        TriggerClientEvent('QBCore:Notify', src, 'No deck box found in your inventory.', 'error')
-        return
-    end
-
-    TriggerClientEvent('bstar_cards:client:UseDeckBox', src, item)
-end, false)
 
 RegisterNetEvent('bstar_cards:server:SaveDeckBox', function(stashId, items)
     if not stashId or not items then return end
@@ -1471,83 +1375,6 @@ RegisterNetEvent('bstar_cards:server:DuelAttack', function(duelId, attackerZoneI
         TriggerClientEvent('QBCore:Notify', src, err, 'error')
     end
 end)
-
-RegisterNetEvent('bstar_cards:server:DuelDebugSpawnFighter', function(duelId, playerIndex, cardId, zoneIndex)
-    local src = source
-
-    local ok, err = Duel.DebugSpawnFighter(duelId, playerIndex, cardId, zoneIndex)
-    if not ok and err then
-        TriggerClientEvent('QBCore:Notify', src, err, 'error')
-    else
-        TriggerClientEvent('QBCore:Notify', src, 'Debug fighter spawned.', 'success')
-    end
-end)
-
-RegisterCommand('givecardtest', function(source, args)
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then return end
-
-    local cardId = args[1] or 'ALPH_LAYLA_HART'
-    local card = ResolveCardDefinition(cardId)
-
-    if not card then
-        TriggerClientEvent('QBCore:Notify', src, 'Card not found: ' .. tostring(cardId), 'error')
-        return
-    end
-
-    local info = {
-        cardId = card.id,
-        label = card.name .. " (" .. card.rarity .. ")",
-        rarity = card.rarity,
-        inventoryImage = card.inventoryImage,
-        description =
-            card.setCode .. " - " .. card.edition .. "\n\n" ..
-            card.type .. " | " .. card.job .. " | Lv." .. card.level .. "\n\n" ..
-            card.speed .. " • " .. card.attack .. " • " .. (GetCardHealthText(card) or ''),
-        display = false
-    }
-
-    Player.Functions.AddItem('bstar_card', 1, false, info)
-
-    local notifItem = {
-        name = 'bstar_card',
-        label = info.label,
-        image = QBCore.Shared.Items['bstar_card'].image,
-        inventoryImage = card.inventoryImage,
-        info = info,
-        amount = 1,
-        type = 'item',
-        unique = QBCore.Shared.Items['bstar_card'].unique or true,
-        useable = QBCore.Shared.Items['bstar_card'].useable or true,
-        weight = QBCore.Shared.Items['bstar_card'].weight or 0
-    }
-
-    TriggerClientEvent('inventory:client:ItemBox', src, notifItem, 'add', 1)
-    TriggerClientEvent('QBCore:Notify', src, 'Given card: ' .. card.name, 'success')
-end, false)
-
-RegisterCommand('bstarcarddiag', function(source, args)
-    local src = source
-    local wantedId = args[1] or 'ALPH1_EN001_LAYLA_HART'
-    local count = 0
-
-    for _ in pairs(Cards or {}) do
-        count = count + 1
-    end
-
-    local card = ResolveCardDefinition(wantedId)
-    local message = ('BStar Cards loaded: %s | %s => %s'):format(
-        count,
-        wantedId,
-        card and ((card.name or card.id or 'matched') .. ' / ' .. tostring(card.inventoryImage or 'no image')) or 'NOT FOUND'
-    )
-
-    print('[BStar] ' .. message)
-    if src and src > 0 then
-        TriggerClientEvent('QBCore:Notify', src, message, card and 'success' or 'error')
-    end
-end, false)
 
 RegisterCommand('bstarnormalizeids', function(source, args)
     local src = source

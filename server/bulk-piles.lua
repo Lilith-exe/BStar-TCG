@@ -210,7 +210,7 @@ local function run(src, fn, quiet)
         end
         recoverMoves(player)
         if BStarCondition then assert(not BStarCondition.pending(cid),'Completed duel condition is waiting to save; try again after recovery') end
-        assert(not MySQL.scalar.await("SELECT id FROM bstar_pack_openings WHERE citizenid=? AND status IN ('prepared','review') LIMIT 1",{cid}), 'Recover your pending pack with /bstarpacks first')
+        assert(not MySQL.scalar.await("SELECT id FROM bstar_pack_openings WHERE citizenid=? AND status IN ('prepared','review') LIMIT 1",{cid}), 'Recover your pending pack first; its opening journal is retained')
         if BStarSleeves and BStarSleeves.reconcilePocketPrivacy then BStarSleeves.reconcilePocketPrivacy(player) end
         if BStarCondition then BStarCondition.refresh(player) end
         if reconcileEmpty(player) then
@@ -514,7 +514,7 @@ QBCore.Functions.CreateCallback('bstar_cards:server:bulkOpen',function(src,cb,id
         if not id then
             for _,item in pairs(playerItems(player)) do if item.name==Bulk.item and type(item.info)=='table' then id=item.info.id;break end end
         end
-        assert(id,'No pile carried. Use /bstarpiles to recover a pending delivery.')
+        assert(id,'No pile carried. A pending delivery may require recovery.')
         validatePile(player,id);Bulk.refresh(player)
         return {ok=true,id=id}
     end)
@@ -528,7 +528,7 @@ QBCore.Functions.CreateCallback('bstar_cards:server:bulkClaim',function(src,cb)
         assert(id,'No undelivered pile is waiting')
         lock('pile:'..id)
         local planned=copy(playerItems(player)); local used,free=exports['qb-inventory']:GetSlots(src)
-        assert(free>0,'Free one inventory slot, then use /bstarpiles again')
+        assert(free>0,'Free one inventory slot before retrying the pending delivery')
         local slot;for i=1,used+free do if not planned[i] then slot=i;break end end
         local info=Bulk.pileInfo(id,countPile(id))
         planned[slot]={name=Bulk.item,type='item',amount=1,slot=slot,info=info}
@@ -581,11 +581,6 @@ CreateThread(function()
         print('[BStar bulk] Startup still pending after 30 seconds: '..Bulk.stage..'. Storage remains locked; no safety checks bypassed.')
     end
 end)
-RegisterCommand('bstarstorage',function(src)
-    if src~=0 then return end
-    print(('[BStar bulk] status=%s ready=%s stage=%s%s'):format(Bulk.status,tostring(Bulk.ready),Bulk.stage,
-        Bulk.failure and (' error='..Bulk.failure) or ''))
-end,true)
 local function ensureSchemaFile(path)
     local text=assert(LoadResourceFile(GetCurrentResourceName(),path),'Missing schema file: '..path)
     text=text:gsub('%-%-[^\r\n]*','')

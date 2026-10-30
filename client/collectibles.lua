@@ -27,14 +27,13 @@ local function openGrading()
         opened=true;SetNuiFocus(true,true);SetNuiFocusKeepInput(false);SendNUIMessage({action='openGrading',result=result})
     end,{})
 end
-RegisterCommand('bstargrade',openGrading,false) -- Server still enforces bench proximity.
 CreateThread(function()
     if not cfg.grading.enabled or not cfg.grading.testStation then return end
     local station=cfg.grading.station;local model=joaat(station.model)
     if not IsModelInCdimage(model) or not IsModelValid(model) then print('[BStar grading] Invalid bench model');return end
     RequestModel(model);local deadline=GetGameTimer()+10000
     while not HasModelLoaded(model) and GetGameTimer()<deadline do Wait(50) end
-    if not HasModelLoaded(model) then print('[BStar grading] Bench model timed out; /bstargrade still works near the configured bench');return end
+    if not HasModelLoaded(model) then print('[BStar grading] Bench model timed out; check the configured grading prop');return end
     local p=station.coords;bench=CreateObject(model,p.x,p.y,p.z-1.0,false,false,false)
     SetEntityHeading(bench,station.heading);PlaceObjectOnGroundProperly(bench);FreezeEntityPosition(bench,true);SetEntityInvincible(bench,true);SetModelAsNoLongerNeeded(model)
     while GetResourceState('qb-target')~='started' do Wait(1000) end

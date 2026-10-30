@@ -18,20 +18,10 @@ AddEventHandler('onClientResourceStart', function(resourceName)
 
     CreateThread(function()
         Wait(1500)
-        QBCore.Functions.Notify('BStar client reloaded. Use your deck box or /bstaropenbox.', 'primary')
+        QBCore.Functions.Notify('BStar client reloaded. Use your deck box.', 'primary')
     end)
 end)
 
-RegisterCommand('teststash', function()
-    local stashId = 'bstar_test_stash'
-    print('[BStar] Opening test stash:', stashId)
-    TriggerEvent("inventory:client:SetCurrentStash", stashId)
-    Wait(100)
-    TriggerServerEvent("qb-inventory:server:OpenInventory", "stash", stashId, {
-        maxweight = 150000,
-        slots = 50
-    })
-end)
 
 RegisterNetEvent('bstar_cards:client:showCard', function(card)
     if not card then return end
@@ -178,29 +168,8 @@ RegisterNetEvent('bstar_cards:client:OpenDeckBuilder', function(data)
     end, deckBoxId)
 end)
 
-RegisterCommand('closecard', function()
-    if not cardOpen then return end
-    cardOpen = false
-    SetNuiFocus(false, false)
-    SendNUIMessage({
-        action = 'hideCard'
-    })
-end, false)
 
-RegisterCommand('closebstarui', function()
-    SetNuiFocus(false, false)
-    SendNUIMessage({
-        action = 'hideCard'
-    })
-    SendNUIMessage({
-        action = 'forceCloseAll'
-    })
-end)
 
-RegisterCommand('panicui', function()
-    SetNuiFocus(false, false)
-    SendNUIMessage({ action = 'forceCloseAll' })
-end)
 
 RegisterCommand('bstarfilldeckbox', function(_, args)
     local deckBoxId = args[1] or CurrentDeckBoxId
@@ -212,5 +181,3 @@ RegisterCommand('bstarfilldeckbox', function(_, args)
 
     TriggerServerEvent('bstar_cards:server:DevFillDeckBox', deckBoxId)
 end, false)
-
-RegisterKeyMapping('panicui', 'Force close BStar UI', 'keyboard', 'F11')

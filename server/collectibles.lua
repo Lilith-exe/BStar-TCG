@@ -248,6 +248,16 @@ function C.deckCopies(src,request)
             end
         end
         table.sort(cards,function(a,b)return a.copyId<b.copyId end)
+        -- Count actual legacy rows, never infer them from a stale UI total or a filtered physical page.
+        local legacyTotal=0
+        if request.sleeveStatus~='sleeved' then
+            for _,row in ipairs(MySQL.query.await('SELECT card_id,amount FROM bstar_deckbox_cards WHERE citizenid=? AND deck_box_id=? AND amount>0',{player.PlayerData.citizenid,box})) do
+                local definition,canonical=DeckBox.ResolveCardDefinition(row.card_id)
+                canonical=definition and definition.id or canonical
+                if canonical==key then legacyTotal=legacyTotal+(tonumber(row.amount) or 0) end
+            end
+        end
+        assert(store.carried(player,'deck_box',box),'Deck Box moved; refresh the collection')
         local size=BStarSleeveConfig.pageSize;local pages=math.max(1,math.ceil(#cards/size));local page=math.min(pages,math.max(1,math.floor(tonumber(request.page) or 1)));local out={}
         for i=(page-1)*size+1,math.min(#cards,page*size) do out[#out+1]=cards[i] end
         local types={};for id,kind in pairs(BStarSleeveConfig.types) do
@@ -255,7 +265,7 @@ function C.deckCopies(src,request)
             types[#types+1]={id=id,label=kind.label,reusable=kind.reusable,count=count}
         end
         table.sort(types,function(a,b)return a.id<b.id end)
-        return {ok=true,cards=out,total=#cards,page=page,pages=pages,types=types,maxBatch=1}
+        return {ok=true,cards=out,total=#cards,legacyTotal=legacyTotal,page=page,pages=pages,types=types,maxBatch=1}
     end)
 end
 for name,fn in pairs({binderPage=C.binderPage,binderMove=C.binderMove,gradingPage=C.gradingPage,gradeCard=C.grade,collectorLibrary=C.library,deckCopies=C.deckCopies}) do
@@ -275,14 +285,3 @@ local ok,err=pcall(function()
 end)
 C.ready=ok
 if not ok then print('[BStar collectibles] SETUP FAILED: '..tostring(err)) end
-RegisterCommand('bstargivebinder',function(src,args)
-    if src~=0 then return end
-    local target=tonumber(args[1]);local player=target and qb.Functions.GetPlayer(target)
-    if not player or #args~=1 then print('Usage: bstargivebinder <online player ID>');return end
-    local result=store.run(target,function(p)
-        ready();local id=assert(MySQL.scalar.await('SELECT UUID()'),'Binder identity unavailable')
-        assert(exports['qb-inventory']:AddItem(target,cfg.binder.item,1,false,{id=id,owner=p.PlayerData.citizenid,display=false,image='nui://bstar_cards/html/images/assets/bstar_binder.svg',description=('Personal collector binder • %s pockets'):format(cfg.binder.pages*cfg.binder.pocketsPerPage)},'bstar-test-binder'),'Inventory rejected binder')
-        return {ok=true}
-    end)
-    print('[BStar collectibles] '..(result.ok and 'Test binder granted.' or tostring(result.error)))
-end,true)
