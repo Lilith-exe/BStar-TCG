@@ -4,12 +4,24 @@ local copy, equal, items = store.copy, store.equal, store.items
 BStarSleeves = { ready=false, error='Sleeve items are starting.' }
 local Sleeves = BStarSleeves
 local definitions = {}
+-- Only the configured Protective Sleeve is spendable stock.
+function Sleeves.stock(player)
+    local types={}
+    for id,t in pairs(config.types) do
+        local count=0
+        for _,item in pairs(items(player)) do if item.name==t.item then count=count+item.amount end end
+        types[#types+1]={id=id,label=t.label,reusable=t.reusable,count=count}
+    end
+    table.sort(types,function(a,b)return a.id<b.id end)
+    return types
+end
 
 local function registeredItems()
     local ok,problem=pcall(function()
         assert(type(config.maxBatch)=='number' and config.maxBatch>=1 and config.maxBatch<=200 and config.maxBatch%1==0,'Sleeve maxBatch must be 1-200')
         assert(type(config.pageSize)=='number' and config.pageSize>=1 and config.pageSize<=100 and config.pageSize%1==0,'Sleeve pageSize must be 1-100')
         assert(type(config.condition)=='table' and type(config.condition.goodMin)=='number' and type(config.condition.playedMin)=='number' and config.condition.goodMin>config.condition.playedMin,'Condition thresholds must be numeric and ordered')
+        -- Core objects are snapshots: add missing definitions once, update existing ones.
         local core=exports['qb-core']:GetCoreObject()
         local names={}
         for id,t in pairs(config.types) do
@@ -18,6 +30,7 @@ local function registeredItems()
             assert(t.item:match('^[a-z0-9_]+$'),'Sleeve item names must use lowercase letters, digits and underscores')
             names[t.item]=true
             local definition=core.Shared.Items[t.item]
+            local existing=definition~=nil
             if not definition then
                 definition={name=t.item,label=t.label,weight=0,type='item',image=t.image or 'bank_card.png',
                     unique=false,useable=false,shouldClose=false,description='Apply to an individual BStar card through its sleeve controls.'}
@@ -26,6 +39,11 @@ local function registeredItems()
             end
             assert(definition.type=='item' and definition.unique==false and tonumber(definition.weight)==0,
                 'Phase 1 sleeve definitions must be weightless, stackable items: '..t.item)
+            definition=copy(definition);definition.label=t.label
+            if existing and core.Shared.Items[t.item].label~=definition.label then
+                local updated,reason=QBCore.Functions.UpdateItem(t.item,definition)
+                assert(updated,'Protective sleeve label update failed: '..tostring(reason))
+            end
             definitions[id]=copy(definition)
             if t.pack then
                 assert(type(t.pack.quantity)=='number' and t.pack.quantity%1==0 and (t.pack.quantity==60 or t.pack.quantity==100),'Sleeve pack quantity must be 60 or 100')
@@ -34,8 +52,14 @@ local function registeredItems()
                 names[name]=true
                 local packDefinition=core.Shared.Items[name]
                 if not packDefinition then
-                    packDefinition={name=name,label=t.label..' Pack',weight=0,type='item',image=t.image or 'bank_card.png',unique=false,useable=true,shouldClose=true,description='Contains '..t.pack.quantity..' '..t.label..'s.'}
+                    packDefinition={name=name,label=t.label..' Pack',weight=0,type='item',image=t.image or 'bank_card.png',unique=false,useable=true,shouldClose=true,description='Contains '..t.pack.quantity..' reusable Protective Sleeves.'}
                     assert(QBCore.Functions.AddItem(name,packDefinition),'Sleeve pack item registration failed')
+                end
+                packDefinition=copy(packDefinition);packDefinition.label=t.label..' Pack';packDefinition.description='Contains '..t.pack.quantity..' reusable Protective Sleeves.'
+                local existingPack=core.Shared.Items[name]
+                if existingPack and (existingPack.label~=packDefinition.label or existingPack.description~=packDefinition.description) then
+                    local updated,reason=QBCore.Functions.UpdateItem(name,packDefinition)
+                    assert(updated,'Protective sleeve pack label update failed: '..tostring(reason))
                 end
                 assert(packDefinition.type=='item' and packDefinition.unique==false and tonumber(packDefinition.weight)==0 and packDefinition.useable==true,'Sleeve packs must be usable, weightless stackable items')
             end
@@ -179,7 +203,7 @@ end
 local function returnItems(player,planned,returns)
     local used,free=exports['qb-inventory']:GetSlots(player.PlayerData.source)
     for typeId,amount in pairs(returns) do
-        local t=config.types[typeId];local target
+        local t=assert(config.types[typeId],'Unknown sleeve type');local target
         for _,item in pairs(planned) do if item.name==t.item and equal(item.info or {},{}) then target=item;break end end
         if target then target.amount=target.amount+amount
         else
@@ -198,7 +222,8 @@ function Sleeves.change(src,request)
         assert(type(request.cards)=='table' and #request.cards>0 and #request.cards<=config.maxBatch,'Select 1 to '..config.maxBatch..' individual copies')
         local before=store.compact(items(player))
         local ctx=context(player,request.context)
-        local chosen=request.action~='remove' and config.types[request.sleeveType]
+        local chosenId=request.sleeveType
+        local chosen=request.action~='remove' and chosenId and config.types[chosenId]
         assert(request.action=='remove' or chosen,'Choose a sleeve type')
         local planned,op,seen,returns=copy(items(player)),{kind='sleeve',changes={}}, {},{}
         local now=os.time();local skipped=0
@@ -218,11 +243,11 @@ function Sleeves.change(src,request)
                     assert(type(prior)=='table' and prior.version==1 and type(prior.type)=='string','Unrecognised sleeve; existing metadata retained')
                     local oldType=assert(config.types[prior.type],'Sleeve type no longer configured; metadata retained')
                     assert(type(prior.appliedAt)=='number','Sleeve timestamp needs review')
-                    if prior.type==request.sleeveType then skipped=skipped+1;goto selectedDone end
+                    if prior.type==chosenId then skipped=skipped+1;goto selectedDone end
                     protected=protected+math.max(0,now-prior.appliedAt)
                     if oldType.reusable then returns[prior.type]=(returns[prior.type] or 0)+1 end
                 end
-                info.sleeve={version=1,type=request.sleeveType,appliedAt=now,changedAt=now,protectedSeconds=protected,
+                info.sleeve={version=1,type=chosenId,appliedAt=now,changedAt=now,protectedSeconds=protected,
                     applications=(type(prior)=='table' and tonumber(prior.applications) or 0)+1}
             else
                 assert(type(prior)=='table' and prior.version==1 and type(prior.type)=='string','No recognised sleeve on this copy; existing metadata retained')
@@ -394,12 +419,7 @@ function Sleeves.list(src,request)
             end
         end
         context(player,ctx)
-        local types={}
-        for id,t in pairs(config.types) do
-            local count=0;for _,item in pairs(items(player)) do if item.name==t.item then count=count+item.amount end end
-            types[#types+1]={id=id,label=t.label,reusable=t.reusable,count=count}
-        end
-        table.sort(types,function(a,b)return a.id<b.id end)
+        local types=Sleeves.stock(player)
         for _,card in ipairs(cards) do
             local definition,resolved=DeckBox.ResolveCardDefinition(card.cardId)
             definition=definition or Cards[card.cardId] or {}

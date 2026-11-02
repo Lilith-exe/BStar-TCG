@@ -260,11 +260,7 @@ function C.deckCopies(src,request)
         assert(store.carried(player,'deck_box',box),'Deck Box moved; refresh the collection')
         local size=BStarSleeveConfig.pageSize;local pages=math.max(1,math.ceil(#cards/size));local page=math.min(pages,math.max(1,math.floor(tonumber(request.page) or 1)));local out={}
         for i=(page-1)*size+1,math.min(#cards,page*size) do out[#out+1]=cards[i] end
-        local types={};for id,kind in pairs(BStarSleeveConfig.types) do
-            local count=0;for _,item in pairs(store.items(player)) do if item.name==kind.item then count=count+item.amount end end
-            types[#types+1]={id=id,label=kind.label,reusable=kind.reusable,count=count}
-        end
-        table.sort(types,function(a,b)return a.id<b.id end)
+        local types=BStarSleeves.stock(player)
         return {ok=true,cards=out,total=#cards,legacyTotal=legacyTotal,page=page,pages=pages,types=types,maxBatch=1}
     end)
 end
