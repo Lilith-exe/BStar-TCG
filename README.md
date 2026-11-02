@@ -2,6 +2,11 @@
 
 ## Latest
 
+## v0.7.8
+- Merged both redundant protective sleeve items into 1
+- Protective sleeves now come in packs of 60.
+- Root folder cleanup
+
 ## v0.7.7
 - Refactor dev commands and add developer console for easier testing in one place
 - Cleanup tasks
