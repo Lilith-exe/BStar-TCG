@@ -2,6 +2,9 @@
 
 ## Latest
 
+## v0.7.9
+- Retired legacy card states and handling
+
 ## v0.7.8
 - Merged both redundant protective sleeve items into 1
 - Protective sleeves now come in packs of 60.

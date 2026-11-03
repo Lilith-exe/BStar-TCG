@@ -1,6 +1,8 @@
 # BStar Cards Changelog
 
 ## Latest
+
+## v0.7.9
 - Retired legacy card states and handling
 
 ## v0.7.8
