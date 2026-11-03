@@ -2,15 +2,12 @@ local QBCore = exports['qb-core']:GetCoreObject()
 
 local cardOpen = false
 
-local CurrentDeckBox = nil
-
 CurrentDeckBoxId = CurrentDeckBoxId or nil
 
 AddEventHandler('onClientResourceStart', function(resourceName)
     if resourceName ~= GetCurrentResourceName() then return end
 
     cardOpen = false
-    CurrentDeckBox = nil
     CurrentDeckBoxId = nil
     SetNuiFocus(false, false)
     SetNuiFocusKeepInput(false)
@@ -141,14 +138,6 @@ RegisterNetEvent('bstar_cards:client:OpenDeckBoxStash', function(data)
             storedCards = result.storedCards or {}
         })
     end, deckBoxId)
-end)
-
-RegisterNetEvent('qb-inventory:client:closeInventory', function()
-    if not CurrentDeckBox then return end
-
-    print('[BStar] Saving deck box:', CurrentDeckBox)
-
-    TriggerServerEvent('bstar_cards:server:SaveDeckBox', CurrentDeckBox, PlayerInventory)
 end)
 
 RegisterNetEvent('bstar_cards:client:OpenDeckBuilder', function(data)

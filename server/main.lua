@@ -848,46 +848,6 @@ end)
 
 
 
-RegisterNetEvent('bstar_cards:server:SaveDeckBox', function(stashId, items)
-    if not stashId or not items then return end
-
-    exports.oxmysql:update([[
-        UPDATE inventories
-        SET items = ?
-        WHERE identifier = ?
-    ]], {
-        json.encode(items),
-        stashId
-    })
-end)
-
-RegisterNetEvent('bstar_cards:server:OpenDeckBoxStash', function(deckBoxId)
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then return end
-    if not deckBoxId then return end
-
-    local stashId = "deckbox_" .. deckBoxId
-
-    exports.oxmysql:query('SELECT items FROM inventories WHERE identifier = ?', { stashId }, function(result)
-        local stashItems = {}
-
-        if result and result[1] and result[1].items then
-            stashItems = json.decode(result[1].items) or {}
-        end
-
-        local formattedInventory = {
-            name = stashId,
-            label = "Deck Box",
-            maxweight = 150000,
-            slots = 120,
-            inventory = stashItems
-        }
-
-        TriggerClientEvent('qb-inventory:client:openInventory', src, Player.PlayerData.items, formattedInventory)
-    end)
-end)
-
 QBCore.Functions.CreateUseableItem('deck_box', function(source, item)
     print('[BStar] deck_box used by source:', source)
     print('[BStar] item info:', json.encode(item))

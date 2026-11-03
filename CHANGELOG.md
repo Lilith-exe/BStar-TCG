@@ -1,6 +1,7 @@
 # BStar Cards Changelog
 
 ## Latest
+- Retired legacy card states and handling
 
 ## v0.7.8
 - Merged both redundant protective sleeve items into 1
