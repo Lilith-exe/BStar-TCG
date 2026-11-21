@@ -189,3 +189,18 @@
 @media(max-width:800px){.binder-library-open .binder-workspace{grid-template-columns:minmax(0,1fr)}.collector-binder-mode .binder-library{width:min(380px,92vw)}.binder-return-controls{top:-76px;max-width:100%}.collector-shell{width:96vw}.collector-shell .collector-sidebar{width:210px;padding:8px}.collector-content{padding:8px}.collector-grading{padding:8px}}
 
 .collector-source-card.selected{outline-color:#b284ff}.collector-grading>small{color:#bfabd7}
+
+/* Non-collector copy previews reserve the same label/case space as the binder. */
+.pocket-art.hcg-slab,.builder-copy-art.hcg-slab{padding:45% 8% 7%;box-sizing:border-box;background:#cad7e012;border-radius:9px}
+.pocket-art.hcg-slab>img,.builder-copy-art.hcg-slab>img{display:block;width:100%;height:auto;object-fit:contain}
+.builder-copy-art.hcg-slab{height:auto}
+.slab-protection-badge{display:inline-flex;align-items:center;justify-content:center;color:#f0cc75;flex-shrink:0;filter:drop-shadow(0 0 3px #d9a84455)}
+.slab-protection-badge svg{width:19px;height:22px;fill:#d9a84414;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.pocket-protection{display:flex;align-items:center;gap:7px}
+.pocket-copy.is-slabbed,.builder-copy.is-slabbed,.builder-card.is-slabbed{border:1px solid #d6ad59;box-shadow:inset 0 0 0 1px #efd59122,0 0 10px #d6ad5930}
+.pocket-copy.is-slabbed[aria-pressed=true]{outline-color:#f0cc75;background:#63502e88}
+.pocket-detail.is-slabbed{border:1px solid #d6ad5988;border-radius:10px;padding:12px;box-shadow:0 0 12px #d6ad5920}
+.builder-copy-condition[data-condition="Graded"]{color:#f0cc75}
+.builder-card>.slab-protection-badge{position:absolute;right:6px;top:6px;z-index:6;background:#21172cdd;border-radius:7px;padding:3px}
+
+.builder-card-image-wrap>.builder-card-count{z-index:3}

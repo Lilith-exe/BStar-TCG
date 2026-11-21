@@ -4140,3 +4140,7 @@ button.table-card-pile {
   }
 }
 
+
+/* Explicit detail labels shared with the public stat values; items omit empty boxes. */
+.preview-big-stat{flex-direction:column;gap:6px}
+.preview-big-stats,.table-preview-stats{grid-template-columns:repeat(auto-fit,minmax(64px,1fr))}

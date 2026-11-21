@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BStar UI</title>
-  <link rel="stylesheet" href="style.css?v=dev-20260725-piles2" />
+  <link rel="stylesheet" href="style.css?v=detailstats1" />
   <link rel="stylesheet" href="foil.css?v=preview-selector1" />
   <link rel="stylesheet" href="foil-regions.css?v=foil3" />
   <link rel="stylesheet" href="packs.css?v=10" />
@@ -33,6 +33,7 @@
     <div id="deckboxWrap" class="deckbox-wrap hidden">
       <div class="deckbox-header">
         <h2>BStar Deck Box</h2>
+        <button type="button" data-pocket-cards>Cards in Pockets</button>
         <button id="deckboxCloseBtn">Close</button>
       </div>
 
@@ -59,6 +60,7 @@
     <div id="deckHubWrap" class="deckhub-wrap hidden">
       <div class="deckhub-topbar">
         <div class="deckhub-title">Deck Box</div>
+        <button type="button" data-pocket-cards>Cards in Pockets</button>
         <button id="deckHubCloseBtn">Close</button>
       </div>
 
@@ -120,6 +122,7 @@
         </div>
 
         <div class="deckbuilder-actions">
+          <button type="button" data-pocket-cards>Cards in Pockets</button>
           <button id="newDeckBtn">New Deck</button>
           <button id="saveDeckBtn">Save Deck</button>
           <button id="deleteDeckBtn">Delete Deck</button>
@@ -394,20 +397,22 @@
   <script src="foil-regions.js?v=foil3"></script>
   <script src="foil-materials.js?v=foil3"></script>
   <script src="foil-rarities.js?v=foil3"></script>
-  <script src="foil-renderer.js?v=devpreview2"></script>
+  <script src="foil-renderer.js?v=copybounds1"></script>
   <script src="foil.js?v=foil3"></script>
   <link rel="stylesheet" href="sleeve-visuals.css?v=2" />
   <script src="sleeve-visuals.js?v=collectors20261028"></script>
-  <script src="app.js?v=feedback1"></script>
+  <link rel="stylesheet" href="physical-pockets.css?v=3" />
+  <script src="physical-pockets.js?v=4"></script>
+  <script src="app.js?v=detailstats1"></script>
   <script src="deck-designs.js?v=1"></script>
   <script src="packs.js?v=9"></script>
   <script src="bulk-piles.js?v=context4"></script>
   <link rel="stylesheet" href="sleeves.css?v=context3" />
   <script src="sleeves.js?v=feedback1"></script>
   <link rel="stylesheet" href="builder-copies.css?v=1" />
-  <script src="builder-copies.js?v=feedback1"></script>
-  <link rel="stylesheet" href="collectibles.css?v=feedback1" />
-  <script src="collectibles.js?v=feedback1"></script>
+  <script src="builder-copies.js?v=slabpreview1"></script>
+  <link rel="stylesheet" href="collectibles.css?v=slabpreview1" />
+  <script src="collectibles.js?v=slabpreview1"></script>
 </body>
 </html>
 

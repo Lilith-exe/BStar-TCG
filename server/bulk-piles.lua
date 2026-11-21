@@ -138,9 +138,23 @@ function Bulk.packQueries(row)
     return queries
 end
 
-local function moveQueries(row)
+local function moveQueries(row,player)
     local op, queries = json.decode(row.operation), {}
-    if op.kind=='sleeve' then return BStarSleeves.commitQueries(row,op) end
+    if op.kind=='sleeve' then
+        if op.purpose=='physicalDeposit' then
+            assert(Bulk.validateDepositCommit,'Physical deposit recovery is not loaded')
+            Bulk.validateDepositCommit(player,row,op)
+            local queries=BStarSleeves.commitQueries(row,op)
+            -- SQL transaction success alone does not prove a guarded copy UPDATE matched.
+            -- Complete this receipt only when that SAME row reached its recorded destination/info.
+            queries[#queries]={query=[[UPDATE bstar_card_moves SET status='complete'
+                WHERE id=? AND status='prepared' AND EXISTS (SELECT 1 FROM bstar_card_copies
+                WHERE id=? AND BINARY info=BINARY ? AND location='box' AND container_id=? AND citizenid=?)]],
+                values={row.id,op.copyId,op.changes[1].info,op.box,row.citizenid}}
+            return queries
+        end
+        return BStarSleeves.commitQueries(row,op)
+    end
     if op.kind == 'retire' then
         holdPile(row.citizenid,op.pile)
         assert(countPile(op.pile)==0,'Cleanup receipt needs review: pile contains cards')
@@ -172,9 +186,13 @@ local function recoverMoves(player)
         assert(row.status ~= 'review', 'A card transfer requires recovery review: '..row.id)
         local inventory = compact(playerItems(player))
         if equal(inventory,json.decode(row.after_inventory)) then
-            local queries=moveQueries(row)
+            local queries=moveQueries(row,player)
             assert(equal(inventory,compact(playerItems(player))),'Inventory changed during recovery; journal retained')
             assert(MySQL.transaction.await(queries), 'Transfer recovery failed')
+            local operation=json.decode(row.operation)
+            if operation.purpose=='physicalDeposit' then
+                assert(MySQL.scalar.await('SELECT status FROM bstar_card_moves WHERE id=?',{row.id})=='complete','Deposit custody confirmation needs inspection')
+            end
         elseif equal(inventory,json.decode(row.before_inventory)) then
             local saved = MySQL.scalar.await('SELECT inventory FROM players WHERE citizenid=?',{cid})
             assert(equal(inventory,compact(playerItems(player))) and
@@ -190,7 +208,7 @@ function Bulk.recoverMoves(player)
     recoverMoves({PlayerData=player.PlayerData,Functions=player.Functions,_bulkEpoch=epochs[player.PlayerData.source] or 0})
 end
 local reconcileEmpty
-local function run(src, fn, quiet)
+local function run(src, fn, quiet, options)
     if not Bulk.ready then return {ok=false,error=Bulk.error} end
     local player = QBCore.Functions.GetPlayer(src)
     if not player then return {ok=false,error='Player unavailable.'} end
@@ -211,8 +229,11 @@ local function run(src, fn, quiet)
         recoverMoves(player)
         if BStarCondition then assert(not BStarCondition.pending(cid),'Completed duel condition is waiting to save; try again after recovery') end
         assert(not MySQL.scalar.await("SELECT id FROM bstar_pack_openings WHERE citizenid=? AND status IN ('prepared','review') LIMIT 1",{cid}), 'Recover your pending pack first; its opening journal is retained')
-        if BStarSleeves and BStarSleeves.reconcilePocketPrivacy then BStarSleeves.reconcilePocketPrivacy(player) end
-        if BStarCondition then BStarCondition.refresh(player) end
+        -- New physical-only entry points must not adopt unidentified inventory cards.
+        if not (options and options.physicalOnly) then
+            if BStarSleeves and BStarSleeves.reconcilePocketPrivacy then BStarSleeves.reconcilePocketPrivacy(player) end
+            if BStarCondition then BStarCondition.refresh(player) end
+        end
         if reconcileEmpty(player) then
             recoverMoves(player) -- settle a cleanup receipt before any further mutation
         end
@@ -231,7 +252,12 @@ local function executeMove(player, op, mutate, planned)
     local before, original = compact(playerItems(player)), copy(playerItems(player))
     local db = MySQL.single.await('SELECT UUID() AS id, inventory FROM players WHERE citizenid=?',{player.PlayerData.citizenid})
     assert(db and equal(before,compact(playerItems(player))), 'Inventory changed; try again')
-    local row={id=db.id,citizenid=player.PlayerData.citizenid,operation=json.encode(op),before_inventory=json.encode(before),
+    local receiptId=db.id
+    if op.purpose=='physicalDeposit' then
+        assert(type(op.requestId)=='string' and #op.requestId==36,'Invalid durable deposit request')
+        receiptId=op.requestId
+    end
+    local row={id=receiptId,citizenid=player.PlayerData.citizenid,operation=json.encode(op),before_inventory=json.encode(before),
         after_inventory=json.encode(compact(planned)),db_before_inventory=db.inventory or '[]'}
     local preparation={{query=[[INSERT INTO bstar_card_moves (id,citizenid,operation,before_inventory,after_inventory,db_before_inventory)
         VALUES (?,?,?,?,?,?)]],values={row.id,row.citizenid,row.operation,row.before_inventory,row.after_inventory,row.db_before_inventory}}}
@@ -258,7 +284,7 @@ local function executeMove(player, op, mutate, planned)
         voidMove(row); error('Inventory rejected transfer; original inventory restored')
     end
     assert(equal(compact(playerItems(player)),compact(planned)), 'Unexpected inventory change; transfer journal retained')
-    local queries=moveQueries(row)
+    local queries=moveQueries(row,player)
     assert(equal(compact(playerItems(player)),compact(planned)),'Inventory changed during commit checks; transfer journal retained')
     assert(MySQL.transaction.await(queries), 'Transfer interrupted; retry to recover before moving more cards')
     if not equal(compact(playerItems(player)),compact(planned)) then

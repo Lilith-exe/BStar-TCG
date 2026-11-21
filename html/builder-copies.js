@@ -30,16 +30,17 @@
     window.BStarSleeves?.menu(event,{card,context:card.sleeveContext||state.context,actions:[{label:'Add to deck',run:()=>{setBuilderPreview(card);addCardToSelectedDeck(card.cardId);}}]});
   }
   function copyTile(state,copy,index){
-    const card={...state.card,sleeveId:undefined,sleeve:undefined,conditionCategory:undefined,copyId:undefined,...copy,variants:undefined,amount:1,sleeveContext:copy.sleeveContext||state.context};
+    const card={...state.card,sleeveId:undefined,sleeve:undefined,slab:undefined,conditionCategory:undefined,copyId:undefined,...copy,variants:undefined,amount:1,sleeveContext:copy.sleeveContext||state.context};
     const tile=element('article',null,'builder-copy');tile.setAttribute('role','listitem');
+    if(copy.slab)tile.classList.add('is-slabbed');
     tile.append(element('span',`Copy ${index+1}`,'builder-copy-number'));
     const preview=button(tile,'',()=>setBuilderPreview(card),`Preview copy ${index+1}`);preview.className='builder-copy-art';
     const image=element('img');image.src=getThumbImagePath(card);image.alt=card.name||'Card';image.loading='lazy';image.draggable=false;
-    image.onerror=()=>{image.onerror=null;image.src=getFullImagePath(card);};preview.append(image);
+    image.onerror=()=>{image.onerror=null;image.src=getFullImagePath(card);};preview.append(image);window.BStarSlabs?.decorate(preview,card);
     const status=element('div',null,'builder-copy-status');
     const category=categories.has(copy.conditionCategory)?copy.conditionCategory:'Untracked';
-    const condition=element('span',category,'builder-copy-condition');condition.dataset.condition=category;
-    status.append(condition,shield(!!copy.sleeveId,!!copy.sleeve?.legacy));tile.append(status);
+    const condition=element('span',copy.slab?`Graded: ${copy.slab.label||copy.slab.grade}`:category,'builder-copy-condition');condition.dataset.condition=copy.slab?'Graded':category;
+    status.append(condition,window.BStarSlabs?.protectionBadge(card)||shield(!!copy.sleeveId,!!copy.sleeve?.legacy));tile.append(status);
     const controls=element('div',null,'builder-copy-actions');
     button(controls,'Inspect',()=>openFullViewer(card,false,true),`Inspect copy ${index+1}`);
     button(controls,'Actions',event=>actions(state,card,event),`Actions for copy ${index+1}`);tile.append(controls);

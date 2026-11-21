@@ -197,9 +197,24 @@
     let legacy = null, original = '', applied = '', definition = card;
     function clear() { api.clear(); legacy?.configure({ enabled: false }); }
     function layout() {
-      surface.style.left = image.offsetLeft + 'px'; surface.style.top = image.offsetTop + 'px';
-      surface.style.width = image.offsetWidth + 'px'; surface.style.height = image.offsetHeight + 'px';
-      surface.style.transform = getComputedStyle(image).transform;
+      const style=getComputedStyle(image);
+      let left=image.offsetLeft,top=image.offsetTop,width=image.offsetWidth,height=image.offsetHeight;
+      // These grids letterbox art inside fixed img boxes. Masks must follow painted art,
+      // including slab padding, rather than stretch into the empty contain margins.
+      if(image.closest('.builder-card-image-wrap,.builder-copy-art,.pocket-art')&&image.naturalWidth&&image.naturalHeight&&['contain','scale-down'].includes(style.objectFit)){
+        const number=value=>Number.parseFloat(value)||0;
+        const paddingX=number(style.paddingLeft)+number(style.paddingRight),paddingY=number(style.paddingTop)+number(style.paddingBottom);
+        const contentWidth=image.clientWidth-paddingX,contentHeight=image.clientHeight-paddingY;
+        let scale=Math.min(contentWidth/image.naturalWidth,contentHeight/image.naturalHeight);
+        if(style.objectFit==='scale-down')scale=Math.min(1,scale);
+        width=image.naturalWidth*scale;height=image.naturalHeight*scale;
+        const position=(style.objectPosition||'50% 50%').split(/\s+/);
+        const offset=(value,space)=>value.endsWith('%')?number(value)*space/100:value==='center'?space/2:value==='right'||value==='bottom'?space:number(value);
+        left+=number(style.borderLeftWidth)+number(style.paddingLeft)+offset(position[0],contentWidth-width);
+        top+=number(style.borderTopWidth)+number(style.paddingTop)+offset(position[1]||'50%',contentHeight-height);
+      }
+      surface.style.left=left+'px';surface.style.top=top+'px';surface.style.width=width+'px';surface.style.height=height+'px';
+      surface.style.transform = style.transform;
       // Field/cemetery artwork has its own stacking level. Keep its foil above it.
       surface.style.zIndex = String((Number.parseInt(getComputedStyle(image).zIndex,10)||0)+1);
     }

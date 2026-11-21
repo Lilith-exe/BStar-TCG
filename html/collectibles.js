@@ -20,7 +20,17 @@
     shell.append(label,el('div',null,'hcg-inner-lip'),stamp);frame.append(shell);labelObserver.observe(shell);observedLabels.add(shell);
   }
   new MutationObserver(()=>{for(const shell of observedLabels)if(!shell.isConnected){labelObserver.unobserve(shell);observedLabels.delete(shell);}}).observe(document.body,{childList:true,subtree:true});
-  window.BStarSlabs={decorate};
+  function allGraded(card){
+    if(!card||card.hidden||card.faceDown||card.facedown||card.faceUp===false)return false;
+    return card.variants?.length?card.variants.every(copy=>!!copy.slab):!!card.slab;
+  }
+  function protectionBadge(card){
+    if(!allGraded(card))return null;
+    const badge=el('span',null,'slab-protection-badge');badge.title='Graded slab - sealed protection';badge.setAttribute('role','img');badge.setAttribute('aria-label',badge.title);
+    badge.innerHTML='<svg viewBox="0 0 24 26" aria-hidden="true"><path d="M12 2 21 6v7c0 5-5 9-9 11-4-2-9-6-9-11V6Z"/><path d="M9 12V9a3 3 0 0 1 6 0v3"/><rect x="7.5" y="12" width="9" height="7" rx="1.5"/><path d="M12 15v1.5"/></svg>';
+    return badge;
+  }
+  window.BStarSlabs={decorate,allGraded,protectionBadge};
   const root=el('section',null,'collector-overlay hidden');root.setAttribute('aria-label','Hardcore collector');document.body.append(root);
   let state=null,revision=0;
   const controllers=new Set();

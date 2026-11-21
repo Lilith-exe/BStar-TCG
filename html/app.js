@@ -216,6 +216,35 @@ function getCardHpDisplay(card) {
   return String(base).replace(/^DEF/i, 'HP');
 }
 
+// Shared public detail stats: retain zero, omit empty catalogue fields and concealed data.
+function getDetailStats(card,live=false) {
+  if(!card||card.hidden||card.faceDown||card.facedown||card.faceUp===false)return [];
+  const present=value=>value!==undefined&&value!==null&&!['','-','—','–','N/A'].includes(String(value).trim());
+  const first=(...values)=>values.find(present);
+  const clean=value=>present(value)?String(value).trim().replace(/^(?:ATK|HP|DEF|SPD)\s*:?\s*/i,''):undefined;
+  const fighter=String(card.type||'').toUpperCase().includes('FIGHTER');
+  const attack=first(card.attack,card.atk,fighter?card.baseAttack:undefined);
+  const speed=first(card.speed,card.spd,fighter?card.baseSpeed:undefined);
+  const printedHp=first(card.health,card.defense,card.def);
+  let hp;
+  // Engine-generated hp/maxHp=0 on an Item is not a printed HP stat.
+  if(fighter||present(printedHp)) {
+    const current=first(card.hp,card.currentHp),max=card.maxHp;
+    hp=live&&present(current)?(present(max)?clean(current)+'/'+clean(max):clean(current)):first(printedHp,fighter?card.baseHp:undefined,current);
+  }
+  return [{key:'atk',label:'ATK:',value:clean(attack)},{key:'hp',label:'HP:',value:clean(hp)},{key:'spd',label:'SPD:',value:clean(speed)}].filter(stat=>present(stat.value));
+}
+function renderDetailStats(container,card,live=false) {
+  if(!container)return;
+  const stats=getDetailStats(card,live);container.replaceChildren();container.classList.toggle('hidden',!stats.length);
+  for(const stat of stats) {
+    const box=document.createElement('div');box.className=live?'table-preview-stat '+stat.key+getPreviewStatTrend(card,stat.key):'preview-big-stat preview-big-stat-'+stat.key;
+    const label=document.createElement('span');label.className=live?'table-preview-stat-label':'preview-big-stat-label';label.textContent=stat.label;
+    const value=document.createElement(live?'strong':'span');value.className=live?'table-preview-stat-value':'preview-big-stat-value';value.textContent=stat.value;
+    box.append(label,value);container.append(box);
+  }
+}
+
 function clone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
@@ -260,6 +289,7 @@ function resetTilt() {
 }
 
 function hideAll() {
+  window.BStarPhysicalPockets?.close();
   uiNavigationRevision++;
   window.BStarBuilderCopies?.close();
   clearCoinResultTimer();
@@ -932,6 +962,7 @@ function closeFullViewer(notifyLua = true) {
   if (window.BStarPackOpening?.returnFromInspection()) return;
   if (window.BStarBulkUI?.returnFromInspection()) return;
   if (window.BStarCollectors?.returnFromInspection()) return;
+  if (window.BStarPhysicalPockets?.returnFromInspection()) return;
 
   const returningToDeckBox = viewerOpenedFromDeckBox;
   const returningToDeckBuilder = viewerOpenedFromDeckBuilder;
@@ -1150,6 +1181,7 @@ function renderDeckHub() {
   }
 
   const selectingForTable = deckHubMode === 'tableSelect';
+  const pocketButton=deckHubWrap.querySelector('[data-pocket-cards]');if(pocketButton)pocketButton.disabled=selectingForTable;
   deckHubNewBtn.classList.toggle('hidden', selectingForTable);
   deckHubDeleteBtn.classList.toggle('hidden', selectingForTable);
   deckHubCardsBtn.classList.toggle('hidden', selectingForTable);
@@ -1551,6 +1583,7 @@ function renderBuilderPoolCards() {
     div.className = 'builder-card';
     div.dataset.cardId = cardId;
     if (dimmed) div.classList.add('dimmed');
+    const slabBadge=window.BStarSlabs?.protectionBadge(card);if(slabBadge){div.classList.add('is-slabbed');div.appendChild(slabBadge);}
 
     const imageWrap = document.createElement('div');
     imageWrap.className = 'builder-card-image-wrap';
@@ -1624,6 +1657,7 @@ function renderBuilderDeckCards() {
     for (let copyIndex = 0; copyIndex < amount; copyIndex++) {
       const div = document.createElement('div');
       div.className = 'builder-card';
+      const slabBadge=window.BStarSlabs?.protectionBadge(ownedCard);if(slabBadge){div.classList.add('is-slabbed');div.appendChild(slabBadge);}
       if (invalid) {
         div.classList.add('dimmed');
         div.classList.add('invalid');
@@ -1679,9 +1713,6 @@ function setBuilderPreview(card) {
   const type = resolved.type || '-';
   const rarity = resolved.rarity || '-';
   const level = resolved.level || '-';
-  const atk = resolved.attack || resolved.atk || '-';
-  const hp = getCardHpDisplay(resolved);
-  const spd = resolved.speed || resolved.spd || '-';
 
   builderPreviewMeta.innerHTML = `
     <div class="preview-stat-row">
@@ -1696,18 +1727,9 @@ function setBuilderPreview(card) {
       <span class="preview-stat-label">Level</span>
       <span class="preview-stat-value">${level}</span>
     </div>
-    <div class="preview-big-stats">
-      <div class="preview-big-stat preview-big-stat-atk">
-        <span class="preview-big-stat-value">${atk}</span>
-      </div>
-      <div class="preview-big-stat preview-big-stat-hp">
-        <span class="preview-big-stat-value">${hp}</span>
-      </div>
-      <div class="preview-big-stat preview-big-stat-spd">
-        <span class="preview-big-stat-value">${spd}</span>
-      </div>
-    </div>
+    <div class="preview-big-stats"></div>
   `;
+  renderDetailStats(builderPreviewMeta.querySelector('.preview-big-stats'),resolved);
 
   let sleeveActions=document.getElementById('builderPreviewSleeves');
   if(!sleeveActions){sleeveActions=document.createElement('button');sleeveActions.id='builderPreviewSleeves';builderPreviewMeta.after(sleeveActions);}
@@ -2419,13 +2441,7 @@ function renderTablePreview() {
     tablePreviewMeta.textContent = meta.join(' / ') || 'BStar Card';
   }
 
-  if (tablePreviewStats) {
-    tablePreviewStats.innerHTML = `
-      <div class="table-preview-stat atk${getPreviewStatTrend(card, 'atk')}"><strong>${card.attack ?? '-'}</strong></div>
-      <div class="table-preview-stat hp${getPreviewStatTrend(card, 'hp')}"><strong>${getCardHpDisplay(card)}</strong></div>
-      <div class="table-preview-stat spd${getPreviewStatTrend(card, 'spd')}"><strong>${card.speed ?? '-'}</strong></div>
-    `;
-  }
+  renderDetailStats(tablePreviewStats,card,true);
 
   if (tablePreviewEffect) {
     const title = card.effectTitle || 'Effect';
@@ -4720,3 +4736,24 @@ for(const id of ['sleeveBoxSearch','sleeveBoxRarity','sleeveBoxStatus','sleeveBo
     document.getElementById(id).addEventListener(id==='sleeveBoxSearch'?'input':'change',renderDeckBox);
 }
 document.getElementById('builderSleeveStatus').addEventListener('change',renderBuilderPoolCards);
+
+// Transfer refresh updates read models only: never replace selectedDeck or currentDecks.
+window.BStarPocketHost={
+  context(){
+    const view=!deckBuilderWrap.classList.contains('hidden')?'builder':!deckHubWrap.classList.contains('hidden')?'hub':!deckboxWrap.classList.contains('hidden')?'cards':null;
+    if(!view||!currentDeckBoxId||(view==='hub'&&deckHubMode==='tableSelect'))return null;
+    return {box:currentDeckBoxId,revision:uiNavigationRevision,view};
+  },
+  applyStock(data,context){
+    const current=this.context();if(!data?.ok||data.box!==context.box||!current||current.box!==context.box||current.revision!==context.revision)return false;
+    const elements=[builderPoolCardsEl,builderDeckCardsEl,deckHubListEl,deckBoxCardsEl];
+    const positions=elements.map(el=>({el,top:el.scrollTop,left:el.scrollLeft}));
+    builderOwnedCards=data.storedCards;currentStoredCards=data.boxCards;
+    if(current.view==='builder'){renderBuilderPoolCards();renderBuilderDeckCards();}
+    else if(current.view==='hub')renderDeckHub();
+    else renderDeckBox();
+    for(const p of positions){p.el.scrollTop=p.top;p.el.scrollLeft=p.left;}
+    return true;
+  },
+  notice(){return selectedDeck&&getDeckValidationIssues(selectedDeck).length?'Card stock updated. Review deck validity; your edits have been kept.':'';}
+};

@@ -22,6 +22,7 @@ client_scripts {
     'client/collectibles.lua',
     'client/duel.lua',
     'client/tables.lua',
+    'client/physical-pockets.lua',
     'client/DEV_console.lua'
 }
 
@@ -42,6 +43,7 @@ server_scripts {
     'server/sleeves.lua',
     'server/condition.lua',
     'server/collectibles.lua',
+    'server/physical-transfers.lua',
     'server/legacy-conversion.lua',
     'server/sleeve-duel.lua',
     'server/dev-commands.lua',
@@ -55,6 +57,8 @@ files {
     'html/index.html',
     'html/style.css',
     'html/app.js',
+    'html/physical-pockets.js',
+    'html/physical-pockets.css',
     'html/DEV_console.js',
     'html/DEV_console.css',
     'html/collectibles.js',
