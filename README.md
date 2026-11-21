@@ -2,6 +2,9 @@
 
 ## Latest
 
+## v0.7.10
+- Some changes
+
 ## v0.7.9
 - Retired legacy card states and handling
 
